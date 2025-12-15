@@ -12,6 +12,8 @@ endif()
 
 add_executable(WinUpdate ${SOURCES})
 
+set_target_properties(WinUpdate PROPERTIES WIN32_EXECUTABLE TRUE)
+
 target_compile_definitions(WinUpdate PRIVATE WIN32_LEAN_AND_MEAN)
 
 if(MSVC)

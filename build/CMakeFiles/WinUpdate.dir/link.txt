@@ -1,3 +1,3 @@
 "C:\Program Files\CMake\bin\cmake.exe" -E rm -f CMakeFiles\WinUpdate.dir/objects.a
 C:\mingw64\bin\ar.exe qc CMakeFiles\WinUpdate.dir/objects.a @CMakeFiles\WinUpdate.dir\objects1.rsp
-C:\mingw64\bin\c++.exe -O3 -DNDEBUG -Wl,--whole-archive CMakeFiles\WinUpdate.dir/objects.a -Wl,--no-whole-archive -o WinUpdate.exe -Wl,--out-implib,libWinUpdate.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\WinUpdate.dir\linkLibs.rsp
+C:\mingw64\bin\c++.exe -O3 -DNDEBUG -mwindows -Wl,--whole-archive CMakeFiles\WinUpdate.dir/objects.a -Wl,--no-whole-archive -o WinUpdate.exe -Wl,--out-implib,libWinUpdate.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\WinUpdate.dir\linkLibs.rsp

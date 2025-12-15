@@ -1,0 +1,156 @@
+--- CMD: cmd /C winget list ---
+Exit: -2
+(TIMEOUT)
+Output:
+   - 
+
+--- CMD: cmd /C winget upgrade --accept-source-agreements --accept-package-agreements ---
+Exit: -1978335210
+Output:
+   -                                                                                                                         Multiple installed packages found matching input criteria. Please refine the input.
+Name                                                 Id
+-----------------------------------------------------------------------------------------------------------------------
+7-Zip                                                7zip.7zip
+AutoHotkey                                           AutoHotkey.AutoHotkey
+Combined Community Codec Pack 64bit 2015-10-18       ARP\Machine\X64\Combined Community Codec Pack 64bit_is1
+GIMP                                                 GIMP.GIMP.3
+Git                                                  ARP\Machine\X64\Git_is1
+Mozilla Thunderbird (nb-NO)                          Mozilla.Thunderbird.nb-NO
+Mozilla Maintenance Service                          ARP\Machine\X64\MozillaMaintenanceService
+Notepad++                                            Notepad++.Notepad++
+RustDesk                                             RustDesk.RustDesk
+SteelSeries GG                                       SteelSeries.GG
+Total Commander                                      Ghisler.TotalCommander
+VLC media player                                     VideoLAN.VLC
+Eclipse Temurin JDK with Hotspot 21                  EclipseAdoptium.Temurin.21.JDK
+MiniTool Partition Wizard Free                       MiniTool.PartitionWizard.Free
+Eclipse Temurin JRE with Hotspot 17                  EclipseAdoptium.Temurin.17.JRE
+blender                                              BlenderFoundation.Blender
+IPGui                                                ARP\Machine\X64\{4442AFA4-18F8-46B3-975B-8F1A471A3F14}
+LibreOffice                                          TheDocumentFoundation.LibreOffice
+Eclipse Temurin JRE with Hotspot 11                  EclipseAdoptium.Temurin.11.JRE
+Eclipse Temurin JDK with Hotspot 8                   EclipseAdoptium.Temurin.8.JDK
+Microsoft Visual Studio Installer                    ARP\Machine\X64\{6F320B93-EE3C-4826-85E0-ADF79F8D4C61}
+InfoWinApp                                           ARP\Machine\X64\{75B92123-BF92-4BD8-A99F-40A13B6340E7}
+Google Earth Pro                                     Google.EarthPro
+Gadwin PrintScreen                                   Gadwin.PrintScreen
+NVIDIA Grafikkdriver 511.65                          ARP\Machine\X64\{B2FE1952-0186-46C3-BAEC-A80AA35AC5B8}_Display.Dr…
+Eclipse Temurin JRE with Hotspot 8                   EclipseAdoptium.Temurin.8.JRE
+Eclipse Temurin JDK with Hotspot 11                  EclipseAdoptium.Temurin.11.JDK
+CMake                                                Kitware.CMake
+PuTTY                                                PuTTY.PuTTY
+Eclipse Temurin JRE with Hotspot 21                  EclipseAdoptium.Temurin.21.JRE
+Ultimaker Cura                                       Ultimaker.Cura
+7-PDF Split & Merge Version 7.5.0 (Build 168)        ARP\Machine\X86\7-PDF Split & Merge_is1
+FileZilla 3.69.5                                     ARP\Machine\X86\FileZilla Client
+Freemake Video Converter version 5.0.0               ARP\Machine\X86\Freemake Video Converter_is1
+KeePass                                              DominikReichl.KeePass
+MiniTool ShadowMaker PW Edition                      ARP\Machine\X86\MT-75D7C412-925B-4AD0-90DC-5E4FEE22EAE1_is1
+Microsoft Edge                                       Microsoft.Edge
+Opera Stable                                         Opera.Opera
+Wise Care 365                                        WiseCleaner.WiseCare365
+qBittorrent                                          ARP\Machine\X86\qBittorrent
+Microsoft .NET Runtime 9.0                           Microsoft.DotNet.Runtime.9
+Windows SDK AddOn                                    ARP\Machine\X86\{04307046-D84E-4FF7-948D-A907C0D2B1A7}
+Microsoft Visual C++ 2015-2022 Redistributable (x86) Microsoft.VCRedist.2015+.x86
+Microsoft .NET Framework 4.6.2 Developer Pack        Microsoft.DotNet.Framework.DeveloperPack.4.6
+vs_CoreEditorFonts                                   ARP\Machine\X86\{1851460E-0E63-4117-B5BA-25A2F045801B}
+Advanced Installer                                   Caphyon.AdvancedInstaller
+Foxit PDF Reader                                     ARP\Machine\X86\{3422785d-02d9-40c6-a890-d56c21c1eea8}
+Microsoft .NET Windows Desktop Runtime 9.0           Microsoft.DotNet.DesktopRuntime.9
+SD Card Formatter                                    SDAssociation.SDMemoryCardFormatter
+Microsoft .NET SDK 9.0                               Microsoft.DotNet.SDK.9
+Microsoft Visual C++ 2015-2022 Redistributable (x64) Microsoft.VCRedist.2015+.x64
+Python Launcher                                      Python.Launcher
+Python 2                                             Python.Python.2
+Microsoft Visual Studio Setup WMI Provider           ARP\Machine\X86\{E281F6E2-136B-4AF0-895B-253279711697}
+PowerShell                                           Microsoft.PowerShell
+Edit                                                 Microsoft.Edit
+balenaEtcher                                         Balena.Etcher
+less                                                 jftuga.less
+Python 3.14                                          Python.Python.3.14
+Python 3.13                                          Python.Python.3.13
+Microsoft Visual Studio Code                         Microsoft.VisualStudioCode
+Qt                                                   ARP\User\X64\{7c50515e-7b36-4377-8e65-d93f5bf20dc0}
+Vulkan SDK                                           KhronosGroup.VulkanSDK
+PowerToys                                            Microsoft.PowerToys
+MSYS2                                                ARP\User\X64\{ce6bfe2d-4154-4ddb-ab65-a768783971b5}
+Rufus                                                MSIX\19453.net.Rufus_4.11.2285.0_x64__y8nh7bq2a8dtt
+Nahimic                                              MSIX\A-Volute.Nahimic_1.10.7.0_x64__w2gh52qy24etm
+Intel® grafikkommandosenter                          MSIX\AppUp.IntelGraphicsExperience_1.100.5688.0_x64__8j3eq9eme6ctt
+Microsoft Clipchamp                                  MSIX\Clipchamp.Clipchamp_4.4.10420.0_x64__yxz26nhyzhsrt
+ImageMagick Q16                                      ImageMagick.Q16
+Microsoft Teams                                      Microsoft.Teams
+AV1 Video Extension                                  MSIX\Microsoft.AV1VideoExtension_2.0.6.0_x64__8wekyb3d8bbwe
+Videoutvidelse for AVC-koder                         MSIX\Microsoft.AVCEncoderVideoExtension_1.1.21.0_x64__8wekyb3d8bb…
+Kompatibilitetsforbedringer for Windows-program      MSIX\Microsoft.ApplicationCompatibilityEnhancements_1.2511.9.0_x6…
+Microsoft Bing                                       MSIX\Microsoft.BingSearch_1.1.40.0_x64__8wekyb3d8bbwe
+Command Palette                                      MSIX\Microsoft.CommandPalette_0.7.3271.0_x64__8wekyb3d8bbwe
+Copilot                                              MSIX\Microsoft.Copilot_1.25121.57.0_x64__8wekyb3d8bbwe
+App Installer                                        Microsoft.AppInstaller
+Microsoft Edge spillassistent                        MSIX\Microsoft.Edge.GameAssist_1.0.3590.0_x64__8wekyb3d8bbwe
+HEIF-bildeutvidelse                                  MSIX\Microsoft.HEIFImageExtension_1.2.28.0_x64__8wekyb3d8bbwe
+HEVC-videoutvidelser fra enhetsprodusenten           MSIX\Microsoft.HEVCVideoExtension_2.4.39.0_x64__8wekyb3d8bbwe
+Norsk (bokmål) lokal grensesnittpakke                MSIX\Microsoft.LanguageExperiencePacknb-NO_26100.129.231.0_neutra…
+MPEG-2-videoutvidelse                                MSIX\Microsoft.MPEG2VideoExtension_1.2.13.0_x64__8wekyb3d8bbwe
+Microsoft Edge                                       MSIX\Microsoft.MicrosoftEdge.Stable_140.0.3485.54_neutral__8wekyb…
+Microsoft Klistrelapper                              MSIX\Microsoft.MicrosoftStickyNotes_4.0.6104.0_x64__8wekyb3d8bbwe
+Microsoft .Net Native Framework Package 2.2          MSIX\Microsoft.NET.Native.Framework.2.2_2.2.29512.0_x64__8wekyb3d…
+Microsoft .Net Native Framework Package 2.2          MSIX\Microsoft.NET.Native.Framework.2.2_2.2.29512.0_x86__8wekyb3d…
+Microsoft .Net Native Runtime Package 2.2            MSIX\Microsoft.NET.Native.Runtime.2.2_2.2.28604.0_x64__8wekyb3d8b…
+Microsoft .Net Native Runtime Package 2.2            MSIX\Microsoft.NET.Native.Runtime.2.2_2.2.28604.0_x86__8wekyb3d8b…
+OneDrive                                             MSIX\Microsoft.OneDriveSync_25091.512.1.0_neutral__8wekyb3d8bbwe
+Outlook for Windows                                  MSIX\Microsoft.OutlookForWindows_1.2025.522.100_x64__8wekyb3d8bbwe
+Paint                                                MSIX\Microsoft.Paint_11.2510.311.0_x64__8wekyb3d8bbwe
+Power Automate                                       MSIX\Microsoft.PowerAutomateDesktop_1.0.2046.0_x64__8wekyb3d8bbwe
+PowerToys FileLocksmith Context Menu                 MSIX\Microsoft.PowerToys.FileLocksmithContextMenu_0.96.1.0_neutra…
+PowerToys ImageResizer Context Menu                  MSIX\Microsoft.PowerToys.ImageResizerContextMenu_0.96.1.0_neutral…
+PowerToys PowerRename Context Menu                   MSIX\Microsoft.PowerToys.PowerRenameContextMenu_0.96.1.0_neutral_…
+PowerToys.SparseApp                                  MSIX\Microsoft.PowerToys.SparseApp_0.96.1.0_neutral__8wekyb3d8bbwe
+Raw Image Extension                                  MSIX\Microsoft.RawImageExtension_2.5.7.0_x64__8wekyb3d8bbwe
+Utklippsverktøy                                      MSIX\Microsoft.ScreenSketch_11.2510.31.0_x64__8wekyb3d8bbwe
+Windows Sikkerhet                                    MSIX\Microsoft.SecHealthUI_1000.29429.1000.0_x64__8wekyb3d8bbwe
+Microsoft Engagement Framework                       MSIX\Microsoft.Services.Store.Engagement_10.0.23012.0_x64__8wekyb…
+Microsoft Engagement Framework                       MSIX\Microsoft.Services.Store.Engagement_10.0.23012.0_x86__8wekyb…
+Start opplevelsesappen                               MSIX\Microsoft.StartExperiencesApp_1.179.4.0_x64__8wekyb3d8bbwe
+Vert for Store-opplevelse                            MSIX\Microsoft.StorePurchaseApp_22509.1401.1.0_x64__8wekyb3d8bbwe
+Microsoft To Do                                      MSIX\Microsoft.Todos_0.148.3611.0_x64__8wekyb3d8bbwe
+Microsoft.UI.Xaml                                    Microsoft.UI.Xaml.2.8
+Microsoft Visual C++ 2015 UWP Desktop Runtime Packa… Microsoft.VCLibs.Desktop.14
+Microsoft Visual C++ 2015 UWP Runtime Package        MSIX\Microsoft.VCLibs.140.00_14.0.33519.0_x64__8wekyb3d8bbwe
+Microsoft Visual C++ 2015 UWP Runtime Package        MSIX\Microsoft.VCLibs.140.00_14.0.33519.0_x86__8wekyb3d8bbwe
+VP9-videoutvidelser                                  MSIX\Microsoft.VP9VideoExtensions_1.2.12.0_x64__8wekyb3d8bbwe
+Nettmedieutvidelser                                  MSIX\Microsoft.WebMediaExtensions_1.2.17.0_x64__8wekyb3d8bbwe
+WebP-bildeutvidelse                                  MSIX\Microsoft.WebpImageExtension_1.2.14.0_x64__8wekyb3d8bbwe
+Widgets Platform Runtime                             MSIX\Microsoft.WidgetsPlatformRuntime_1.6.14.0_x64__8wekyb3d8bbwe
+Dev Home                                             MSIX\Microsoft.Windows.DevHome_0.0.0.0_x64__8wekyb3d8bbwe
+Microsoft Bilder                                     MSIX\Microsoft.Windows.Photos_2025.11110.18001.0_x64__8wekyb3d8bb…
+Windows Clock                                        MSIX\Microsoft.WindowsAlarms_11.2510.4.0_x64__8wekyb3d8bbwe
+WindowsAppRuntime.1.1                                MSIX\Microsoft.WindowsAppRuntime.1.1_1005.616.1651.0_x64__8wekyb3…
+WindowsAppRuntime.1.1                                MSIX\Microsoft.WindowsAppRuntime.1.1_1005.616.1651.0_x86__8wekyb3…
+WindowsAppRuntime.1.5                                MSIX\Microsoft.WindowsAppRuntime.1.5_5001.373.1736.0_x64__8wekyb3…
+WindowsAppRuntime.1.5                                MSIX\Microsoft.WindowsAppRuntime.1.5_5001.373.1736.0_x86__8wekyb3…
+WindowsAppRuntime.1.6                                MSIX\Microsoft.WindowsAppRuntime.1.6_6000.519.329.0_x64__8wekyb3d…
+WindowsAppRuntime.1.6                                MSIX\Microsoft.WindowsAppRuntime.1.6_6000.519.329.0_x86__8wekyb3d…
+WindowsAppRuntime.1.7                                MSIX\Microsoft.WindowsAppRuntime.1.7_7000.522.1444.0_x64__8wekyb3…
+WindowsAppRuntime.1.7                                MSIX\Microsoft.WindowsAppRuntime.1.7_7000.617.2103.0_x64__8wekyb3…
+WindowsAppRuntime.1.7                                MSIX\Microsoft.WindowsAppRuntime.1.7_7000.652.1806.0_x64__8wekyb3…
+WindowsAppRuntime.1.7                                MSIX\Microsoft.WindowsAppRuntime.1.7_7000.676.1651.0_x64__8wekyb3…
+WindowsAppRuntime.1.7                                MSIX\Microsoft.WindowsAppRuntime.1.7_7000.676.1651.0_x86__8wekyb3…
+WindowsAppRuntime.1.8                                MSIX\Microsoft.WindowsAppRuntime.1.8_8000.642.119.0_x64__8wekyb3d…
+WindowsAppRuntime.1.8                                MSIX\Microsoft.WindowsAppRuntime.1.8_8000.675.1142.0_x64__8wekyb3…
+WindowsAppRuntime.1.8                                MSIX\Microsoft.WindowsAppRuntime.1.8_8000.675.1142.0_x86__8wekyb3…
+Windows Kalkulator                                   MSIX\Microsoft.WindowsCalculator_11.2508.4.0_x64__8wekyb3d8bbwe
+Windows Notisblokk                                   MSIX\Microsoft.WindowsNotepad_11.2508.38.0_x64__8wekyb3d8bbwe
+Microsoft Store                                      MSIX\Microsoft.WindowsStore_22510.1401.4.0_x64__8wekyb3d8bbwe
+Windows Terminal                                     Microsoft.WindowsTerminal
+Windows Package Manager Source (winget) V2           MSIX\Microsoft.Winget.Source_2025.1215.1548.9_neutral__8wekyb3d8b…
+Microsoft Family                                     MSIX\MicrosoftCorporationII.MicrosoftFamily_0.2.40.0_x64__8wekyb3…
+Hurtighjelp                                          MSIX\MicrosoftCorporationII.QuickAssist_2.0.29.0_x64__8wekyb3d8bb…
+Windows Web Experience Pack                          MSIX\MicrosoftWindows.Client.WebExperience_525.31002.150.0_x64__c…
+Vert for enhetsopplevelser på tvers av enheter       MSIX\MicrosoftWindows.CrossDevice_1.25102.46.0_x64__cw5n1h2txyewy
+NVIDIA Control Panel                                 MSIX\NVIDIACorp.NVIDIAControlPanel_8.1.969.0_x64__56jybvy8sckqj
+Notepad++                                            MSIX\NotepadPlusPlus_1.0.0.0_neutral__2247w0b46hfww
+Realtek Audio Control                                MSIX\RealtekSemiconductorCorp.RealtekAudioControl_1.53.373.0_x64_…
+
+
