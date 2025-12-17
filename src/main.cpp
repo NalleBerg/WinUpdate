@@ -13,6 +13,7 @@
 #include <filesystem>
 #include <unordered_map>
 #include <future>
+#include <filesystem>
 // detect nlohmann/json.hpp if available; fall back to ad-hoc parser otherwise
 #if defined(__has_include)
 #  if __has_include(<nlohmann/json.hpp>)
@@ -34,6 +35,7 @@ const wchar_t CLASS_NAME[] = L"WinUpdateClass";
 #define IDC_LISTVIEW 1004
 #define IDC_CHECK_SELECTALL 2001
 #define IDC_BTN_UPGRADE 2002
+#define IDC_COMBO_LANG 3001
 #define WM_REFRESH_ASYNC (WM_APP + 1)
 #define WM_REFRESH_DONE  (WM_APP + 2)
 
@@ -59,6 +61,101 @@ static HWND g_hMainWindow = NULL;
 static int g_loading_anim_state = 0;
 static const UINT LOADING_TIMER_ID = 0xC0DE;
 static bool g_popupClassRegistered = false;
+
+// Simple i18n: UTF-8 key=value loader. Keys are ASCII.
+static std::unordered_map<std::string,std::string> g_i18n_default;
+static std::unordered_map<std::string,std::string> g_i18n;
+static std::string g_locale = "en";
+
+// forward declare helper functions used by i18n loader (defined later)
+static std::string ReadFileUtf8(const std::wstring &path);
+static std::wstring Utf8ToWide(const std::string &s);
+
+static void InitDefaultTranslations() {
+    if (!g_i18n_default.empty()) return;
+    g_i18n_default["app_window_title"] = "WinUpdate - winget GUI updater";
+    g_i18n_default["app_title"] = "WinUpdate";
+    g_i18n_default["list_last_updated_prefix"] = "List last updated:";
+    g_i18n_default["select_all"] = "Select all";
+    g_i18n_default["upgrade_now"] = "Upgrade now";
+    g_i18n_default["refresh"] = "Refresh";
+    g_i18n_default["package_col"] = "Package";
+    g_i18n_default["id_col"] = "Id";
+    g_i18n_default["loading_title"] = "Loading, please";
+    g_i18n_default["loading_desc"] = "Querying winget";
+    g_i18n_default["your_system_updated"] = "Your system is updated!";
+    g_i18n_default["msg_error_elevate"] = "Failed to launch elevated process.";
+}
+
+static void LoadLocaleFromFile(const std::string &locale) {
+    g_i18n = g_i18n_default; // start with defaults
+    std::string path = std::string("i18n\\") + locale + ".txt";
+    std::string txt = ReadFileUtf8(std::wstring(path.begin(), path.end()));
+    if (txt.empty()) return;
+    std::istringstream iss(txt);
+    std::string ln;
+    while (std::getline(iss, ln)) {
+        // Trim
+        auto ltrim = [](std::string &s){ while(!s.empty() && (s.front()==' '||s.front()=='\t' || s.front()=='\r')) s.erase(s.begin()); };
+        auto rtrim = [](std::string &s){ while(!s.empty() && (s.back()==' '||s.back()=='\t' || s.back()=='\r' || s.back()=='\n')) s.pop_back(); };
+        ltrim(ln); rtrim(ln);
+        if (ln.empty()) continue;
+        if (ln[0] == '#' || ln[0] == ';') continue;
+        size_t eq = ln.find('=');
+        if (eq == std::string::npos) continue;
+        std::string key = ln.substr(0, eq);
+        std::string val = ln.substr(eq+1);
+        ltrim(key); rtrim(key); ltrim(val); rtrim(val);
+        if (!key.empty()) g_i18n[key] = val;
+    }
+}
+
+static std::wstring t(const char *key) {
+    InitDefaultTranslations();
+    std::string k(key);
+    auto it = g_i18n.find(k);
+    if (it == g_i18n.end()) it = g_i18n_default.find(k);
+    if (it == g_i18n_default.end()) return Utf8ToWide(k);
+    return Utf8ToWide(it->second);
+}
+
+// Settings persistence: simple UTF-8 key=value in wup_settings.txt
+static bool SaveLocaleSetting(const std::string &locale) {
+    try {
+        std::string fn = "wup_settings.txt";
+        std::ofstream ofs(fn, std::ios::binary | std::ios::trunc);
+        if (!ofs) return false;
+        ofs << "language=" << locale << "\n";
+        return true;
+    } catch(...) { return false; }
+}
+
+static std::string LoadLocaleSetting() {
+    try {
+        std::string fn = "wup_settings.txt";
+        std::ifstream ifs(fn, std::ios::binary);
+        if (!ifs) return std::string();
+        std::ostringstream ss; ss << ifs.rdbuf();
+        std::string txt = ss.str();
+        std::istringstream iss(txt);
+        std::string ln;
+        while (std::getline(iss, ln)) {
+            // trim
+            auto ltrim = [](std::string &s){ while(!s.empty() && isspace((unsigned char)s.front())) s.erase(s.begin()); };
+            auto rtrim = [](std::string &s){ while(!s.empty() && isspace((unsigned char)s.back())) s.pop_back(); };
+            ltrim(ln); rtrim(ln);
+            if (ln.empty()) continue;
+            if (ln[0] == '#' || ln[0] == ';') continue;
+            size_t eq = ln.find('=');
+            if (eq == std::string::npos) continue;
+            std::string key = ln.substr(0, eq);
+            std::string val = ln.substr(eq+1);
+            ltrim(key); rtrim(key); ltrim(val); rtrim(val);
+            if (key == "language" && !val.empty()) return val;
+        }
+    } catch(...) {}
+    return std::string();
+}
 
 static LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 // subclass procedure for custom-drawn dots control
@@ -178,12 +275,12 @@ static LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
             HGDIOBJ oldFont = SelectObject(hdcMem, g_hTitleFont);
             SetTextColor(hdcMem, RGB(0,0,0));
             SetBkMode(hdcMem, TRANSPARENT);
-            DrawTextW(hdcMem, L"Loading, please", -1, &titleRect, DT_LEFT | DT_SINGLELINE | DT_VCENTER);
+            DrawTextW(hdcMem, t("loading_title").c_str(), -1, &titleRect, DT_LEFT | DT_SINGLELINE | DT_VCENTER);
             SelectObject(hdcMem, oldFont);
         } else {
             SetTextColor(hdcMem, RGB(0,0,0));
             SetBkMode(hdcMem, TRANSPARENT);
-            DrawTextW(hdcMem, L"Loading, please", -1, &titleRect, DT_LEFT | DT_SINGLELINE | DT_VCENTER);
+            DrawTextW(hdcMem, t("loading_title").c_str(), -1, &titleRect, DT_LEFT | DT_SINGLELINE | DT_VCENTER);
         }
 
         // draw description smaller
@@ -191,12 +288,12 @@ static LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
             HGDIOBJ oldFont = SelectObject(hdcMem, g_hLastUpdatedFont);
             SetTextColor(hdcMem, RGB(64,64,64));
             SetBkMode(hdcMem, TRANSPARENT);
-            DrawTextW(hdcMem, L"Querying winget", -1, &descRect, DT_LEFT | DT_SINGLELINE | DT_VCENTER);
+            DrawTextW(hdcMem, t("loading_desc").c_str(), -1, &descRect, DT_LEFT | DT_SINGLELINE | DT_VCENTER);
             SelectObject(hdcMem, oldFont);
         } else {
             SetTextColor(hdcMem, RGB(64,64,64));
             SetBkMode(hdcMem, TRANSPARENT);
-            DrawTextW(hdcMem, L"Querying winget", -1, &descRect, DT_LEFT | DT_SINGLELINE | DT_VCENTER);
+            DrawTextW(hdcMem, t("loading_desc").c_str(), -1, &descRect, DT_LEFT | DT_SINGLELINE | DT_VCENTER);
         }
 
         // Row2: center dots across full width (merged cell)
@@ -353,7 +450,8 @@ static std::wstring GetTimestampNow() {
 static void UpdateLastUpdatedLabel(HWND hwnd) {
     if (!g_hLastUpdated) return;
     std::wstring ts = GetTimestampNow();
-    std::wstring txt = L"List last updated: " + ts;
+    std::wstring prefix = t("list_last_updated_prefix");
+    std::wstring txt = prefix + L" " + ts;
     SetWindowTextW(g_hLastUpdated, txt.c_str());
 }
 
@@ -1079,6 +1177,17 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         g_hTitle = CreateWindowExW(0, L"Static", L"WinUpdate", WS_CHILD | WS_VISIBLE | SS_CENTER, 10, 10, 600, 28, hwnd, NULL, NULL, NULL);
         if (g_hTitle && g_hTitleFont) SendMessageW(g_hTitle, WM_SETFONT, (WPARAM)g_hTitleFont, TRUE);
 
+        // language selection combobox (top-right)
+        HWND hComboLang = CreateWindowExW(0, WC_COMBOBOXW, NULL, WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_TABSTOP, 470, 10, 150, 200, hwnd, (HMENU)IDC_COMBO_LANG, NULL, NULL);
+        if (hComboLang) {
+            SendMessageW(hComboLang, CB_ADDSTRING, 0, (LPARAM)L"English (en)");
+            SendMessageW(hComboLang, CB_ADDSTRING, 0, (LPARAM)L"Norsk (no)");
+            // select based on g_locale (prefix)
+            int sel = 0;
+            if (g_locale.rfind("no",0) == 0) sel = 1;
+            SendMessageW(hComboLang, CB_SETCURSEL, sel, 0);
+        }
+
         // Last-updated label (small bold ~9pt) placed under the title and centered
         HDC hdc = GetDC(hwnd);
         int lfHeight = -MulDiv(9, GetDeviceCaps(hdc, LOGPIXELSY), 72);
@@ -1094,21 +1203,22 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         LVCOLUMNW col{};
         col.mask = LVCF_TEXT | LVCF_WIDTH;
         col.cx = 360;
-        static wchar_t colText[] = L"Package";
+        static std::wstring pkgCol = t("package_col");
+        static std::wstring idCol = t("id_col");
+        static wchar_t *colText = (wchar_t*)pkgCol.c_str();
         col.pszText = colText;
         ListView_InsertColumn(hList, 0, &col);
         LVCOLUMNW col2{};
         col2.mask = LVCF_TEXT | LVCF_WIDTH;
         col2.cx = 200;
-        static wchar_t colText2[] = L"Id";
-        col2.pszText = colText2;
+        col2.pszText = (wchar_t*)idCol.c_str();
         ListView_InsertColumn(hList, 1, &col2);
 
-        hCheckAll = CreateWindowExW(0, L"Button", L"Select all", WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, 10, 350, 120, 24, hwnd, (HMENU)IDC_CHECK_SELECTALL, NULL, NULL);
+        hCheckAll = CreateWindowExW(0, L"Button", t("select_all").c_str(), WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, 10, 350, 120, 24, hwnd, (HMENU)IDC_CHECK_SELECTALL, NULL, NULL);
         // place Upgrade button 5px to the right of Select all
-        hBtnUpgrade = CreateWindowExW(0, L"Button", L"Upgrade now", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 135, 350, 140, 28, hwnd, (HMENU)IDC_BTN_UPGRADE, NULL, NULL);
+        hBtnUpgrade = CreateWindowExW(0, L"Button", t("upgrade_now").c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 135, 350, 140, 28, hwnd, (HMENU)IDC_BTN_UPGRADE, NULL, NULL);
         // position Refresh where the Upgrade button used to be (bottom-right)
-        hBtnRefresh = CreateWindowExW(0, L"Button", L"Refresh", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 470, 350, 140, 28, hwnd, (HMENU)IDC_BTN_REFRESH, NULL, NULL);
+        hBtnRefresh = CreateWindowExW(0, L"Button", t("refresh").c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 470, 350, 140, 28, hwnd, (HMENU)IDC_BTN_REFRESH, NULL, NULL);
         // record main window handle, initial timestamp and auto-refresh once UI is created (start async refresh)
         g_hMainWindow = hwnd;
         UpdateLastUpdatedLabel(hwnd);
@@ -1157,6 +1267,14 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             auto rup = RunProcessCaptureExitCode(L"cmd /C winget upgrade --accept-source-agreements --accept-package-agreements", 2000);
             std::string out = rup.second;
             bool timedOut = (rup.first == -2 || out.empty());
+            // If winget produced no output or timed out, try any recent captured raw output files
+            if (out.empty()) {
+                std::string recent = ReadMostRecentRawWinget();
+                if (!recent.empty()) {
+                    out = recent;
+                    timedOut = false; // treat as usable output
+                }
+            }
 
             if (!out.empty()) {
                 bool sawNotApplicable = (out.find("A newer package version is available in a configured source, but it does not apply to your system or requirements") != std::string::npos) || (out.find("No applicable upgrade found") != std::string::npos);
@@ -1235,7 +1353,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         {
             std::lock_guard<std::mutex> lk(g_packages_mutex);
             if (g_packages.empty()) {
-                MessageBoxW(hwnd, L"Your system is updated!", L"WinUpdate", MB_OK | MB_ICONINFORMATION);
+                std::wstring msg = t("your_system_updated");
+                MessageBoxW(hwnd, msg.c_str(), L"WinUpdate", MB_OK | MB_ICONINFORMATION);
             }
         }
         break;
@@ -1300,6 +1419,37 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     }
     case WM_COMMAND: {
         int id = LOWORD(wParam);
+        if (id == IDC_COMBO_LANG && HIWORD(wParam) == CBN_SELCHANGE) {
+            HWND hCombo = GetDlgItem(hwnd, IDC_COMBO_LANG);
+                if (hCombo) {
+                int sel = (int)SendMessageW(hCombo, CB_GETCURSEL, 0, 0);
+                std::string newloc = (sel == 1) ? "no" : "en";
+                g_locale = newloc;
+                LoadLocaleFromFile(g_locale);
+                SaveLocaleSetting(g_locale);
+                // update UI texts
+                UpdateLastUpdatedLabel(hwnd);
+                SetWindowTextW(GetDlgItem(hwnd, IDC_CHECK_SELECTALL), t("select_all").c_str());
+                SetWindowTextW(GetDlgItem(hwnd, IDC_BTN_UPGRADE), t("upgrade_now").c_str());
+                SetWindowTextW(GetDlgItem(hwnd, IDC_BTN_REFRESH), t("refresh").c_str());
+                // update listview column headers
+                HWND hListLocal = GetDlgItem(hwnd, IDC_LISTVIEW);
+                if (hListLocal) {
+                    LVCOLUMNW col{};
+                    col.mask = LVCF_TEXT;
+                    std::wstring pkg = t("package_col");
+                    std::wstring idc = t("id_col");
+                    col.pszText = (LPWSTR)pkg.c_str();
+                    SendMessageW(hListLocal, LVM_SETCOLUMNW, 0, (LPARAM)&col);
+                    col.pszText = (LPWSTR)idc.c_str();
+                    SendMessageW(hListLocal, LVM_SETCOLUMNW, 1, (LPARAM)&col);
+                }
+                // update window title but do not translate app name
+                std::wstring winTitle = std::wstring(L"WinUpdate - ") + t("app_window_suffix");
+                SetWindowTextW(hwnd, winTitle.c_str());
+            }
+            break;
+        }
         if (id == IDC_BTN_REFRESH) {
             // update timestamp and start async refresh
             UpdateLastUpdatedLabel(hwnd);
@@ -1385,6 +1535,39 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow) {
     wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
 
     if (!RegisterClassW(&wc)) return 0;
+
+    // Initialize translations: prefer saved language, then environment/OS locale
+    InitDefaultTranslations();
+    // First check settings file for saved language
+    std::string saved = LoadLocaleSetting();
+    if (!saved.empty()) {
+        g_locale = saved;
+    } else {
+        // try to read environment LANG or LC_ALL
+        char *env = nullptr;
+        size_t envsz = 0;
+        std::string sysloc;
+        try {
+            if (_dupenv_s(&env, &envsz, "LANG") == 0 && env) sysloc = std::string(env);
+            else if (_dupenv_s(&env, &envsz, "LC_ALL") == 0 && env) sysloc = std::string(env);
+        } catch(...) { }
+        if (env) { free(env); env = nullptr; }
+        if (!sysloc.empty()) {
+            size_t p = sysloc.find_first_of("._");
+            std::string prefix = (p==std::string::npos) ? sysloc : sysloc.substr(0,p);
+            g_locale = prefix;
+        }
+        if (g_locale.empty()) {
+            WCHAR buf[32] = {0};
+            if (GetUserDefaultLocaleName(buf, (int)std::size(buf))) {
+                std::wstring wln(buf);
+                if (wln.size() >= 2) g_locale = std::string(wln.begin(), wln.begin()+2);
+            }
+        }
+        if (g_locale.empty()) g_locale = "en";
+    }
+    // attempt to load translations for the locale
+    LoadLocaleFromFile(g_locale);
 
     HWND hwnd = CreateWindowExW(0, CLASS_NAME, L"WinUpdate - winget GUI updater", WS_OVERLAPPEDWINDOW,
         CW_USEDEFAULT, CW_USEDEFAULT, 640, 430, NULL, NULL, hInstance, NULL);

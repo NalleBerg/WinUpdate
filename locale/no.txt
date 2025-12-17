@@ -1,0 +1,13 @@
+# Norwegian (Bokmål) translations for WinUpdate
+app_window_title=WinUpdate - winget GUI-oppdaterer
+app_title=WinUpdate
+list_last_updated_prefix=Liste sist oppdatert:
+select_all=Velg alle
+upgrade_now=Oppdater nå
+refresh=Oppdater
+package_col=Pakke
+id_col=Id
+loading_title=Laster, vennligst
+loading_desc=Spørrer winget
+your_system_updated=Systemet ditt er oppdatert!
+msg_error_elevate=Kunne ikke starte prosess med forhøyede rettigheter.

@@ -1,0 +1,13 @@
+# English translations for WinUpdate
+app_window_suffix=winget GUI updater
+app_title=WinUpdate
+list_last_updated_prefix=List last updated:
+select_all=Select all
+upgrade_now=Upgrade now
+refresh=Refresh
+package_col=Package
+id_col=Id
+loading_title=Loading, please
+loading_desc=Querying winget
+your_system_updated=Your system is updated!
+msg_error_elevate=Failed to launch elevated process.
