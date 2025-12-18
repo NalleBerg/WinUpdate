@@ -17,3 +17,6 @@ msg_error_elevate=Failed to launch elevated process.
 lang_changed=Language changed to English (UK)
 confirm_skip=Skip this version? You can un-skip when a new version appears.
 confirm_unskip=Remove skip for this package?
+no_item_selected=No item selected or checked.
+unable_determine_version=Unable to determine version to skip.
+continue=Continue

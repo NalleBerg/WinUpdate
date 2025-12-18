@@ -17,3 +17,6 @@ msg_error_elevate=Kunne ikke starte prosess med forhøyede rettigheter.
 lang_changed=Språk skiftet til Norsk bokmål
 confirm_skip=Hopper over denne versjonen? Du kan fjerne hoppingen når en ny versjon kommer.
 confirm_unskip=Fjern hopper over for denne pakken?
+no_item_selected=Ingen applikasjon valgt eller merket.
+unable_determine_version=Kunne ikke finne versjon å hoppe over.
+continue=Fortsett

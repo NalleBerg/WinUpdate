@@ -10,6 +10,7 @@
 #include <fstream>
 #include <thread>
 #include <mutex>
+#include <atomic>
 #include <filesystem>
 #include <unordered_map>
 #include <future>
@@ -39,40 +40,24 @@ const wchar_t CLASS_NAME[] = L"WinUpdateClass";
 #define IDC_CHECK_SKIPSELECTED 2004
 // IDC_BTN_PASTE removed: app will auto-scan winget at startup/refresh
 #define IDC_COMBO_LANG 3001
+
 #define WM_REFRESH_ASYNC (WM_APP + 1)
 #define WM_REFRESH_DONE  (WM_APP + 2)
 #define WM_INSTALL_DONE  (WM_APP + 5)
 
-// Forward declarations for functions defined later in the file
+// Forward declarations for functions defined later
+static std::pair<int,std::string> RunProcessCaptureExitCode(const std::wstring &cmd, int timeoutMs);
 static void ParseWingetTextForPackages(const std::string &text);
 static std::vector<std::pair<std::string,std::string>> ExtractIdsFromNameIdText(const std::string &text);
-// forward declarations for parsers used by ParseRawWingetTextInMemory
 static void ParseUpgradeFast(const std::string &text, std::set<std::pair<std::string,std::string>> &outSet);
 static void ExtractUpdatesFromText(const std::string &text, std::set<std::pair<std::string,std::string>> &outSet);
 static void ParseWingetUpgradeTableForUpdates(const std::string &text, std::set<std::pair<std::string,std::string>> &outSet);
-// forward declaration for process runner
-static std::pair<int,std::string> RunProcessCaptureExitCode(const std::wstring &cmd, int timeoutMs);
-// Process raw winget output held in memory (no files): try multiple parsers
-static std::vector<std::pair<std::string,std::string>> ParseRawWingetTextInMemory(const std::string &text) {
-    std::set<std::pair<std::string,std::string>> found;
-    if (text.empty()) return {};
-    // Try fast header-aware parser first
-    ParseUpgradeFast(text, found);
-    // If empty, try the tolerant extractor
-    if (found.empty()) ExtractUpdatesFromText(text, found);
-    // If still empty, try the more general regex-based upgrade table parser
-    if (found.empty()) {
-        std::set<std::pair<std::string,std::string>> tmp;
-        ParseWingetUpgradeTableForUpdates(text, tmp);
-        for (auto &p : tmp) found.insert(p);
-    }
-    std::vector<std::pair<std::string,std::string>> out;
-    for (auto &p : found) out.emplace_back(p.first, p.second);
-    return out;
-}
-
-// forward decl for version mapping helper (defined later)
 static std::unordered_map<std::string,std::string> MapAvailableVersions();
+static std::unordered_map<std::string,std::string> MapInstalledVersions();
+static std::vector<std::pair<std::string,std::string>> ParseRawWingetTextInMemory(const std::string &text);
+
+static std::unordered_map<std::string,std::string> MapInstalledVersions();
+
 
 // Globals
 static std::vector<std::pair<std::string,std::string>> g_packages;
@@ -82,6 +67,10 @@ static std::set<std::string> g_not_applicable_ids;
 static std::unordered_map<std::string,std::string> g_skipped_versions;
 static HFONT g_hListFont = NULL;
 static std::vector<std::wstring> g_colHeaders;
+static std::unordered_map<std::string,std::string> g_last_avail_versions;
+static std::unordered_map<std::string,std::string> g_last_inst_versions;
+static std::mutex g_versions_mutex;
+static std::atomic<bool> g_refresh_in_progress{false};
 static std::wstring g_last_install_outfile;
 static HWND g_hTitle = NULL;
 static HWND g_hLastUpdated = NULL;
@@ -107,6 +96,49 @@ static std::string g_locale = "en";
 static std::string ReadFileUtf8(const std::wstring &path);
 static std::wstring Utf8ToWide(const std::string &s);
 static std::string WideToUtf8(const std::wstring &w);
+
+// Return cached available versions if present, otherwise probe and cache result.
+static std::unordered_map<std::string,std::string> GetAvailableVersionsCached() {
+    {
+        std::lock_guard<std::mutex> lk(g_versions_mutex);
+        if (!g_last_avail_versions.empty()) return g_last_avail_versions;
+    }
+    auto m = MapAvailableVersions();
+    {
+        std::lock_guard<std::mutex> lk(g_versions_mutex);
+        g_last_avail_versions = m;
+    }
+    return m;
+}
+
+static std::unordered_map<std::string,std::string> GetInstalledVersionsCached() {
+    {
+        std::lock_guard<std::mutex> lk(g_versions_mutex);
+        if (!g_last_inst_versions.empty()) return g_last_inst_versions;
+    }
+    auto m = MapInstalledVersions();
+    {
+        std::lock_guard<std::mutex> lk(g_versions_mutex);
+        g_last_inst_versions = m;
+    }
+    return m;
+}
+
+// Parse raw winget output in memory by trying multiple parsers (fast -> tolerant -> table)
+static std::vector<std::pair<std::string,std::string>> ParseRawWingetTextInMemory(const std::string &text) {
+    std::set<std::pair<std::string,std::string>> found;
+    if (text.empty()) return {};
+    ParseUpgradeFast(text, found);
+    if (found.empty()) ExtractUpdatesFromText(text, found);
+    if (found.empty()) {
+        std::set<std::pair<std::string,std::string>> tmp;
+        ParseWingetUpgradeTableForUpdates(text, tmp);
+        for (auto &p : tmp) found.insert(p);
+    }
+    std::vector<std::pair<std::string,std::string>> out;
+    for (auto &p : found) out.emplace_back(p.first, p.second);
+    return out;
+}
 
 // Load/Save per-locale skip config in i18n/<locale>.ini with lines: skip=Id|Version
 static void LoadSkipConfig(const std::string &locale) {
@@ -1155,9 +1187,9 @@ static void PopulateListView(HWND hList) {
     ListView_DeleteAllItems(hList);
     LVITEMW lvi{};
     lvi.mask = LVIF_TEXT | LVIF_PARAM;
-    // prepare maps for versions
-    auto avail = MapAvailableVersions();
-    auto inst = MapInstalledVersions();
+    // prepare maps for versions (prefer cached probes to avoid blocking UI twice)
+    auto avail = GetAvailableVersionsCached();
+    auto inst = GetInstalledVersionsCached();
     for (int i = 0; i < (int)g_packages.size(); ++i) {
         std::string name = g_packages[i].second;
         std::string id = g_packages[i].first;
@@ -1428,12 +1460,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         CleanupStaleInstallFiles();
         UpdateLastUpdatedLabel(hwnd);
         ShowLoading(hwnd);
-        PostMessageW(hwnd, WM_REFRESH_ASYNC, 0, 0);
+        if (!g_refresh_in_progress.load()) PostMessageW(hwnd, WM_REFRESH_ASYNC, 0, 0);
         break;
     }
     case WM_REFRESH_ASYNC: {
         // start background thread to perform winget query + parsing
         // disable Refresh button while running
+        g_refresh_in_progress.store(true);
         if (hBtnRefresh) EnableWindow(hBtnRefresh, FALSE);
         if (hBtnUpgrade) EnableWindow(hBtnUpgrade, FALSE);
         ShowLoading(hwnd);
@@ -1484,6 +1517,15 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                 for (auto &p : found) results.emplace_back(p.first, p.second);
             }
 
+            // Probe available/installed versions in background and cache them
+            try {
+                auto avail = MapAvailableVersions();
+                auto inst = MapInstalledVersions();
+                std::lock_guard<std::mutex> lk(g_versions_mutex);
+                g_last_avail_versions = avail;
+                g_last_inst_versions = inst;
+            } catch(...) {}
+
             if (out.empty() || timedOut) {
                 // As a fast fallback: use the cached list to identify candidates and mark them NotApplicable (do not perform slow probes).
                 if (!listOut.empty()) {
@@ -1528,6 +1570,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             if (hBtnUpgrade) EnableWindow(hBtnUpgrade, TRUE);
         }
         HideLoading();
+        g_refresh_in_progress.store(false);
         // Ensure main UI controls are enabled after any refresh
         if (hList) EnableWindow(hList, TRUE);
         if (hBtnRefresh) EnableWindow(hBtnRefresh, TRUE);
@@ -1542,9 +1585,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                 MessageBoxW(hwnd, msg.c_str(), L"WinUpdate", MB_OK | MB_ICONINFORMATION);
             }
         }
-        // After refresh, prune skip config entries if versions advanced
+        // After refresh, prune skip config entries if versions advanced (use cached probe)
         try {
-            auto avail = MapAvailableVersions();
+            auto avail = GetAvailableVersionsCached();
             bool changed = false;
             for (auto it = g_skipped_versions.begin(); it != g_skipped_versions.end();) {
                 const std::string id = it->first;
@@ -1601,11 +1644,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     case WM_INSTALL_DONE: {
         HWND panel = (HWND)wParam;
         if (panel && IsWindow(panel)) {
-            // find Done button child and enable it
-            HWND hDoneBtn = FindWindowExW(panel, NULL, L"Button", NULL);
+            // enable the Continue/Done button (which is parented to the main window)
+            HWND hDoneBtn = GetDlgItem(hwnd, IDC_BTN_DONE);
             if (hDoneBtn) EnableWindow(hDoneBtn, TRUE);
-            // update status label to indicate finished
-            // try find static label child
+            // update the panel static status label if possible
             HWND hLabel = FindWindowExW(panel, NULL, L"Static", NULL);
             if (hLabel) SetWindowTextW(hLabel, t("loading_desc").c_str());
         }
@@ -1737,14 +1779,14 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         if (id == IDC_BTN_REFRESH) {
             // update timestamp and start async refresh
             UpdateLastUpdatedLabel(hwnd);
-            PostMessageW(hwnd, WM_REFRESH_ASYNC, 0, 0);
+            if (!g_refresh_in_progress.load()) PostMessageW(hwnd, WM_REFRESH_ASYNC, 0, 0);
             break;
         } else if (id == IDC_BTN_DONE) {
             // User clicked Done on the install panel: delete temp file, refresh and close panel
             // delete last install file if present
             try { if (!g_last_install_outfile.empty()) DeleteFileW(g_last_install_outfile.c_str()); } catch(...) {}
             // trigger refresh and close panel (panel handle passed via lParam? we used global)
-            PostMessageW(hwnd, WM_REFRESH_ASYNC, 0, 0);
+            if (!g_refresh_in_progress.load()) PostMessageW(hwnd, WM_REFRESH_ASYNC, 0, 0);
             // find any existing install panel (static at list area) and destroy
             HWND panel = FindWindowExW(hwnd, NULL, L"Static", NULL);
             if (panel) DestroyWindow(panel);
@@ -1755,17 +1797,25 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             BOOL ch = (SendMessageW(hChk, BM_GETCHECK, 0, 0) == BST_CHECKED);
             CheckAllItems(hList, ch);
         } else if (id == IDC_CHECK_SKIPSELECTED) {
-            // Toggle Skip for all selected list items
+            // Toggle Skip for selected list items; if none selected, operate on checked items instead
             HWND hListLocal = GetDlgItem(hwnd, IDC_LISTVIEW);
-            int idx = -1;
-            idx = ListView_GetNextItem(hListLocal, -1, LVNI_SELECTED);
-            if (idx == -1) {
-                MessageBoxW(hwnd, L"No item selected.", t("app_title").c_str(), MB_OK | MB_ICONINFORMATION);
-            } else {
-                std::vector<int> sel;
+            std::vector<int> sel;
+            if (hListLocal) {
                 int cur = -1;
                 while ((cur = ListView_GetNextItem(hListLocal, cur, LVNI_SELECTED)) != -1) sel.push_back(cur);
+                if (sel.empty()) {
+                    // fallback to checked items
+                    int cnt = ListView_GetItemCount(hListLocal);
+                    for (int i = 0; i < cnt; ++i) {
+                        if (ListView_GetCheckState(hListLocal, i)) sel.push_back(i);
+                    }
+                }
+            }
+            if (sel.empty()) {
+                MessageBoxW(hwnd, t("no_item_selected").c_str(), t("app_title").c_str(), MB_OK | MB_ICONINFORMATION);
+            } else {
                 for (int i : sel) {
+                    if (i < 0 || i >= (int)g_packages.size()) continue;
                     std::string idstr = g_packages[i].first;
                     std::lock_guard<std::mutex> lk(g_packages_mutex);
                     auto it = g_skipped_versions.find(idstr);
@@ -1775,7 +1825,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                             g_skipped_versions.erase(it);
                         }
                     } else {
-                        auto avail = MapAvailableVersions();
+                        auto avail = GetAvailableVersionsCached();
                         auto f = avail.find(idstr);
                         std::string ver = (f!=avail.end())?f->second:std::string();
                         if (!ver.empty()) {
@@ -1783,13 +1833,15 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                                 g_skipped_versions[idstr] = ver;
                             }
                         } else {
-                            MessageBoxW(hwnd, L"Unable to determine version to skip.", t("app_title").c_str(), MB_OK | MB_ICONWARNING);
+                            MessageBoxW(hwnd, t("unable_determine_version").c_str(), t("app_title").c_str(), MB_OK | MB_ICONWARNING);
                         }
                     }
                 }
                 SaveSkipConfig(g_locale);
-                PopulateListView(hListLocal);
-                AdjustListColumns(hListLocal);
+                if (hListLocal) {
+                    PopulateListView(hListLocal);
+                    AdjustListColumns(hListLocal);
+                }
             }
         } else if (id == IDC_BTN_UPGRADE) {
             // Collect checked items (or all if Select all checked)
@@ -1845,7 +1897,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             HWND hOut = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", NULL, WS_CHILD | WS_VISIBLE | ES_MULTILINE | ES_READONLY | WS_VSCROLL | ES_AUTOVSCROLL,
                 12, 56, IW-36, IH-96, hInstallPanel, NULL, hInst, NULL);
             // Done button to allow user to close panel after reading output
-            HWND hDone = CreateWindowExW(0, L"Button", t("upgrade_now").c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, IW-110, IH-28, 96, 24, hInstallPanel, (HMENU)IDC_BTN_DONE, hInst, NULL);
+            // Create Done/Continue button as a child of the main window so WM_COMMAND is routed
+            // to the main WndProc (controls parented to the panel would send WM_COMMAND to the panel).
+            int btnX = 10 + (IW - 110);
+            int btnY = 60 + (IH - 28);
+            HWND hDone = CreateWindowExW(0, L"Button", t("continue").c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, btnX, btnY, 96, 24, hwnd, (HMENU)IDC_BTN_DONE, hInst, NULL);
 
             // build a single cmd line that echos markers and runs all winget commands, writing to the temp file
             std::wstring seq = L"echo WUP_BEGIN > \"" + outFile + L"\" & ";
