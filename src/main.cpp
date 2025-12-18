@@ -35,10 +35,13 @@ const wchar_t CLASS_NAME[] = L"WinUpdateClass";
 #define IDC_LISTVIEW 1004
 #define IDC_CHECK_SELECTALL 2001
 #define IDC_BTN_UPGRADE 2002
+#define IDC_BTN_DONE 2003
+#define IDC_CHECK_SKIPSELECTED 2004
 // IDC_BTN_PASTE removed: app will auto-scan winget at startup/refresh
 #define IDC_COMBO_LANG 3001
 #define WM_REFRESH_ASYNC (WM_APP + 1)
 #define WM_REFRESH_DONE  (WM_APP + 2)
+#define WM_INSTALL_DONE  (WM_APP + 5)
 
 // Forward declarations for functions defined later in the file
 static void ParseWingetTextForPackages(const std::string &text);
@@ -47,6 +50,8 @@ static std::vector<std::pair<std::string,std::string>> ExtractIdsFromNameIdText(
 static void ParseUpgradeFast(const std::string &text, std::set<std::pair<std::string,std::string>> &outSet);
 static void ExtractUpdatesFromText(const std::string &text, std::set<std::pair<std::string,std::string>> &outSet);
 static void ParseWingetUpgradeTableForUpdates(const std::string &text, std::set<std::pair<std::string,std::string>> &outSet);
+// forward declaration for process runner
+static std::pair<int,std::string> RunProcessCaptureExitCode(const std::wstring &cmd, int timeoutMs);
 // Process raw winget output held in memory (no files): try multiple parsers
 static std::vector<std::pair<std::string,std::string>> ParseRawWingetTextInMemory(const std::string &text) {
     std::set<std::pair<std::string,std::string>> found;
@@ -66,10 +71,18 @@ static std::vector<std::pair<std::string,std::string>> ParseRawWingetTextInMemor
     return out;
 }
 
+// forward decl for version mapping helper (defined later)
+static std::unordered_map<std::string,std::string> MapAvailableVersions();
+
 // Globals
 static std::vector<std::pair<std::string,std::string>> g_packages;
 static std::mutex g_packages_mutex;
 static std::set<std::string> g_not_applicable_ids;
+// per-locale skipped versions: id -> version
+static std::unordered_map<std::string,std::string> g_skipped_versions;
+static HFONT g_hListFont = NULL;
+static std::vector<std::wstring> g_colHeaders;
+static std::wstring g_last_install_outfile;
 static HWND g_hTitle = NULL;
 static HWND g_hLastUpdated = NULL;
 static HFONT g_hTitleFont = NULL;
@@ -95,6 +108,98 @@ static std::string ReadFileUtf8(const std::wstring &path);
 static std::wstring Utf8ToWide(const std::string &s);
 static std::string WideToUtf8(const std::wstring &w);
 
+// Load/Save per-locale skip config in i18n/<locale>.ini with lines: skip=Id|Version
+static void LoadSkipConfig(const std::string &locale) {
+    g_skipped_versions.clear();
+    try {
+        std::string fn = std::string("i18n\\") + locale + ".ini";
+        std::ifstream ifs(fn, std::ios::binary);
+        if (!ifs) return;
+        std::string ln;
+        while (std::getline(ifs, ln)) {
+            // trim
+            auto ltrim = [](std::string &s){ while(!s.empty() && isspace((unsigned char)s.front())) s.erase(s.begin()); };
+            auto rtrim = [](std::string &s){ while(!s.empty() && isspace((unsigned char)s.back())) s.pop_back(); };
+            ltrim(ln); rtrim(ln);
+            if (ln.empty() || ln[0]=='#' || ln[0]==';') continue;
+            size_t eq = ln.find('=');
+            if (eq == std::string::npos) continue;
+            std::string key = ln.substr(0, eq);
+            std::string val = ln.substr(eq+1);
+            ltrim(key); rtrim(key); ltrim(val); rtrim(val);
+            if (key == "skip") {
+                size_t p = val.find('|');
+                if (p != std::string::npos) {
+                    std::string id = val.substr(0,p);
+                    std::string ver = val.substr(p+1);
+                    if (!id.empty() && !ver.empty()) g_skipped_versions[id] = ver;
+                }
+            }
+        }
+    } catch(...) {}
+}
+
+static void SaveSkipConfig(const std::string &locale) {
+    try {
+        std::string fn = std::string("i18n\\") + locale + ".ini";
+        std::ofstream ofs(fn + ".tmp", std::ios::binary | std::ios::trunc);
+        if (!ofs) return;
+        for (auto &p : g_skipped_versions) {
+            ofs << "skip=" << p.first << "|" << p.second << "\n";
+        }
+        ofs.close();
+        // replace file
+        std::remove(fn.c_str());
+        std::rename((fn + ".tmp").c_str(), fn.c_str());
+    } catch(...) {}
+}
+
+static std::unordered_map<std::string,std::string> MapInstalledVersions() {
+    std::unordered_map<std::string,std::string> out;
+    try {
+        auto r = RunProcessCaptureExitCode(L"winget list", 3000);
+        std::string txt = r.second;
+        std::istringstream iss(txt);
+        std::string ln;
+        std::regex re(R"(([^\r\n]+?)\s+([^\s]+)\s+([^\s]+))");
+        std::smatch m;
+        while (std::getline(iss, ln)) {
+            if (std::regex_search(ln, m, re)) {
+                // try to pick id and installed version
+                if (m.size() >= 4) {
+                    std::string id = m[2].str();
+                    std::string inst = m[3].str();
+                    out[id] = inst;
+                }
+            }
+        }
+    } catch(...) {}
+    return out;
+}
+
+// Map id -> available version by parsing `winget upgrade` table quickly
+static std::unordered_map<std::string,std::string> MapAvailableVersions() {
+    std::unordered_map<std::string,std::string> out;
+    try {
+        auto r = RunProcessCaptureExitCode(L"winget upgrade", 5000);
+        std::string txt = r.second;
+        std::istringstream iss(txt);
+        std::string ln;
+        std::regex re(R"(([^\r\n]+?)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+))");
+        std::smatch m;
+        while (std::getline(iss, ln)) {
+            if (std::regex_search(ln, m, re)) {
+                if (m.size() >= 5) {
+                    std::string id = m[2].str();
+                    std::string available = m[4].str();
+                    out[id] = available;
+                }
+            }
+        }
+    } catch(...) {}
+    return out;
+}
+
 static void InitDefaultTranslations() {
     if (!g_i18n_default.empty()) return;
     g_i18n_default["app_window_title"] = "WinUpdate - winget GUI updater";
@@ -109,6 +214,7 @@ static void InitDefaultTranslations() {
     g_i18n_default["loading_title"] = "Loading, please";
     g_i18n_default["loading_desc"] = "Querying winget";
     g_i18n_default["your_system_updated"] = "Your system is updated!";
+    g_i18n_default["your_system_updated"] = "Your system is up to date";
     g_i18n_default["msg_error_elevate"] = "Failed to launch elevated process.";
 }
 
@@ -1049,6 +1155,9 @@ static void PopulateListView(HWND hList) {
     ListView_DeleteAllItems(hList);
     LVITEMW lvi{};
     lvi.mask = LVIF_TEXT | LVIF_PARAM;
+    // prepare maps for versions
+    auto avail = MapAvailableVersions();
+    auto inst = MapInstalledVersions();
     for (int i = 0; i < (int)g_packages.size(); ++i) {
         std::string name = g_packages[i].second;
         std::string id = g_packages[i].first;
@@ -1065,7 +1174,49 @@ static void PopulateListView(HWND hList) {
         lvi2.iSubItem = 1;
         lvi2.pszText = (LPWSTR)wid.c_str();
         SendMessageW(hList, LVM_SETITEMW, 0, (LPARAM)&lvi2);
+        // Current version (subitem 2)
+        LVITEMW lviCur{}; lviCur.mask = LVIF_TEXT; lviCur.iItem = i; lviCur.iSubItem = 2;
+        std::wstring wcur = L"";
+        auto fit = inst.find(id);
+        if (fit != inst.end()) wcur = Utf8ToWide(fit->second);
+        lviCur.pszText = (LPWSTR)wcur.c_str();
+        SendMessageW(hList, LVM_SETITEMW, 0, (LPARAM)&lviCur);
+        // Available version (subitem 3)
+        LVITEMW lviAvail{}; lviAvail.mask = LVIF_TEXT; lviAvail.iItem = i; lviAvail.iSubItem = 3;
+        std::wstring wavail = L"";
+        auto ait = avail.find(id);
+        if (ait != avail.end()) wavail = Utf8ToWide(ait->second);
+        lviAvail.pszText = (LPWSTR)wavail.c_str();
+        SendMessageW(hList, LVM_SETITEMW, 0, (LPARAM)&lviAvail);
+        // Skip column (subitem 4): show localized Skip label if present
+        LVITEMW lviSkip{}; lviSkip.mask = LVIF_TEXT; lviSkip.iItem = i; lviSkip.iSubItem = 4;
+        std::wstring skipText = L"";
+        {
+            std::lock_guard<std::mutex> lk(g_packages_mutex);
+            auto it = g_skipped_versions.find(id);
+            if (it != g_skipped_versions.end()) skipText = t("skip_col");
+        }
+        lviSkip.pszText = (LPWSTR)skipText.c_str();
+        SendMessageW(hList, LVM_SETITEMW, 0, (LPARAM)&lviSkip);
     }
+}
+
+static void AdjustListColumns(HWND hList) {
+    RECT rc; GetClientRect(hList, &rc);
+    int totalW = rc.right - rc.left;
+    if (totalW <= 0) return;
+    int wName = (int)(totalW * 0.40);
+    int wId = (int)(totalW * 0.20);
+    int wCur = (int)(totalW * 0.13);
+    int wAvail = (int)(totalW * 0.17);
+    int wSkip = totalW - (wName + wId + wCur + wAvail) - 4;
+    ListView_SetColumnWidth(hList, 0, wName);
+    ListView_SetColumnWidth(hList, 1, wId);
+    ListView_SetColumnWidth(hList, 2, wCur);
+    ListView_SetColumnWidth(hList, 3, wAvail);
+    ListView_SetColumnWidth(hList, 4, wSkip);
+    // Adjust font if needed (shrink if columns exceed width)
+    // For simplicity, leave font as-is; could implement dynamic font sizing here.
 }
 
 // Helper used by custom draw / notifications: check if item index corresponds to NotApplicable id
@@ -1176,9 +1327,35 @@ static std::wstring WriteDebugTextToTemp(const std::string &txt) {
     return std::wstring(outfn);
 }
 
+// Remove any stale temp files created by previous runs (wup_install_*.txt)
+static void CleanupStaleInstallFiles() {
+    try {
+        wchar_t tmpPathBuf[MAX_PATH]; GetTempPathW(MAX_PATH, tmpPathBuf);
+        std::wstring tmpPath(tmpPathBuf);
+        namespace fs = std::filesystem;
+        for (auto &e : fs::directory_iterator(tmpPath)) {
+            try {
+                if (!e.is_regular_file()) continue;
+                std::wstring fn = e.path().filename().wstring();
+                if (fn.rfind(L"wup_install_", 0) == 0) {
+                    fs::remove(e.path());
+                }
+            } catch(...) { /* ignore per-file errors */ }
+        }
+    } catch(...) {}
+}
+
 static void CheckAllItems(HWND hList, bool check) {
     int count = ListView_GetItemCount(hList);
-    for (int i = 0; i < count; ++i) ListView_SetCheckState(hList, i, check);
+    for (int i = 0; i < count; ++i) {
+        bool skip = false;
+        if (i >= 0 && i < (int)g_packages.size()) {
+            std::string id = g_packages[i].first;
+            std::lock_guard<std::mutex> lk(g_packages_mutex);
+            skip = (g_skipped_versions.find(id) != g_skipped_versions.end());
+        }
+        if (!skip) ListView_SetCheckState(hList, i, check);
+    }
 }
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
@@ -1221,21 +1398,25 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 
         hList = CreateWindowExW(WS_EX_CLIENTEDGE, WC_LISTVIEWW, NULL, WS_CHILD | WS_VISIBLE | LVS_REPORT | LVS_SHOWSELALWAYS | LVS_SINGLESEL, 10, 60, 600, 284, hwnd, (HMENU)IDC_LISTVIEW, NULL, NULL);
         ListView_SetExtendedListViewStyle(hList, LVS_EX_CHECKBOXES | LVS_EX_FULLROWSELECT);
+        // prepare persistent column header strings so pointers remain valid
+        g_colHeaders.clear();
+        g_colHeaders.push_back(t("package_col"));
+        g_colHeaders.push_back(t("id_col"));
+        g_colHeaders.push_back(t("current_col"));
+        g_colHeaders.push_back(t("available_col"));
+        g_colHeaders.push_back(t("skip_col"));
         LVCOLUMNW col{};
         col.mask = LVCF_TEXT | LVCF_WIDTH;
         col.cx = 360;
-        static std::wstring pkgCol = t("package_col");
-        static std::wstring idCol = t("id_col");
-        static wchar_t *colText = (wchar_t*)pkgCol.c_str();
-        col.pszText = colText;
+        col.pszText = (LPWSTR)g_colHeaders[0].c_str();
         ListView_InsertColumn(hList, 0, &col);
-        LVCOLUMNW col2{};
-        col2.mask = LVCF_TEXT | LVCF_WIDTH;
-        col2.cx = 200;
-        col2.pszText = (wchar_t*)idCol.c_str();
-        ListView_InsertColumn(hList, 1, &col2);
+        LVCOLUMNW col2{}; col2.mask = LVCF_TEXT | LVCF_WIDTH; col2.cx = 140; col2.pszText = (LPWSTR)g_colHeaders[1].c_str(); ListView_InsertColumn(hList, 1, &col2);
+        LVCOLUMNW colCur{}; colCur.mask = LVCF_TEXT | LVCF_WIDTH; colCur.cx = 100; colCur.pszText = (LPWSTR)g_colHeaders[2].c_str(); ListView_InsertColumn(hList, 2, &colCur);
+        LVCOLUMNW colAvail{}; colAvail.mask = LVCF_TEXT | LVCF_WIDTH; colAvail.cx = 100; colAvail.pszText = (LPWSTR)g_colHeaders[3].c_str(); ListView_InsertColumn(hList, 3, &colAvail);
+        LVCOLUMNW colSkip{}; colSkip.mask = LVCF_TEXT | LVCF_WIDTH; colSkip.cx = 80; colSkip.pszText = (LPWSTR)g_colHeaders[4].c_str(); ListView_InsertColumn(hList, 4, &colSkip);
 
         hCheckAll = CreateWindowExW(0, L"Button", t("select_all").c_str(), WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, 10, 350, 120, 24, hwnd, (HMENU)IDC_CHECK_SELECTALL, NULL, NULL);
+        HWND hCheckSkip = CreateWindowExW(0, L"Button", t("skip_col").c_str(), WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, 140, 350, 140, 24, hwnd, (HMENU)IDC_CHECK_SKIPSELECTED, NULL, NULL);
         // place Upgrade button 5px to the right of Select all
         hBtnUpgrade = CreateWindowExW(0, L"Button", t("upgrade_now").c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 135, 350, 220, 28, hwnd, (HMENU)IDC_BTN_UPGRADE, NULL, NULL);
         // Paste button removed — app scans `winget` at startup and on Refresh
@@ -1243,6 +1424,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         hBtnRefresh = CreateWindowExW(0, L"Button", t("refresh").c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 470, 350, 140, 28, hwnd, (HMENU)IDC_BTN_REFRESH, NULL, NULL);
         // record main window handle, initial timestamp and auto-refresh once UI is created (start async refresh)
         g_hMainWindow = hwnd;
+        // clean up any stale install temp files from previous runs
+        CleanupStaleInstallFiles();
         UpdateLastUpdatedLabel(hwnd);
         ShowLoading(hwnd);
         PostMessageW(hwnd, WM_REFRESH_ASYNC, 0, 0);
@@ -1339,11 +1522,18 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             }
             delete pv;
             if (hList) PopulateListView(hList);
+            if (hList) AdjustListColumns(hList);
             // re-enable buttons
             if (hBtnRefresh) EnableWindow(hBtnRefresh, TRUE);
             if (hBtnUpgrade) EnableWindow(hBtnUpgrade, TRUE);
         }
         HideLoading();
+        // Ensure main UI controls are enabled after any refresh
+        if (hList) EnableWindow(hList, TRUE);
+        if (hBtnRefresh) EnableWindow(hBtnRefresh, TRUE);
+        if (hBtnUpgrade) EnableWindow(hBtnUpgrade, TRUE);
+        EnableWindow(GetDlgItem(hwnd, IDC_CHECK_SELECTALL), TRUE);
+        EnableWindow(GetDlgItem(hwnd, IDC_COMBO_LANG), TRUE);
         // If the refresh produced no parsed packages, show an 'up-to-date' dialog
         {
             std::lock_guard<std::mutex> lk(g_packages_mutex);
@@ -1352,6 +1542,27 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                 MessageBoxW(hwnd, msg.c_str(), L"WinUpdate", MB_OK | MB_ICONINFORMATION);
             }
         }
+        // After refresh, prune skip config entries if versions advanced
+        try {
+            auto avail = MapAvailableVersions();
+            bool changed = false;
+            for (auto it = g_skipped_versions.begin(); it != g_skipped_versions.end();) {
+                const std::string id = it->first;
+                const std::string ver = it->second;
+                auto f = avail.find(id);
+                if (f == avail.end()) {
+                    it = g_skipped_versions.erase(it);
+                    changed = true;
+                } else {
+                    if (f->second != ver) {
+                        it = g_skipped_versions.erase(it);
+                        changed = true;
+                    } else ++it;
+                }
+            }
+            if (changed) SaveSkipConfig(g_locale);
+            if (hList) PopulateListView(hList);
+        } catch(...) {}
         break;
     }
     case WM_CTLCOLORSTATIC: {
@@ -1367,6 +1578,36 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         if (hwndCtl == g_hTitle) {
             SetBkMode(hdcStatic, TRANSPARENT);
             return (LRESULT)GetSysColorBrush(COLOR_WINDOW);
+        }
+        break;
+    }
+    case WM_SIZE: {
+        if (hList) AdjustListColumns(hList);
+        break;
+    }
+    case WM_APP+4: {
+        // wParam contains the panel/window handle created for install UI. Destroy it and restore main controls.
+        HWND panel = (HWND)wParam;
+        if (panel && IsWindow(panel)) DestroyWindow(panel);
+        // In case child controls were created as children of main window, try to find and destroy them by class/position.
+        // Restore main UI state (re-enable controls)
+        if (hList) EnableWindow(hList, TRUE);
+        if (hBtnRefresh) EnableWindow(hBtnRefresh, TRUE);
+        if (hBtnUpgrade) EnableWindow(hBtnUpgrade, TRUE);
+        EnableWindow(GetDlgItem(hwnd, IDC_CHECK_SELECTALL), TRUE);
+        EnableWindow(GetDlgItem(hwnd, IDC_COMBO_LANG), TRUE);
+        break;
+    }
+    case WM_INSTALL_DONE: {
+        HWND panel = (HWND)wParam;
+        if (panel && IsWindow(panel)) {
+            // find Done button child and enable it
+            HWND hDoneBtn = FindWindowExW(panel, NULL, L"Button", NULL);
+            if (hDoneBtn) EnableWindow(hDoneBtn, TRUE);
+            // update status label to indicate finished
+            // try find static label child
+            HWND hLabel = FindWindowExW(panel, NULL, L"Static", NULL);
+            if (hLabel) SetWindowTextW(hLabel, t("loading_desc").c_str());
         }
         break;
     }
@@ -1390,6 +1631,46 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                         if (IsItemNotApplicable(idx)) {
                             // cancel the change to prevent checking NotApplicable items
                             return TRUE;
+                        }
+                    }
+                }
+            } else if (pnm->code == NM_CLICK) {
+                // Handle clicks to toggle Skip state in column 2
+                HWND hListLocal = GetDlgItem(hwnd, IDC_LISTVIEW);
+                POINT pt; GetCursorPos(&pt); ScreenToClient(hListLocal, &pt);
+                LVHITTESTINFO ht{}; ht.pt = pt;
+                int idx = ListView_HitTest(hListLocal, &ht);
+                if (idx >= 0) {
+                    int sub = ht.iSubItem;
+                    if (sub == 4) {
+                        // toggle skip for this item
+                        std::string id = g_packages[idx].first;
+                        std::lock_guard<std::mutex> lk(g_packages_mutex);
+                        auto it = g_skipped_versions.find(id);
+                        if (it != g_skipped_versions.end()) {
+                            // confirm unskip
+                            if (MessageBoxW(hwnd, t("confirm_unskip").c_str(), t("app_title").c_str(), MB_YESNO | MB_ICONQUESTION) == IDYES) {
+                                g_skipped_versions.erase(it);
+                                SaveSkipConfig(g_locale);
+                                PopulateListView(hListLocal);
+                            }
+                        } else {
+                            // determine available version for this id and add to skip config, confirm
+                            try {
+                                auto avail = MapAvailableVersions();
+                                std::string ver = "";
+                                auto f = avail.find(id);
+                                if (f != avail.end()) ver = f->second;
+                                if (!ver.empty()) {
+                                    if (MessageBoxW(hwnd, t("confirm_skip").c_str(), t("app_title").c_str(), MB_YESNO | MB_ICONQUESTION) == IDYES) {
+                                        g_skipped_versions[id] = ver;
+                                        SaveSkipConfig(g_locale);
+                                        PopulateListView(hListLocal);
+                                    }
+                                } else {
+                                    MessageBoxW(hwnd, L"Unable to determine version to skip.", t("app_title").c_str(), MB_OK | MB_ICONWARNING);
+                                }
+                            } catch(...) {}
                         }
                     }
                 }
@@ -1438,6 +1719,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                     SendMessageW(hListLocal, LVM_SETCOLUMNW, 0, (LPARAM)&col);
                     col.pszText = (LPWSTR)idc.c_str();
                     SendMessageW(hListLocal, LVM_SETCOLUMNW, 1, (LPARAM)&col);
+                    // ensure Skip column text localized? using static Skip label for now
+                    LVCOLUMNW col3{};
+                    col3.mask = LVCF_TEXT;
+                    std::wstring skipCol = L"Skip";
+                    col3.pszText = (LPWSTR)skipCol.c_str();
+                    SendMessageW(hListLocal, LVM_SETCOLUMNW, 2, (LPARAM)&col3);
                 }
                 // update window title but do not translate app name
                 std::wstring winTitle = std::wstring(L"WinUpdate - ") + t("app_window_suffix");
@@ -1452,60 +1739,242 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             UpdateLastUpdatedLabel(hwnd);
             PostMessageW(hwnd, WM_REFRESH_ASYNC, 0, 0);
             break;
+        } else if (id == IDC_BTN_DONE) {
+            // User clicked Done on the install panel: delete temp file, refresh and close panel
+            // delete last install file if present
+            try { if (!g_last_install_outfile.empty()) DeleteFileW(g_last_install_outfile.c_str()); } catch(...) {}
+            // trigger refresh and close panel (panel handle passed via lParam? we used global)
+            PostMessageW(hwnd, WM_REFRESH_ASYNC, 0, 0);
+            // find any existing install panel (static at list area) and destroy
+            HWND panel = FindWindowExW(hwnd, NULL, L"Static", NULL);
+            if (panel) DestroyWindow(panel);
+            break;
         } else if (id == IDC_CHECK_SELECTALL) {
             // Toggle check state for all list items when Select all checkbox is toggled
             HWND hChk = GetDlgItem(hwnd, IDC_CHECK_SELECTALL);
             BOOL ch = (SendMessageW(hChk, BM_GETCHECK, 0, 0) == BST_CHECKED);
             CheckAllItems(hList, ch);
-        } else if (id == IDC_BTN_UPGRADE) {
-            // Use the Select-all checkbox to determine "upgrade all"
-            BOOL allChecked = (SendMessageW(GetDlgItem(hwnd, IDC_CHECK_SELECTALL), BM_GETCHECK, 0, 0) == BST_CHECKED);
-            // create temp batch file
-            wchar_t tmpPath[MAX_PATH];
-            wchar_t tmpFile[MAX_PATH];
-            GetTempPathW(MAX_PATH, tmpPath);
-            GetTempFileNameW(tmpPath, L"wup", 0, tmpFile);
-            std::wofstream ofs(tmpFile);
-            ofs << L"@echo off\r\n";
-            if (allChecked) {
-                ofs << L"winget upgrade --all --accept-source-agreements --accept-package-agreements\r\n";
+        } else if (id == IDC_CHECK_SKIPSELECTED) {
+            // Toggle Skip for all selected list items
+            HWND hListLocal = GetDlgItem(hwnd, IDC_LISTVIEW);
+            int idx = -1;
+            idx = ListView_GetNextItem(hListLocal, -1, LVNI_SELECTED);
+            if (idx == -1) {
+                MessageBoxW(hwnd, L"No item selected.", t("app_title").c_str(), MB_OK | MB_ICONINFORMATION);
             } else {
-                // iterate checked items
-                int count = ListView_GetItemCount(hList);
-                for (int i = 0; i < count; ++i) {
-                    if (ListView_GetCheckState(hList, i)) {
-                        LVITEMW lvi{};
-                        wchar_t buf[512];
-                        lvi.iItem = i; lvi.iSubItem = 0; lvi.mask = LVIF_TEXT | LVIF_PARAM; lvi.pszText = buf; lvi.cchTextMax = _countof(buf);
-                        SendMessageW(hList, LVM_GETITEMW, 0, (LPARAM)&lvi);
-                        int idx = (int)lvi.lParam;
-                        if (idx >= 0 && idx < (int)g_packages.size()) {
-                            std::wstring idw(g_packages[idx].first.begin(), g_packages[idx].first.end());
-                            ofs << L"winget upgrade --id \"" << idw << L"\" --accept-source-agreements --accept-package-agreements\r\n";
+                std::vector<int> sel;
+                int cur = -1;
+                while ((cur = ListView_GetNextItem(hListLocal, cur, LVNI_SELECTED)) != -1) sel.push_back(cur);
+                for (int i : sel) {
+                    std::string idstr = g_packages[i].first;
+                    std::lock_guard<std::mutex> lk(g_packages_mutex);
+                    auto it = g_skipped_versions.find(idstr);
+                    if (it != g_skipped_versions.end()) {
+                        // confirm unskip
+                        if (MessageBoxW(hwnd, t("confirm_unskip").c_str(), t("app_title").c_str(), MB_YESNO | MB_ICONQUESTION) == IDYES) {
+                            g_skipped_versions.erase(it);
+                        }
+                    } else {
+                        auto avail = MapAvailableVersions();
+                        auto f = avail.find(idstr);
+                        std::string ver = (f!=avail.end())?f->second:std::string();
+                        if (!ver.empty()) {
+                            if (MessageBoxW(hwnd, t("confirm_skip").c_str(), t("app_title").c_str(), MB_YESNO | MB_ICONQUESTION) == IDYES) {
+                                g_skipped_versions[idstr] = ver;
+                            }
+                        } else {
+                            MessageBoxW(hwnd, L"Unable to determine version to skip.", t("app_title").c_str(), MB_OK | MB_ICONWARNING);
                         }
                     }
                 }
+                SaveSkipConfig(g_locale);
+                PopulateListView(hListLocal);
+                AdjustListColumns(hListLocal);
             }
-            ofs.close();
+        } else if (id == IDC_BTN_UPGRADE) {
+            // Collect checked items (or all if Select all checked)
+            std::vector<std::string> toInstall;
+            BOOL allChecked = (SendMessageW(GetDlgItem(hwnd, IDC_CHECK_SELECTALL), BM_GETCHECK, 0, 0) == BST_CHECKED);
+            int count = ListView_GetItemCount(hList);
+            for (int i = 0; i < count; ++i) {
+                if (allChecked || ListView_GetCheckState(hList, i)) {
+                    LVITEMW lvi{};
+                    wchar_t buf[512];
+                    lvi.iItem = i; lvi.iSubItem = 0; lvi.mask = LVIF_TEXT | LVIF_PARAM; lvi.pszText = buf; lvi.cchTextMax = _countof(buf);
+                    SendMessageW(hList, LVM_GETITEMW, 0, (LPARAM)&lvi);
+                    int idx = (int)lvi.lParam;
+                    if (idx >= 0 && idx < (int)g_packages.size()) {
+                        toInstall.push_back(g_packages[idx].first);
+                    }
+                }
+            }
+            if (toInstall.empty()) {
+                MessageBoxW(hwnd, t("your_system_updated").c_str(), t("app_title").c_str(), MB_OK | MB_ICONINFORMATION);
+                break;
+            }
 
-            // Run elevated (single UAC prompt) using ShellExecuteEx with verb runas
+            // create a temp file to capture elevated output; file will be deleted immediately after install finishes
+            wchar_t tmpPath[MAX_PATH]; GetTempPathW(MAX_PATH, tmpPath);
+            unsigned long long uniq = GetTickCount64();
+            std::wstring outFile = std::wstring(tmpPath) + L"wup_install_" + std::to_wstring(uniq) + L".txt";
+            // ensure file exists
+            HANDLE hTmpCreate = CreateFileW(outFile.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+            if (hTmpCreate != INVALID_HANDLE_VALUE) CloseHandle(hTmpCreate);
+
+            // disable main list and controls while installing (keep UI visible but greyed)
+            EnableWindow(hList, FALSE);
+            EnableWindow(GetDlgItem(hwnd, IDC_CHECK_SELECTALL), FALSE);
+            EnableWindow(GetDlgItem(hwnd, IDC_BTN_REFRESH), FALSE);
+            EnableWindow(GetDlgItem(hwnd, IDC_COMBO_LANG), FALSE);
+            EnableWindow(hBtnUpgrade, FALSE);
+
+            // create an in-window install panel replacing the list view area
+            HINSTANCE hInst = GetModuleHandleW(NULL);
+            const int IW = 600, IH = 284;
+            // list view area originally at (10,60,600,284)
+            HWND hInstallPanel = CreateWindowExW(0, L"STATIC", NULL, WS_CHILD | WS_VISIBLE | SS_LEFT, 10, 60, IW, IH, hwnd, NULL, hInst, NULL);
+            INITCOMMONCONTROLSEX icce{ sizeof(icce), ICC_PROGRESS_CLASS };
+            InitCommonControlsEx(&icce);
+            // status label just under title area (parent = panel)
+            HWND hInstallStatus = CreateWindowExW(0, L"Static", t("loading_title").c_str(), WS_CHILD | WS_VISIBLE | SS_LEFT, 12, 4, IW-24, 20, hInstallPanel, NULL, hInst, NULL);
+            // progress bar below status label (parent = panel)
+            HWND hProg = CreateWindowExW(0, PROGRESS_CLASSW, NULL, WS_CHILD | WS_VISIBLE, 12, 28, IW-36, 20, hInstallPanel, NULL, hInst, NULL);
+            SendMessageW(hProg, PBM_SETRANGE, 0, MAKELPARAM(0, (int)toInstall.size()));
+            SendMessageW(hProg, PBM_SETPOS, 0, 0);
+            // output edit filling remaining area (parent = panel)
+            HWND hOut = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", NULL, WS_CHILD | WS_VISIBLE | ES_MULTILINE | ES_READONLY | WS_VSCROLL | ES_AUTOVSCROLL,
+                12, 56, IW-36, IH-96, hInstallPanel, NULL, hInst, NULL);
+            // Done button to allow user to close panel after reading output
+            HWND hDone = CreateWindowExW(0, L"Button", t("upgrade_now").c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, IW-110, IH-28, 96, 24, hInstallPanel, (HMENU)IDC_BTN_DONE, hInst, NULL);
+
+            // build a single cmd line that echos markers and runs all winget commands, writing to the temp file
+            std::wstring seq = L"echo WUP_BEGIN > \"" + outFile + L"\" & ";
+            for (size_t i = 0; i < toInstall.size(); ++i) {
+                std::wstring idw(toInstall[i].begin(), toInstall[i].end());
+                if (i) seq += L" & ";
+                // echo begin marker, run winget, then echo INSTALLED/FAILED
+                seq += L"echo ===BEGIN===" + idw + L" >> \"" + outFile + L"\" & ";
+                seq += L"winget upgrade --id \"" + idw + L"\" >> \"" + outFile + L"\" 2>&1 & ";
+                seq += L"if %ERRORLEVEL% EQU 0 ( echo INSTALLED:" + idw + L" >> \"" + outFile + L"\" ) else ( echo FAILED:" + idw + L" >> \"" + outFile + L"\" )";
+            }
+
+            // run elevated cmd.exe /C "<seq>"
             SHELLEXECUTEINFOW sei{};
             sei.cbSize = sizeof(sei);
             sei.fMask = SEE_MASK_NOCLOSEPROCESS;
             sei.hwnd = hwnd;
             sei.lpVerb = L"runas";
             sei.lpFile = L"cmd.exe";
-            std::wstring params = L"/C \"" + std::wstring(tmpFile) + L"\"";
+            std::wstring params = L"/C \"" + seq + L"\"";
             sei.lpParameters = params.c_str();
-            sei.nShow = SW_SHOWNORMAL;
+            sei.nShow = SW_HIDE;
             if (!ShellExecuteExW(&sei)) {
-                MessageBoxW(hwnd, L"Failed to launch elevated process.", L"Error", MB_ICONERROR);
+                MessageBoxW(hwnd, t("msg_error_elevate").c_str(), t("app_title").c_str(), MB_ICONERROR);
+                // restore UI
+                ShowWindow(hList, SW_SHOW);
+                ShowWindow(GetDlgItem(hwnd, IDC_CHECK_SELECTALL), SW_SHOW);
+                ShowWindow(GetDlgItem(hwnd, IDC_BTN_REFRESH), SW_SHOW);
+                ShowWindow(GetDlgItem(hwnd, IDC_COMBO_LANG), SW_SHOW);
             } else {
-                // optionally wait or just return; don't block UI long
-                // WaitForSingleObject(sei.hProcess, INFINITE);
-                CloseHandle(sei.hProcess);
+                // monitor temp file and process in background thread
+                HANDLE hProc = sei.hProcess;
+                std::wstring outFileCopy = outFile; // capture
+                g_last_install_outfile = outFileCopy;
+                int totalCount = (int)toInstall.size();
+                // pass panel handle so WM_APP+4 can destroy it
+                HWND hPanelCopy = hInstallPanel;
+                HWND hStatusCopy = hInstallStatus;
+                std::thread([hProc, outFileCopy, hPanelCopy, hStatusCopy, hProg, hOut, hwnd, totalCount]() mutable {
+                    size_t installedCount = 0;
+                    const DWORD bufSize = 4096;
+                    std::vector<char> buffer(bufSize);
+                    std::string acc;
+                    HANDLE hFile = INVALID_HANDLE_VALUE;
+                    int currentIdx = 0;
+                    // wait until file exists and can be opened for reading (shared)
+                    for (int attempt = 0; attempt < 300; ++attempt) {
+                        hFile = CreateFileW(outFileCopy.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+                        if (hFile != INVALID_HANDLE_VALUE) break;
+                        DWORD wait = WaitForSingleObject(hProc, 100);
+                        if (wait == WAIT_OBJECT_0) break;
+                        Sleep(50);
+                    }
+                    LARGE_INTEGER lastPos; lastPos.QuadPart = 0;
+                    while (true) {
+                        if (hFile != INVALID_HANDLE_VALUE) {
+                            LARGE_INTEGER filesize; filesize.QuadPart = 0;
+                            if (GetFileSizeEx(hFile, &filesize)) {
+                                if (filesize.QuadPart > lastPos.QuadPart) {
+                                    LARGE_INTEGER move; move.QuadPart = lastPos.QuadPart;
+                                    SetFilePointerEx(hFile, move, NULL, FILE_BEGIN);
+                                    DWORD read = 0;
+                                    if (ReadFile(hFile, buffer.data(), (DWORD)buffer.size(), &read, NULL) && read > 0) {
+                                        lastPos.QuadPart += read;
+                                        std::string chunk(buffer.data(), buffer.data() + read);
+                                        // append chunk to the edit control without replacing whole text
+                                        std::wstring wchunk = Utf8ToWide(chunk);
+                                        int curLen = GetWindowTextLengthW(hOut);
+                                        SendMessageW(hOut, EM_SETSEL, (WPARAM)curLen, (LPARAM)curLen);
+                                        SendMessageW(hOut, EM_REPLACESEL, FALSE, (LPARAM)wchunk.c_str());
+                                        SendMessageW(hOut, EM_SCROLLCARET, 0, 0);
+                                        // also append into acc for marker detection
+                                        acc.append(chunk);
+                                        // detect begin markers to update status "Installing update x of y"
+                                        size_t posb = 0;
+                                        while (true) {
+                                            size_t p = acc.find("===BEGIN===", posb);
+                                            if (p == std::string::npos) break;
+                                            size_t start = p + strlen("===BEGIN===");
+                                            size_t eol = acc.find_first_of("\r\n", start);
+                                            std::string id = (eol==std::string::npos) ? acc.substr(start) : acc.substr(start, eol - start);
+                                            // increment current index and update status label
+                                            currentIdx++;
+                                            wchar_t sBuf[512];
+                                            std::wstring wId = Utf8ToWide(id);
+                                            swprintf(sBuf, _countof(sBuf), L"Installing update %d of %d: %s", currentIdx, totalCount, wId.c_str());
+                                            SetWindowTextW(hStatusCopy, sBuf);
+                                            posb = (eol==std::string::npos) ? acc.size() : eol + 1;
+                                        }
+                                        // look for INSTALLED markers in acc
+                                        size_t pos = 0;
+                                        while (true) {
+                                            size_t p = acc.find("INSTALLED:", pos);
+                                            if (p == std::string::npos) break;
+                                            installedCount++;
+                                            SendMessageW(hProg, PBM_SETPOS, (WPARAM)installedCount, 0);
+                                            pos = p + 10;
+                                        }
+                                        // keep a little tail in case markers are split across reads
+                                        if (acc.size() > 8192) acc.erase(0, acc.size() - 4096);
+                                    }
+                                }
+                            }
+                        }
+                        DWORD wait = WaitForSingleObject(hProc, 250);
+                        if (wait == WAIT_OBJECT_0) break;
+                        Sleep(100);
+                    }
+                    // final drain
+                    if (hFile != INVALID_HANDLE_VALUE) {
+                        DWORD read2 = 0;
+                        while (ReadFile(hFile, buffer.data(), (DWORD)buffer.size(), &read2, NULL) && read2 > 0) {
+                            std::string tail(buffer.data(), buffer.data() + read2);
+                            std::wstring wtail = Utf8ToWide(tail);
+                            int curLen2 = GetWindowTextLengthW(hOut);
+                            SendMessageW(hOut, EM_SETSEL, (WPARAM)curLen2, (LPARAM)curLen2);
+                            SendMessageW(hOut, EM_REPLACESEL, FALSE, (LPARAM)wtail.c_str());
+                            SendMessageW(hOut, EM_SCROLLCARET, 0, 0);
+                            acc.append(tail);
+                        }
+                        CloseHandle(hFile);
+                    }
+                    CloseHandle(hProc);
+                    // delete the temp file now that process finished and file closed
+                    try { /* keep file until user presses Done */ } catch(...) {}
+                    // Notify UI that install finished and allow user to click Done
+                    PostMessageW(hwnd, WM_INSTALL_DONE, (WPARAM)hPanelCopy, 0);
+                }).detach();
             }
-            // Note: temp file left on disk; user can remove later if needed
         }
         break;
     }
@@ -1565,6 +2034,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow) {
     }
     // attempt to load translations for the locale
     LoadLocaleFromFile(g_locale);
+    // load per-locale skip configuration
+    LoadSkipConfig(g_locale);
 
     std::wstring winTitle = std::wstring(L"WinUpdate - ") + t("app_window_suffix");
     HWND hwnd = CreateWindowExW(0, CLASS_NAME, winTitle.c_str(), WS_OVERLAPPEDWINDOW,
