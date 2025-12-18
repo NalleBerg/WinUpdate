@@ -19,4 +19,5 @@ confirm_skip=Skip this version? You can un-skip when a new version appears.
 confirm_unskip=Remove skip for this package?
 no_item_selected=No item selected or checked.
 unable_determine_version=Unable to determine version to skip.
+skip_disabled=Skip feature temporarily disabled.
 continue=Continue

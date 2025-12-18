@@ -193,17 +193,24 @@ static std::unordered_map<std::string,std::string> MapInstalledVersions() {
         std::string txt = r.second;
         std::istringstream iss(txt);
         std::string ln;
-        std::regex re(R"(([^\r\n]+?)\s+([^\s]+)\s+([^\s]+))");
-        std::smatch m;
         while (std::getline(iss, ln)) {
-            if (std::regex_search(ln, m, re)) {
-                // try to pick id and installed version
-                if (m.size() >= 4) {
-                    std::string id = m[2].str();
-                    std::string inst = m[3].str();
-                    out[id] = inst;
-                }
-            }
+            // skip separators or headers
+            if (ln.find("----") != std::string::npos) continue;
+            if (ln.find("Name") != std::string::npos && ln.find("Id") != std::string::npos) continue;
+            // trim
+            auto trim = [](std::string &s){ while(!s.empty() && (s.back()=='\r' || s.back()=='\n')) s.pop_back(); while(!s.empty() && isspace((unsigned char)s.front())) s.erase(s.begin()); while(!s.empty() && isspace((unsigned char)s.back())) s.pop_back(); };
+            trim(ln);
+            if (ln.empty()) continue;
+            // split by whitespace into tokens
+            std::istringstream ls(ln);
+            std::vector<std::string> toks;
+            std::string tok;
+            while (ls >> tok) toks.push_back(tok);
+            if (toks.size() < 3) continue;
+            // assume last token = version, token before = installed version (or version), token before that = id
+            std::string inst = toks[toks.size()-2];
+            std::string id = toks[toks.size()-3];
+            out[id] = inst;
         }
     } catch(...) {}
     return out;
@@ -217,16 +224,24 @@ static std::unordered_map<std::string,std::string> MapAvailableVersions() {
         std::string txt = r.second;
         std::istringstream iss(txt);
         std::string ln;
-        std::regex re(R"(([^\r\n]+?)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+))");
-        std::smatch m;
         while (std::getline(iss, ln)) {
-            if (std::regex_search(ln, m, re)) {
-                if (m.size() >= 5) {
-                    std::string id = m[2].str();
-                    std::string available = m[4].str();
-                    out[id] = available;
-                }
-            }
+            // skip separators/headers
+            if (ln.find("----") != std::string::npos) continue;
+            if (ln.find("Name") != std::string::npos && ln.find("Id") != std::string::npos) continue;
+            // trim
+            auto trim = [](std::string &s){ while(!s.empty() && (s.back()=='\r' || s.back()=='\n')) s.pop_back(); while(!s.empty() && isspace((unsigned char)s.front())) s.erase(s.begin()); while(!s.empty() && isspace((unsigned char)s.back())) s.pop_back(); };
+            trim(ln);
+            if (ln.empty()) continue;
+            // tokenize by whitespace
+            std::istringstream ls(ln);
+            std::vector<std::string> toks;
+            std::string tok;
+            while (ls >> tok) toks.push_back(tok);
+            if (toks.size() < 3) continue;
+            // assume last token is available version, previous token is installed, previous is id
+            std::string available = toks.back();
+            std::string id = toks.size() >= 3 ? toks[toks.size()-3] : std::string();
+            if (!id.empty()) out[id] = available;
         }
     } catch(...) {}
     return out;
@@ -1449,6 +1464,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 
         hCheckAll = CreateWindowExW(0, L"Button", t("select_all").c_str(), WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, 10, 350, 120, 24, hwnd, (HMENU)IDC_CHECK_SELECTALL, NULL, NULL);
         HWND hCheckSkip = CreateWindowExW(0, L"Button", t("skip_col").c_str(), WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, 140, 350, 140, 24, hwnd, (HMENU)IDC_CHECK_SKIPSELECTED, NULL, NULL);
+        // Temporarily disable the Skip control until feature is stable
+        if (hCheckSkip) EnableWindow(hCheckSkip, FALSE);
         // place Upgrade button 5px to the right of Select all
         hBtnUpgrade = CreateWindowExW(0, L"Button", t("upgrade_now").c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 135, 350, 220, 28, hwnd, (HMENU)IDC_BTN_UPGRADE, NULL, NULL);
         // Paste button removed — app scans `winget` at startup and on Refresh
@@ -1797,52 +1814,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             BOOL ch = (SendMessageW(hChk, BM_GETCHECK, 0, 0) == BST_CHECKED);
             CheckAllItems(hList, ch);
         } else if (id == IDC_CHECK_SKIPSELECTED) {
-            // Toggle Skip for selected list items; if none selected, operate on checked items instead
-            HWND hListLocal = GetDlgItem(hwnd, IDC_LISTVIEW);
-            std::vector<int> sel;
-            if (hListLocal) {
-                int cur = -1;
-                while ((cur = ListView_GetNextItem(hListLocal, cur, LVNI_SELECTED)) != -1) sel.push_back(cur);
-                if (sel.empty()) {
-                    // fallback to checked items
-                    int cnt = ListView_GetItemCount(hListLocal);
-                    for (int i = 0; i < cnt; ++i) {
-                        if (ListView_GetCheckState(hListLocal, i)) sel.push_back(i);
-                    }
-                }
-            }
-            if (sel.empty()) {
-                MessageBoxW(hwnd, t("no_item_selected").c_str(), t("app_title").c_str(), MB_OK | MB_ICONINFORMATION);
-            } else {
-                for (int i : sel) {
-                    if (i < 0 || i >= (int)g_packages.size()) continue;
-                    std::string idstr = g_packages[i].first;
-                    std::lock_guard<std::mutex> lk(g_packages_mutex);
-                    auto it = g_skipped_versions.find(idstr);
-                    if (it != g_skipped_versions.end()) {
-                        // confirm unskip
-                        if (MessageBoxW(hwnd, t("confirm_unskip").c_str(), t("app_title").c_str(), MB_YESNO | MB_ICONQUESTION) == IDYES) {
-                            g_skipped_versions.erase(it);
-                        }
-                    } else {
-                        auto avail = GetAvailableVersionsCached();
-                        auto f = avail.find(idstr);
-                        std::string ver = (f!=avail.end())?f->second:std::string();
-                        if (!ver.empty()) {
-                            if (MessageBoxW(hwnd, t("confirm_skip").c_str(), t("app_title").c_str(), MB_YESNO | MB_ICONQUESTION) == IDYES) {
-                                g_skipped_versions[idstr] = ver;
-                            }
-                        } else {
-                            MessageBoxW(hwnd, t("unable_determine_version").c_str(), t("app_title").c_str(), MB_OK | MB_ICONWARNING);
-                        }
-                    }
-                }
-                SaveSkipConfig(g_locale);
-                if (hListLocal) {
-                    PopulateListView(hListLocal);
-                    AdjustListColumns(hListLocal);
-                }
-            }
+            // Skip feature is temporarily disabled to avoid accidental skips during testing
+            MessageBoxW(hwnd, t("skip_disabled").c_str(), t("app_title").c_str(), MB_OK | MB_ICONINFORMATION);
         } else if (id == IDC_BTN_UPGRADE) {
             // Collect checked items (or all if Select all checked)
             std::vector<std::string> toInstall;
@@ -1932,6 +1905,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                 ShowWindow(GetDlgItem(hwnd, IDC_BTN_REFRESH), SW_SHOW);
                 ShowWindow(GetDlgItem(hwnd, IDC_COMBO_LANG), SW_SHOW);
             } else {
+                // After launching elevated process, ensure our main window is visible and foregrounded
+                // so the UI (install panel) is not lost behind other windows when UAC finishes.
+                ShowWindow(hwnd, SW_RESTORE);
+                BringWindowToTop(hwnd);
+                SetActiveWindow(hwnd);
+                SetForegroundWindow(hwnd);
                 // monitor temp file and process in background thread
                 HANDLE hProc = sei.hProcess;
                 std::wstring outFileCopy = outFile; // capture
