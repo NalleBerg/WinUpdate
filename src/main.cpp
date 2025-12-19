@@ -14,6 +14,7 @@
 #include <filesystem>
 #include <unordered_map>
 #include <future>
+#include <unordered_set>
 #include <filesystem>
 // detect nlohmann/json.hpp if available; fall back to ad-hoc parser otherwise
 #if defined(__has_include)
@@ -26,6 +27,16 @@
 #else
 #  define HAVE_NLOHMANN_JSON 0
 #endif
+
+// Forward-declare cleanup so we can run it very early (remove stale wup_install_*.txt files)
+static void CleanupStaleInstallFiles();
+
+// Run cleanup as early as possible (before wWinMain) to ensure no stale temp files remain.
+static struct WUPEarlyCleaner {
+    WUPEarlyCleaner() {
+        try { CleanupStaleInstallFiles(); } catch(...) {}
+    }
+} g_wup_early_cleaner;
 
 const wchar_t CLASS_NAME[] = L"WinUpdateClass";
 
@@ -206,10 +217,23 @@ static std::unordered_map<std::string,std::string> MapInstalledVersions() {
             std::vector<std::string> toks;
             std::string tok;
             while (ls >> tok) toks.push_back(tok);
-            if (toks.size() < 3) continue;
-            // assume last token = version, token before = installed version (or version), token before that = id
-            std::string inst = toks[toks.size()-2];
-            std::string id = toks[toks.size()-3];
+            if (toks.size() < 2) continue;
+            // build known id set from current package list to improve matching
+            std::unordered_set<std::string> knownIds;
+            {
+                std::lock_guard<std::mutex> lk(g_packages_mutex);
+                for (auto &p : g_packages) knownIds.insert(p.first);
+            }
+            // prefer matching a token that equals a known id; fall back to heuristic
+            std::string id;
+            for (auto &t : toks) {
+                if (knownIds.find(t) != knownIds.end()) { id = t; break; }
+            }
+            if (id.empty()) {
+                if (toks.size() >= 3) id = toks[toks.size()-3];
+                else id = toks.front();
+            }
+            std::string inst = toks.size() >= 2 ? toks[toks.size()-2] : std::string();
             out[id] = inst;
         }
     } catch(...) {}
@@ -237,10 +261,22 @@ static std::unordered_map<std::string,std::string> MapAvailableVersions() {
             std::vector<std::string> toks;
             std::string tok;
             while (ls >> tok) toks.push_back(tok);
-            if (toks.size() < 3) continue;
-            // assume last token is available version, previous token is installed, previous is id
+            if (toks.empty()) continue;
+            // build known id set from current package list to improve matching
+            std::unordered_set<std::string> knownIds;
+            {
+                std::lock_guard<std::mutex> lk(g_packages_mutex);
+                for (auto &p : g_packages) knownIds.insert(p.first);
+            }
+            std::string id;
+            for (auto &t : toks) {
+                if (knownIds.find(t) != knownIds.end()) { id = t; break; }
+            }
+            if (id.empty()) {
+                if (toks.size() >= 3) id = toks[toks.size()-3];
+                else id = toks.front();
+            }
             std::string available = toks.back();
-            std::string id = toks.size() >= 3 ? toks[toks.size()-3] : std::string();
             if (!id.empty()) out[id] = available;
         }
     } catch(...) {}
@@ -1564,6 +1600,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                         g_not_applicable_ids = localNA;
                     }
                 }
+                // If winget upgrade returned empty or timed out, remove stale fallback list to avoid showing stale results next run
+                try {
+                    namespace fs = std::filesystem;
+                    fs::path listPath = fs::current_path() / "wup_winget_list_fallback.txt";
+                    if (fs::exists(listPath)) fs::remove(listPath);
+                } catch(...) {}
             }
 
             auto *pv = new std::vector<std::pair<std::string,std::string>>(std::move(results));
@@ -1646,11 +1688,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         break;
     }
     case WM_APP+4: {
-        // wParam contains the panel/window handle created for install UI. Destroy it and restore main controls.
-        HWND panel = (HWND)wParam;
-        if (panel && IsWindow(panel)) DestroyWindow(panel);
-        // In case child controls were created as children of main window, try to find and destroy them by class/position.
-        // Restore main UI state (re-enable controls)
+        // Reserved message: do not auto-destroy the install panel here to keep install output visible
+        // This handler will only restore main controls if needed, but will not close panels.
+        // wParam may contain a panel handle but we intentionally ignore it to avoid auto-closing.
         if (hList) EnableWindow(hList, TRUE);
         if (hBtnRefresh) EnableWindow(hBtnRefresh, TRUE);
         if (hBtnUpgrade) EnableWindow(hBtnUpgrade, TRUE);
@@ -1666,7 +1706,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             if (hDoneBtn) EnableWindow(hDoneBtn, TRUE);
             // update the panel static status label if possible
             HWND hLabel = FindWindowExW(panel, NULL, L"Static", NULL);
-            if (hLabel) SetWindowTextW(hLabel, t("loading_desc").c_str());
+            if (hLabel) SetWindowTextW(hLabel, t("your_system_updated").c_str());
+            // NOTE: Do NOT re-enable or destroy main UI/panel here. Keep the install panel visible
+            // until the user clicks Done so they can review all install output. Done handler will
+            // re-enable controls and perform the refresh when the user is satisfied.
         }
         break;
     }
@@ -1799,10 +1842,16 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             if (!g_refresh_in_progress.load()) PostMessageW(hwnd, WM_REFRESH_ASYNC, 0, 0);
             break;
         } else if (id == IDC_BTN_DONE) {
-            // User clicked Done on the install panel: delete temp file, refresh and close panel
+            // User clicked Done on the install panel: delete temp file, re-enable UI, refresh and close panel
             // delete last install file if present
             try { if (!g_last_install_outfile.empty()) DeleteFileW(g_last_install_outfile.c_str()); } catch(...) {}
-            // trigger refresh and close panel (panel handle passed via lParam? we used global)
+            // Re-enable main UI controls now that user dismissed the install panel
+            if (hList) EnableWindow(hList, TRUE);
+            if (hBtnRefresh) EnableWindow(hBtnRefresh, TRUE);
+            if (hBtnUpgrade) EnableWindow(hBtnUpgrade, TRUE);
+            EnableWindow(GetDlgItem(hwnd, IDC_CHECK_SELECTALL), TRUE);
+            EnableWindow(GetDlgItem(hwnd, IDC_COMBO_LANG), TRUE);
+            // trigger refresh (user requested) and then close panel
             if (!g_refresh_in_progress.load()) PostMessageW(hwnd, WM_REFRESH_ASYNC, 0, 0);
             // find any existing install panel (static at list area) and destroy
             HWND panel = FindWindowExW(hwnd, NULL, L"Static", NULL);
@@ -1874,18 +1923,20 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             // to the main WndProc (controls parented to the panel would send WM_COMMAND to the panel).
             int btnX = 10 + (IW - 110);
             int btnY = 60 + (IH - 28);
-            HWND hDone = CreateWindowExW(0, L"Button", t("continue").c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, btnX, btnY, 96, 24, hwnd, (HMENU)IDC_BTN_DONE, hInst, NULL);
+            HWND hDone = CreateWindowExW(0, L"Button", t("continue").c_str(), WS_CHILD | WS_VISIBLE | WS_DISABLED | BS_PUSHBUTTON, btnX, btnY, 96, 24, hwnd, (HMENU)IDC_BTN_DONE, hInst, NULL);
 
             // build a single cmd line that echos markers and runs all winget commands, writing to the temp file
             std::wstring seq = L"echo WUP_BEGIN > \"" + outFile + L"\" & ";
-            for (size_t i = 0; i < toInstall.size(); ++i) {
-                std::wstring idw(toInstall[i].begin(), toInstall[i].end());
-                if (i) seq += L" & ";
-                // echo begin marker, run winget, then echo INSTALLED/FAILED
-                seq += L"echo ===BEGIN===" + idw + L" >> \"" + outFile + L"\" & ";
-                seq += L"winget upgrade --id \"" + idw + L"\" >> \"" + outFile + L"\" 2>&1 & ";
-                seq += L"if %ERRORLEVEL% EQU 0 ( echo INSTALLED:" + idw + L" >> \"" + outFile + L"\" ) else ( echo FAILED:" + idw + L" >> \"" + outFile + L"\" )";
-            }
+                for (size_t i = 0; i < toInstall.size(); ++i) {
+                    std::wstring idw(toInstall[i].begin(), toInstall[i].end());
+                    if (i) seq += L" & ";
+                    // echo begin marker, run winget synchronously, then append INSTALLED/FAILED using &&/|| to check exit code reliably
+                    seq += L"echo ===BEGIN===" + idw + L" >> \"" + outFile + L"\" & ";
+                    seq += L"winget upgrade --id \"" + idw + L"\" >> \"" + outFile + L"\" 2>&1";
+                    seq += L" & ( if %ERRORLEVEL% EQU 0 ( echo INSTALLED:" + idw + L" >> \"" + outFile + L"\" ) else ( echo FAILED:" + idw + L" >> \"" + outFile + L"\" ) )";
+                    // Note: using explicit if grouping to avoid parsing-time expansion; alternatively &&/|| could be used,
+                    // but grouping here ensures correct association in a single /C invocation.
+                }
 
             // run elevated cmd.exe /C "<seq>"
             SHELLEXECUTEINFOW sei{};
