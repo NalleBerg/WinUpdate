@@ -1,0 +1,34 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Backup files (prompt)",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\scripts\\backup_and_prune.ps1",
+        "-FilesToBackupString",
+        "${input:filesToBackup}",
+        "-Keep",
+        "5"
+      ],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "filesToBackup",
+      "type": "promptString",
+      "description": "Semicolon-separated files to backup (e.g. src\\main.cpp;CMakeLists.txt)",
+      "default": "src\\main.cpp"
+    }
+  ]
+}

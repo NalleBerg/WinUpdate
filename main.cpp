@@ -17,7 +17,6 @@
 #include <unordered_set>
 #include <filesystem>
 #include "About.h"
-#include "logging.h"
 // detect nlohmann/json.hpp if available; fall back to ad-hoc parser otherwise
 #if defined(__has_include)
 #  if __has_include(<nlohmann/json.hpp>)
@@ -101,6 +100,19 @@ static HWND g_hInstallAnim = NULL;
 static HWND g_hInstallPanel = NULL;
 static int g_install_anim_state = 0;
 static std::atomic<bool> g_install_block_destroy{false};
+// Enable or disable runtime logging to `wup_run_log.txt`.
+static std::atomic<bool> g_enable_logging{true};
+// If true, restart the application when the user clicks Continue (Done) after installs.
+static std::atomic<bool> g_restart_on_continue{true};
+
+// Append a line to the run log if logging is enabled. Swallows errors to be safe in UI threads.
+static void AppendLog(const std::string &s) {
+    if (!g_enable_logging.load()) return;
+    try {
+        std::ofstream ofs("wup_run_log.txt", std::ios::app | std::ios::binary);
+        if (ofs) ofs << s;
+    } catch(...) {}
+}
 static int g_loading_anim_state = 0;
 static const UINT LOADING_TIMER_ID = 0xC0DE;
 static bool g_popupClassRegistered = false;

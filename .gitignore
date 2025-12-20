@@ -1,0 +1,10 @@
+# Ignore backups and logs created by the local tooling
+/backups/
+/logs/
+
+# Ignore build output
+/build/
+
+# Ignore user-specific files
+*.user
+*.suo
