@@ -16,6 +16,12 @@ if "%CONFIG%"=="" set "CONFIG=Release"
 echo Using generator: %GENERATOR%
 echo Build configuration: %CONFIG%
 
+REM Ensure any running WinUpdate instance is terminated so linker can relink the EXE.
+tasklist /FI "IMAGENAME eq WinUpdate.exe" 2>NUL | find /I "WinUpdate.exe" >NUL && (
+    echo Terminating running WinUpdate.exe...
+    taskkill /IM WinUpdate.exe /F >NUL 2>&1
+)
+
 set BUILD_DIR=build
 if exist %BUILD_DIR% (
     echo Removing existing build directory...

@@ -99,6 +99,20 @@ static HWND g_hMainWindow = NULL;
 static HWND g_hInstallAnim = NULL;
 static HWND g_hInstallPanel = NULL;
 static int g_install_anim_state = 0;
+static std::atomic<bool> g_install_block_destroy{false};
+// Enable or disable runtime logging to `wup_run_log.txt`.
+static std::atomic<bool> g_enable_logging{true};
+// If true, restart the application when the user clicks Continue (Done) after installs.
+static std::atomic<bool> g_restart_on_continue{true};
+
+// Append a line to the run log if logging is enabled. Swallows errors to be safe in UI threads.
+static void AppendLog(const std::string &s) {
+    if (!g_enable_logging.load()) return;
+    try {
+        std::ofstream ofs("wup_run_log.txt", std::ios::app | std::ios::binary);
+        if (ofs) ofs << s;
+    } catch(...) {}
+}
 static int g_loading_anim_state = 0;
 static const UINT LOADING_TIMER_ID = 0xC0DE;
 static bool g_popupClassRegistered = false;
@@ -119,12 +133,19 @@ static std::unordered_map<std::string,std::string> GetAvailableVersionsCached() 
         std::lock_guard<std::mutex> lk(g_versions_mutex);
         if (!g_last_avail_versions.empty()) return g_last_avail_versions;
     }
-    auto m = MapAvailableVersions();
-    {
-        std::lock_guard<std::mutex> lk(g_versions_mutex);
-        g_last_avail_versions = m;
-    }
-    return m;
+    // Do not block: spawn background thread to populate cache and return empty map immediately.
+    std::thread([](){
+        try {
+            auto m = MapAvailableVersions();
+            {
+                std::lock_guard<std::mutex> lk(g_versions_mutex);
+                g_last_avail_versions = m;
+            }
+            // notify UI that versions are available
+            if (g_hMainWindow) PostMessageW(g_hMainWindow, WM_APP+8, 0, 0);
+        } catch(...) {}
+    }).detach();
+    return std::unordered_map<std::string,std::string>();
 }
 
 static std::unordered_map<std::string,std::string> GetInstalledVersionsCached() {
@@ -132,12 +153,18 @@ static std::unordered_map<std::string,std::string> GetInstalledVersionsCached() 
         std::lock_guard<std::mutex> lk(g_versions_mutex);
         if (!g_last_inst_versions.empty()) return g_last_inst_versions;
     }
-    auto m = MapInstalledVersions();
-    {
-        std::lock_guard<std::mutex> lk(g_versions_mutex);
-        g_last_inst_versions = m;
-    }
-    return m;
+    // Non-blocking: populate installed-version cache asynchronously
+    std::thread([](){
+        try {
+            auto m = MapInstalledVersions();
+            {
+                std::lock_guard<std::mutex> lk(g_versions_mutex);
+                g_last_inst_versions = m;
+            }
+            if (g_hMainWindow) PostMessageW(g_hMainWindow, WM_APP+8, 0, 0);
+        } catch(...) {}
+    }).detach();
+    return std::unordered_map<std::string,std::string>();
 }
 
 // Parse raw winget output in memory by trying multiple parsers (fast -> tolerant -> table)
@@ -205,40 +232,88 @@ static void SaveSkipConfig(const std::string &locale) {
 static std::unordered_map<std::string,std::string> MapInstalledVersions() {
     std::unordered_map<std::string,std::string> out;
     try {
-        auto r = RunProcessCaptureExitCode(L"winget list", 3000);
+        auto r = RunProcessCaptureExitCode(L"winget list", 8000);
         std::string txt = r.second;
+        // Try to parse aligned table output (header + separator) like:
+        // Name                                   Id                       Version
+        // ------------------------------------   ---------------------    --------
         std::istringstream iss(txt);
+        std::vector<std::string> lines;
         std::string ln;
         while (std::getline(iss, ln)) {
-            // skip separators or headers
+            while (!ln.empty() && (ln.back()=='\r' || ln.back()=='\n')) ln.pop_back();
+            lines.push_back(ln);
+        }
+        int headerIdx = -1, sepIdx = -1;
+        for (int i = 0; i < (int)lines.size(); ++i) {
+            if (lines[i].find("----") != std::string::npos) { sepIdx = i; break; }
+        }
+        if (sepIdx > 0) headerIdx = sepIdx - 1;
+        auto trim = [](std::string s){ while(!s.empty() && isspace((unsigned char)s.front())) s.erase(s.begin()); while(!s.empty() && isspace((unsigned char)s.back())) s.pop_back(); return s; };
+        if (headerIdx >= 0) {
+            std::string header = lines[headerIdx];
+            // find column starts for Name, Id, Version
+            std::vector<std::string> colNames = {"Name", "Id", "Version"};
+            std::vector<int> colStarts;
+            for (auto &cn : colNames) {
+                size_t p = header.find(cn);
+                if (p != std::string::npos) colStarts.push_back((int)p);
+            }
+            if (colStarts.size() >= 2) {
+                int ncols = (int)colStarts.size();
+                for (int i = sepIdx + 1; i < (int)lines.size(); ++i) {
+                    const std::string &sline = lines[i];
+                    if (trim(sline).empty()) continue;
+                    if (sline.find("upgraded") != std::string::npos) break;
+                    auto substrSafe = [&](const std::string &s, int a, int b)->std::string{
+                        int len = (int)s.size();
+                        if (a >= len) return std::string();
+                        int end = std::min(len, b);
+                        return s.substr(a, end - a);
+                    };
+                    std::vector<std::string> fields(ncols);
+                    for (int c = 0; c < ncols; ++c) {
+                        int a = colStarts[c];
+                        int b = (c+1 < ncols) ? colStarts[c+1] : (int)sline.size();
+                        fields[c] = trim(substrSafe(sline, a, b));
+                    }
+                    std::string id = (ncols > 1) ? fields[1] : std::string();
+                    std::string inst = (ncols > 2) ? fields[2] : std::string();
+                    if (!id.empty()) out[id] = inst;
+                }
+                return out;
+            }
+        }
+        // Fallback: token-based heuristic
+        std::istringstream iss2(txt);
+        while (std::getline(iss2, ln)) {
             if (ln.find("----") != std::string::npos) continue;
             if (ln.find("Name") != std::string::npos && ln.find("Id") != std::string::npos) continue;
             // trim
-            auto trim = [](std::string &s){ while(!s.empty() && (s.back()=='\r' || s.back()=='\n')) s.pop_back(); while(!s.empty() && isspace((unsigned char)s.front())) s.erase(s.begin()); while(!s.empty() && isspace((unsigned char)s.back())) s.pop_back(); };
-            trim(ln);
+            auto trim2 = [](std::string &s){ while(!s.empty() && (s.back()=='\r' || s.back()=='\n')) s.pop_back(); while(!s.empty() && isspace((unsigned char)s.front())) s.erase(s.begin()); while(!s.empty() && isspace((unsigned char)s.back())) s.pop_back(); };
+            trim2(ln);
             if (ln.empty()) continue;
-            // split by whitespace into tokens
             std::istringstream ls(ln);
             std::vector<std::string> toks;
             std::string tok;
             while (ls >> tok) toks.push_back(tok);
             if (toks.size() < 2) continue;
-            // build known id set from current package list to improve matching
             std::unordered_set<std::string> knownIds;
             {
                 std::lock_guard<std::mutex> lk(g_packages_mutex);
                 for (auto &p : g_packages) knownIds.insert(p.first);
             }
-            // prefer matching a token that equals a known id; fall back to heuristic
             std::string id;
             for (auto &t : toks) {
                 if (knownIds.find(t) != knownIds.end()) { id = t; break; }
             }
             if (id.empty()) {
-                if (toks.size() >= 3) id = toks[toks.size()-3];
-                else id = toks.front();
+                // assume last token is version, second-last is id
+                if (toks.size() >= 2) {
+                    id = toks[toks.size()-2];
+                } else id = toks.front();
             }
-            std::string inst = toks.size() >= 2 ? toks[toks.size()-2] : std::string();
+            std::string inst = toks.back();
             out[id] = inst;
         }
     } catch(...) {}
@@ -249,25 +324,68 @@ static std::unordered_map<std::string,std::string> MapInstalledVersions() {
 static std::unordered_map<std::string,std::string> MapAvailableVersions() {
     std::unordered_map<std::string,std::string> out;
     try {
-        auto r = RunProcessCaptureExitCode(L"winget upgrade", 5000);
+        auto r = RunProcessCaptureExitCode(L"winget upgrade", 10000);
         std::string txt = r.second;
+        // Prefer parsing the aligned table output (header + separator)
         std::istringstream iss(txt);
+        std::vector<std::string> lines;
         std::string ln;
         while (std::getline(iss, ln)) {
-            // skip separators/headers
+            while (!ln.empty() && (ln.back()=='\r' || ln.back()=='\n')) ln.pop_back();
+            lines.push_back(ln);
+        }
+        int headerIdx = -1, sepIdx = -1;
+        for (int i = 0; i < (int)lines.size(); ++i) {
+            if (lines[i].find("----") != std::string::npos) { sepIdx = i; break; }
+        }
+        if (sepIdx > 0) headerIdx = sepIdx - 1;
+        auto trim = [](std::string s){ while(!s.empty() && isspace((unsigned char)s.front())) s.erase(s.begin()); while(!s.empty() && isspace((unsigned char)s.back())) s.pop_back(); return s; };
+        if (headerIdx >= 0) {
+            std::string header = lines[headerIdx];
+            std::vector<std::string> colNames = {"Name","Id","Version","Available"};
+            std::vector<int> colStarts;
+            for (auto &cn : colNames) {
+                size_t p = header.find(cn);
+                if (p != std::string::npos) colStarts.push_back((int)p);
+            }
+            if (colStarts.size() >= 2) {
+                int ncols = (int)colStarts.size();
+                for (int i = sepIdx + 1; i < (int)lines.size(); ++i) {
+                    const std::string &sline = lines[i];
+                    if (trim(sline).empty()) continue;
+                    if (sline.find("upgrades available") != std::string::npos) break;
+                    auto substrSafe = [&](const std::string &s, int a, int b)->std::string{
+                        int len = (int)s.size();
+                        if (a >= len) return std::string();
+                        int end = std::min(len, b);
+                        return s.substr(a, end - a);
+                    };
+                    std::vector<std::string> fields(ncols);
+                    for (int c = 0; c < ncols; ++c) {
+                        int a = colStarts[c];
+                        int b = (c+1 < ncols) ? colStarts[c+1] : (int)sline.size();
+                        fields[c] = trim(substrSafe(sline, a, b));
+                    }
+                    std::string id = (ncols > 1) ? fields[1] : std::string();
+                    std::string available = (ncols > 3) ? fields[3] : std::string();
+                    if (!id.empty()) out[id] = available;
+                }
+                return out;
+            }
+        }
+        // Fallback token-based parsing
+        std::istringstream iss2(txt);
+        while (std::getline(iss2, ln)) {
             if (ln.find("----") != std::string::npos) continue;
             if (ln.find("Name") != std::string::npos && ln.find("Id") != std::string::npos) continue;
-            // trim
-            auto trim = [](std::string &s){ while(!s.empty() && (s.back()=='\r' || s.back()=='\n')) s.pop_back(); while(!s.empty() && isspace((unsigned char)s.front())) s.erase(s.begin()); while(!s.empty() && isspace((unsigned char)s.back())) s.pop_back(); };
-            trim(ln);
+            auto trim2 = [](std::string &s){ while(!s.empty() && (s.back()=='\r' || s.back()=='\n')) s.pop_back(); while(!s.empty() && isspace((unsigned char)s.front())) s.erase(s.begin()); while(!s.empty() && isspace((unsigned char)s.back())) s.pop_back(); };
+            trim2(ln);
             if (ln.empty()) continue;
-            // tokenize by whitespace
             std::istringstream ls(ln);
             std::vector<std::string> toks;
             std::string tok;
             while (ls >> tok) toks.push_back(tok);
             if (toks.empty()) continue;
-            // build known id set from current package list to improve matching
             std::unordered_set<std::string> knownIds;
             {
                 std::lock_guard<std::mutex> lk(g_packages_mutex);
@@ -278,8 +396,7 @@ static std::unordered_map<std::string,std::string> MapAvailableVersions() {
                 if (knownIds.find(t) != knownIds.end()) { id = t; break; }
             }
             if (id.empty()) {
-                if (toks.size() >= 3) id = toks[toks.size()-3];
-                else id = toks.front();
+                if (toks.size() >= 2) id = toks[toks.size()-2]; else id = toks.front();
             }
             std::string available = toks.back();
             if (!id.empty()) out[id] = available;
@@ -301,6 +418,7 @@ static void InitDefaultTranslations() {
     g_i18n_default["id_col"] = "Id";
     g_i18n_default["loading_title"] = "Loading, please";
     g_i18n_default["loading_desc"] = "Querying winget";
+    g_i18n_default["installing_label"] = "Installing update";
     g_i18n_default["your_system_updated"] = "Your system is updated!";
     g_i18n_default["your_system_updated"] = "Your system is up to date";
     g_i18n_default["msg_error_elevate"] = "Failed to launch elevated process.";
@@ -594,20 +712,22 @@ static LRESULT CALLBACK AnimSubclassProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
         PAINTSTRUCT ps;
         HDC hdc = BeginPaint(hwnd, &ps);
         RECT rc; GetClientRect(hwnd, &rc);
-        // clear background
-        HBRUSH hbr = GetSysColorBrush(COLOR_BTNFACE);
-        FillRect(hdc, &rc, hbr);
         int w = rc.right - rc.left;
         int h = rc.bottom - rc.top;
         int dots = 5;
-        int dotW = std::max(6, h - 6);
-        int spacing = std::max(8, (w - dots * dotW) / (dots + 1));
-        int totalCycle = spacing + dotW;
-        int offset = (g_install_anim_state % (w + totalCycle));
+        int dotW = std::min(12, std::max(6, h - 6));
+        int gap = 6; // tight gaps between dots to form a snake-like look
+        int step = 6; // pixels to advance per timer tick
+        int cycle = w + dotW + gap;
+        int offset = (g_install_anim_state * step) % cycle;
         HBRUSH fill = CreateSolidBrush(RGB(0, 102, 204));
-        HBRUSH old = (HBRUSH)SelectObject(hdc, fill);
+        HGDIOBJ old = SelectObject(hdc, fill);
+        // Do NOT clear the background - draw only the rounded dots so underlying progress bar remains visible
         for (int i = 0; i < dots; ++i) {
-            int x = (offset + i * (dotW + spacing)) % (w - dotW);
+            int rawx = offset + i * (dotW + gap) - (dotW + gap);
+            int x = ((rawx % cycle) + cycle) % cycle; // normalize into [0,cycle)
+            if (x > w) x -= cycle; // map into [-dotW, w]
+            if (x < -dotW || x > w) continue;
             RECT r = { rc.left + x, rc.top + 2, rc.left + x + dotW, rc.top + 2 + dotW };
             RoundRect(hdc, r.left, r.top, r.right, r.bottom, 4, 4);
         }
@@ -673,16 +793,14 @@ static std::pair<int,std::string> RunProcessCaptureExitCode(const std::wstring &
     CloseHandle(pi.hThread);
 
     // append to run log for debugging
-    try {
-        std::ofstream lof("wup_run_log.txt", std::ios::app | std::ios::binary);
-        if (lof) {
-            std::string ncmd = WideToUtf8(cmd);
-            lof << "--- CMD: " << ncmd << " ---\n";
-            lof << "Exit: " << result.first << "\n";
-            if (result.first == -2) lof << "(TIMEOUT)\n";
-            lof << "Output:\n" << output << "\n\n";
-        }
-    } catch(...) {}
+    {
+        std::ostringstream oss;
+        oss << "--- CMD: " << WideToUtf8(cmd) << " ---\n";
+        oss << "Exit: " << result.first << "\n";
+        if (result.first == -2) oss << "(TIMEOUT)\n";
+        oss << "Output:\n" << output << "\n\n";
+        AppendLog(oss.str());
+    }
 
     result.second = output;
     return result;
@@ -738,7 +856,7 @@ static void ShowLoading(HWND parent) {
     GetWindowRect(parent, &rc);
     int pw = rc.right - rc.left;
     int ph = rc.bottom - rc.top;
-    int w = 260; int h = 110;
+    int w = 340; int h = 120;
     int x = rc.left + (pw - w) / 2;
     int y = rc.top + (ph - h) / 2;
     // Create a popup window that looks like an informational dialog
@@ -1326,15 +1444,47 @@ static void PopulateListView(HWND hList) {
         // Current version (subitem 2)
         LVITEMW lviCur{}; lviCur.mask = LVIF_TEXT; lviCur.iItem = i; lviCur.iSubItem = 2;
         std::wstring wcur = L"";
-        auto fit = inst.find(id);
-        if (fit != inst.end()) wcur = Utf8ToWide(fit->second);
+        // resolve installed/available version robustly with normalization
+        auto normalize = [&](const std::string &s)->std::string{
+            std::string out;
+            for (char c : s) {
+                if (c == '.' || c == '-' || c == '_' || c == ' ' || c == '\\' || c == '/') continue;
+                out.push_back((char)tolower((unsigned char)c));
+            }
+            return out;
+        };
+        auto resolveVersion = [&](const std::unordered_map<std::string,std::string> &m)->std::string {
+            auto it = m.find(id);
+            if (it != m.end()) return it->second;
+            std::string nid = normalize(id);
+            // try exact, substring and normalized matches
+            for (auto &p : m) {
+                if (p.first == id) return p.second;
+                if (p.first.find(id) != std::string::npos) return p.second;
+            }
+            for (auto &p : m) {
+                std::string pk = normalize(p.first);
+                if (!pk.empty() && (pk == nid || pk.find(nid) != std::string::npos || nid.find(pk) != std::string::npos)) return p.second;
+            }
+            // try matching by package name tokens
+            std::string nname = normalize(name);
+            if (!nname.empty()) {
+                for (auto &p : m) {
+                    std::string pk = normalize(p.first);
+                    if (!pk.empty() && pk.find(nname) != std::string::npos) return p.second;
+                }
+            }
+            return std::string();
+        };
+        std::string curv = resolveVersion(inst);
+        if (!curv.empty()) wcur = Utf8ToWide(curv);
         lviCur.pszText = (LPWSTR)wcur.c_str();
         SendMessageW(hList, LVM_SETITEMW, 0, (LPARAM)&lviCur);
         // Available version (subitem 3)
         LVITEMW lviAvail{}; lviAvail.mask = LVIF_TEXT; lviAvail.iItem = i; lviAvail.iSubItem = 3;
         std::wstring wavail = L"";
-        auto ait = avail.find(id);
-        if (ait != avail.end()) wavail = Utf8ToWide(ait->second);
+        std::string availv = resolveVersion(avail);
+        if (!availv.empty()) wavail = Utf8ToWide(availv);
         lviAvail.pszText = (LPWSTR)wavail.c_str();
         SendMessageW(hList, LVM_SETITEMW, 0, (LPARAM)&lviAvail);
         // Skip column (subitem 4): show localized Skip label if present
@@ -1350,14 +1500,34 @@ static void PopulateListView(HWND hList) {
     }
 }
 
+// Update the header control items' text using stable buffers so the header shows full words.
+static void UpdateListViewHeaders(HWND hList) {
+    if (!hList || !IsWindow(hList)) return;
+    HWND hHeader = (HWND)SendMessageW(hList, LVM_GETHEADER, 0, 0);
+    if (!hHeader || !IsWindow(hHeader)) return;
+    static std::vector<std::wstring> headerBuffers;
+    headerBuffers.clear();
+    headerBuffers.push_back(t("package_col"));
+    headerBuffers.push_back(t("id_col"));
+    headerBuffers.push_back(t("current_col"));
+    headerBuffers.push_back(t("available_col"));
+    headerBuffers.push_back(t("skip_col"));
+    for (int i = 0; i < (int)headerBuffers.size(); ++i) {
+        HDITEMW hi{};
+        hi.mask = HDI_TEXT;
+        hi.pszText = (LPWSTR)headerBuffers[i].c_str();
+        SendMessageW(hHeader, HDM_SETITEMW, (WPARAM)i, (LPARAM)&hi);
+    }
+}
+
 static void AdjustListColumns(HWND hList) {
     RECT rc; GetClientRect(hList, &rc);
     int totalW = rc.right - rc.left;
     if (totalW <= 0) return;
-    int wName = (int)(totalW * 0.40);
-    int wId = (int)(totalW * 0.20);
-    int wCur = (int)(totalW * 0.13);
-    int wAvail = (int)(totalW * 0.17);
+    int wName = (int)(totalW * 0.50);
+    int wId = (int)(totalW * 0.18);
+    int wCur = (int)(totalW * 0.12);
+    int wAvail = (int)(totalW * 0.15);
     int wSkip = totalW - (wName + wId + wCur + wAvail) - 4;
     ListView_SetColumnWidth(hList, 0, wName);
     ListView_SetColumnWidth(hList, 1, wId);
@@ -1564,6 +1734,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         LVCOLUMNW colCur{}; colCur.mask = LVCF_TEXT | LVCF_WIDTH; colCur.cx = 100; colCur.pszText = (LPWSTR)g_colHeaders[2].c_str(); ListView_InsertColumn(hList, 2, &colCur);
         LVCOLUMNW colAvail{}; colAvail.mask = LVCF_TEXT | LVCF_WIDTH; colAvail.cx = 100; colAvail.pszText = (LPWSTR)g_colHeaders[3].c_str(); ListView_InsertColumn(hList, 3, &colAvail);
         LVCOLUMNW colSkip{}; colSkip.mask = LVCF_TEXT | LVCF_WIDTH; colSkip.cx = 80; colSkip.pszText = (LPWSTR)g_colHeaders[4].c_str(); ListView_InsertColumn(hList, 4, &colSkip);
+        // Adjust initial column widths to fit the control
+        AdjustListColumns(hList);
+        // ensure header texts show full words immediately
+        if (hList) UpdateListViewHeaders(hList);
+        // Do not populate list synchronously here — PopulateListView may probe winget and block startup.
+        // The async refresh will populate the list and update headers when complete.
 
         hCheckAll = CreateWindowExW(0, L"Button", t("select_all").c_str(), WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, 10, 350, 120, 24, hwnd, (HMENU)IDC_CHECK_SELECTALL, NULL, NULL);
         HWND hCheckSkip = CreateWindowExW(0, L"Button", t("skip_col").c_str(), WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, 140, 350, 140, 24, hwnd, (HMENU)IDC_CHECK_SKIPSELECTED, NULL, NULL);
@@ -1671,13 +1847,20 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                 for (auto &p : found) results.emplace_back(p.first, p.second);
             }
 
-            // Probe available/installed versions in background and cache them
+            // Start background population of available/installed versions without blocking the initial scan.
             try {
-                auto avail = MapAvailableVersions();
-                auto inst = MapInstalledVersions();
-                std::lock_guard<std::mutex> lk(g_versions_mutex);
-                g_last_avail_versions = avail;
-                g_last_inst_versions = inst;
+                std::thread([](){
+                    try {
+                        auto avail = MapAvailableVersions();
+                        auto inst = MapInstalledVersions();
+                        {
+                            std::lock_guard<std::mutex> lk(g_versions_mutex);
+                            g_last_avail_versions = avail;
+                            g_last_inst_versions = inst;
+                        }
+                        if (g_hMainWindow) PostMessageW(g_hMainWindow, WM_APP+8, 0, 0);
+                    } catch(...) {}
+                }).detach();
             } catch(...) {}
 
             if (out.empty() || timedOut) {
@@ -1726,11 +1909,17 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                 g_packages = *pv;
             }
             delete pv;
-            if (hList) PopulateListView(hList);
-            if (hList) AdjustListColumns(hList);
-            // re-enable buttons
-            if (hBtnRefresh) EnableWindow(hBtnRefresh, TRUE);
-            if (hBtnUpgrade) EnableWindow(hBtnUpgrade, TRUE);
+            // If an install panel is blocking destruction, avoid changing the main list/controls
+            if (!g_install_block_destroy.load()) {
+                if (hList) PopulateListView(hList);
+                if (hList) AdjustListColumns(hList);
+                if (hList) UpdateListViewHeaders(hList);
+                // re-enable buttons
+                if (hBtnRefresh) EnableWindow(hBtnRefresh, TRUE);
+                if (hBtnUpgrade) EnableWindow(hBtnUpgrade, TRUE);
+            } else {
+                AppendLog("WM_REFRESH_DONE: refresh completed but install panel active; skipping UI re-enable/populate\n");
+            }
         }
         HideLoading();
         g_refresh_in_progress.store(false);
@@ -1772,6 +1961,17 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             if (changed) SaveSkipConfig(g_locale);
             if (hList) PopulateListView(hList);
         } catch(...) {}
+        // Ensure main window is visible and front-most after a refresh completes
+        AppendLog("WM_REFRESH_DONE: refresh complete, forcing main window to foreground\n");
+        TryForceForegroundWindow(hwnd);
+        // If an install panel exists and is still blocked for destruction, ensure it stays above the list
+        if (g_hInstallPanel && IsWindow(g_hInstallPanel) && g_install_block_destroy.load()) {
+            AppendLog("WM_REFRESH_DONE: install panel present; reasserting top Z-order\n");
+            SetWindowPos(g_hInstallPanel, HWND_TOP, 0,0,0,0, SWP_NOMOVE | SWP_NOSIZE);
+            // ensure Done button remains enabled state as previously set by WM_INSTALL_DONE
+            HWND hDoneBtn = GetDlgItem(hwnd, IDC_BTN_DONE);
+            if (hDoneBtn) EnableWindow(hDoneBtn, TRUE);
+        }
         break;
     }
     case WM_CTLCOLORSTATIC: {
@@ -1798,6 +1998,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         // Reserved message: do not auto-destroy the install panel here to keep install output visible
         // This handler will only restore main controls if needed, but will not close panels.
         // wParam may contain a panel handle but we intentionally ignore it to avoid auto-closing.
+        AppendLog("WM_APP+4: re-enable main controls (but not destroying panels)\n");
         if (hList) EnableWindow(hList, TRUE);
         if (hBtnRefresh) EnableWindow(hBtnRefresh, TRUE);
         if (hBtnUpgrade) EnableWindow(hBtnUpgrade, TRUE);
@@ -1811,6 +2012,22 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         if (anim && IsWindow(anim)) {
             if (wParam) ShowWindow(anim, SW_SHOW);
             else ShowWindow(anim, SW_HIDE);
+        }
+        break;
+    }
+    case WM_APP+8: {
+        // Versions cache populated in background: refresh displayed version columns non-blocking
+        // If an install panel is active and blocking destruction, avoid repopulating the listview
+        if (g_install_block_destroy.load()) {
+            AppendLog("WM_APP+8: versions cache ready but install panel active; skipping repopulate\n");
+            break;
+        }
+        if (hList) {
+            // repopulate only version columns to avoid flicker
+            AppendLog("WM_APP+8: versions cache ready, repopulating listview columns\n");
+            PopulateListView(hList);
+            AdjustListColumns(hList);
+            UpdateListViewHeaders(hList);
         }
         break;
     }
@@ -1855,11 +2072,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                 HWND hDoneBtn = GetDlgItem(hwnd, IDC_BTN_DONE);
                 if (hDoneBtn) EnableWindow(hDoneBtn, TRUE);
             }
-            // update the panel static status label if possible
-            HWND hLabel = FindWindowExW(panel, NULL, L"Static", NULL);
-            if (hLabel) SetWindowTextW(hLabel, t("your_system_updated").c_str());
+            // Do NOT overwrite the install status label here; leave final status/log visible
+            // (status label is updated live by the install monitor thread). Avoid showing 'Your system is updated' here.
             // hide animation when finished
             if (g_hInstallAnim) PostMessageW(hwnd, WM_APP+6, 0, 0);
+            // log install finished and that we are waiting for user acknowledgement
+            AppendLog("WM_INSTALL_DONE: install finished; awaiting Continue press.\n");
             // NOTE: Do NOT re-enable or destroy main UI/panel here. Keep the install panel visible
             // until the user clicks Done so they can review all install output. Done handler will
             // re-enable controls and perform the refresh when the user is satisfied.
@@ -1949,6 +2167,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         break;
     }
     case WM_COMMAND: {
+        // Log incoming WM_COMMAND for debugging (id, hiword, lParam)
+        {
+            std::ostringstream _wclog; _wclog << "WM_COMMAND received: id=" << (int)LOWORD(wParam) << " hi=" << (int)HIWORD(wParam) << " lParam=" << (void*)lParam << "\n";
+            AppendLog(_wclog.str());
+        }
         int id = LOWORD(wParam);
         if (id == IDC_COMBO_LANG && HIWORD(wParam) == CBN_SELCHANGE) {
             HWND hCombo = GetDlgItem(hwnd, IDC_COMBO_LANG);
@@ -1966,20 +2189,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                 // update listview column headers
                 HWND hListLocal = GetDlgItem(hwnd, IDC_LISTVIEW);
                 if (hListLocal) {
-                    LVCOLUMNW col{};
-                    col.mask = LVCF_TEXT;
-                    std::wstring pkg = t("package_col");
-                    std::wstring idc = t("id_col");
-                    col.pszText = (LPWSTR)pkg.c_str();
-                    SendMessageW(hListLocal, LVM_SETCOLUMNW, 0, (LPARAM)&col);
-                    col.pszText = (LPWSTR)idc.c_str();
-                    SendMessageW(hListLocal, LVM_SETCOLUMNW, 1, (LPARAM)&col);
-                    // ensure Skip column text localized? using static Skip label for now
-                    LVCOLUMNW col3{};
-                    col3.mask = LVCF_TEXT;
-                    std::wstring skipCol = L"Skip";
-                    col3.pszText = (LPWSTR)skipCol.c_str();
-                    SendMessageW(hListLocal, LVM_SETCOLUMNW, 2, (LPARAM)&col3);
+                    UpdateListViewHeaders(hListLocal);
+                    AdjustListColumns(hListLocal);
                 }
                 // update window title but do not translate app name
                 std::wstring winTitle = std::wstring(L"WinUpdate - ") + t("app_window_suffix");
@@ -1998,9 +2209,40 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             ShowAboutDialog(hwnd);
             break;
         } else if (id == IDC_BTN_DONE) {
-            // User clicked Done on the install panel: delete temp file, re-enable UI, refresh and close panel
-            // delete last install file if present (worker intentionally left it until user acknowledged)
+            // Protect against programmatic or accidental WM_COMMAND posts: only accept real button clicks
+            // from the control (lParam will contain the HWND of the control for true clicks). If lParam
+            // is zero, ignore the command to avoid auto-continuation.
+            // Only accept clicks coming from the actual done button control
+            HWND hDoneCtrl = GetDlgItem(hwnd, IDC_BTN_DONE);
+            if ((HWND)lParam != hDoneCtrl) {
+                // ignore synthetic/posted commands or clicks from other controls
+                break;
+            }
+            // User clicked Done on the install panel: delete temp file
             try { if (!g_last_install_outfile.empty()) { DeleteFileW(g_last_install_outfile.c_str()); g_last_install_outfile.clear(); } } catch(...) {}
+
+            // If configured, restart the app to guarantee a fresh scan/refresh.
+            if (g_restart_on_continue.load()) {
+                AppendLog("Done pressed: restarting application as requested.\n");
+                WCHAR exePath[MAX_PATH] = {0};
+                if (GetModuleFileNameW(NULL, exePath, MAX_PATH) > 0) {
+                    STARTUPINFOW si{}; si.cb = sizeof(si);
+                    PROCESS_INFORMATION pi{};
+                    // Attempt to create a new process instance of the same executable
+                    if (CreateProcessW(exePath, NULL, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
+                        CloseHandle(pi.hProcess);
+                        CloseHandle(pi.hThread);
+                    }
+                }
+                // Terminate current process so the fresh instance can continue.
+                ExitProcess(0);
+            }
+
+            // allow panel destruction now that user acknowledged
+            g_install_block_destroy.store(false);
+            {
+                AppendLog("Done pressed: clearing install-block and destroying panel.\n");
+            }
             // Re-enable main UI controls now that user dismissed the install panel
             if (hList) EnableWindow(hList, TRUE);
             if (hBtnRefresh) EnableWindow(hBtnRefresh, TRUE);
@@ -2064,30 +2306,37 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             HINSTANCE hInst = GetModuleHandleW(NULL);
             const int IW = 600, IH = 284;
             // list view area originally at (10,60,600,284)
-            // If a previous install panel exists (leftover), destroy it first
-            if (g_hInstallPanel && IsWindow(g_hInstallPanel)) {
+            // If a previous install panel exists (leftover) and it's not currently blocking destruction, destroy it first
+            if (g_hInstallPanel && IsWindow(g_hInstallPanel) && !g_install_block_destroy.load()) {
+                AppendLog("Destroying stale install panel before creating new one\n");
                 DestroyWindow(g_hInstallPanel);
                 g_hInstallPanel = NULL;
             }
             HWND hInstallPanel = CreateWindowExW(0, L"STATIC", NULL, WS_CHILD | WS_VISIBLE | SS_LEFT, 10, 60, IW, IH, hwnd, NULL, hInst, NULL);
             // remember panel handle globally so Done handler can target it specifically
             g_hInstallPanel = hInstallPanel;
+            // block accidental destruction of this panel until user clicks Continue
+            g_install_block_destroy.store(true);
             INITCOMMONCONTROLSEX icce{ sizeof(icce), ICC_PROGRESS_CLASS };
             InitCommonControlsEx(&icce);
             // status label just under title area (parent = panel)
-            HWND hInstallStatus = CreateWindowExW(0, L"Static", t("loading_title").c_str(), WS_CHILD | WS_VISIBLE | SS_LEFT, 12, 4, IW-24, 20, hInstallPanel, NULL, hInst, NULL);
-            // progress bar below status label (parent = panel)
-            HWND hProg = CreateWindowExW(0, PROGRESS_CLASSW, NULL, WS_CHILD | WS_VISIBLE, 12, 28, IW-36, 20, hInstallPanel, NULL, hInst, NULL);
+            HWND hInstallStatus = CreateWindowExW(0, L"Static", t("installing_label").c_str(), WS_CHILD | WS_VISIBLE | SS_LEFT, 12, 4, IW-24, 20, hInstallPanel, NULL, hInst, NULL);
+            // groove (sunken area) to host progress bar / animation
+            HWND hGroove = CreateWindowExW(WS_EX_CLIENTEDGE, L"Static", L"", WS_CHILD | WS_VISIBLE | SS_LEFT, 12, 28, IW-36, 24, hInstallPanel, NULL, hInst, NULL);
+            // progress bar inside groove (parent = panel)
+            HWND hProg = CreateWindowExW(0, PROGRESS_CLASSW, NULL, WS_CHILD | WS_VISIBLE, 16, 32, IW-44, 16, hInstallPanel, NULL, hInst, NULL);
             SendMessageW(hProg, PBM_SETRANGE, 0, MAKELPARAM(0, (int)toInstall.size()));
             SendMessageW(hProg, PBM_SETPOS, 0, 0);
             // animation overlay control (drawn over the progress bar)
             // Use transparent extended style so the progress bar remains visible underneath
-            HWND hAnim = CreateWindowExW(WS_EX_TRANSPARENT, L"STATIC", NULL, WS_CHILD | WS_VISIBLE, 12, 28, IW-36, 20, hInstallPanel, NULL, hInst, NULL);
+            HWND hAnim = CreateWindowExW(WS_EX_TRANSPARENT, L"STATIC", NULL, WS_CHILD, 12, 28, IW-36, 24, hInstallPanel, NULL, hInst, NULL);
             if (hAnim) {
                 g_hInstallAnim = hAnim;
                 SetWindowSubclass(hAnim, AnimSubclassProc, 0, 0);
                 // timer at 300ms for smooth, subtle motion
                 SetTimer(hAnim, 0xBEEF, 300, NULL);
+                // start hidden; animation will be shown when install begins
+                ShowWindow(hAnim, SW_HIDE);
                 // match font used by list for the output control so text looks consistent
             }
             // output edit filling remaining area (parent = panel)
@@ -2101,8 +2350,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             int btnX = 10 + (IW - 110);
             int btnY = 60 + (IH - 28);
             HWND hDone = CreateWindowExW(0, L"Button", t("continue").c_str(), WS_CHILD | WS_VISIBLE | WS_DISABLED | BS_PUSHBUTTON, btnX, btnY, 96, 24, hwnd, (HMENU)IDC_BTN_DONE, hInst, NULL);
-            // use title font for the status label for clarity
-            if (hInstallStatus && g_hTitleFont) SendMessageW(hInstallStatus, WM_SETFONT, (WPARAM)g_hTitleFont, TRUE);
+            // use smaller last-updated font for the status label so it doesn't dominate the panel
+            if (hInstallStatus && g_hLastUpdatedFont) SendMessageW(hInstallStatus, WM_SETFONT, (WPARAM)g_hLastUpdatedFont, TRUE);
 
             // build a single cmd line that echos markers and runs all winget commands, writing to the temp file
             std::wstring seq = L"echo WUP_BEGIN > \"" + outFile + L"\" & ";
@@ -2248,12 +2497,14 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                                                 currentPackageId = id;
                                                 // build concise status: Installing X/Y: id
                                                 wchar_t sBuf[512];
-                                                std::wstring wId = Utf8ToWide(id);
-                                                swprintf(sBuf, _countof(sBuf), L"Installing %d of %d: %s", currentIdx, totalCount, wId.c_str());
+                                                // show a concise status without the package id to avoid overflow
+                                                swprintf(sBuf, _countof(sBuf), L"Installing %d of %d", currentIdx, totalCount);
                                                 lastStatus = WideToUtf8(std::wstring(sBuf));
                                                 SetWindowTextW(hStatusCopy, sBuf);
-                                                // set progress bar to marquee and ensure animation is visible when starting install
-                                                SendMessageW(hProg, PBM_SETMARQUEE, TRUE, 300);
+                                                // switch progress bar to determinate per-install-count mode and show animation overlay
+                                                SendMessageW(hProg, PBM_SETMARQUEE, FALSE, 0);
+                                                SendMessageW(hProg, PBM_SETRANGE, 0, MAKELPARAM(0, totalCount));
+                                                SendMessageW(hProg, PBM_SETPOS, 0, 0);
                                                 if (g_hInstallAnim) PostMessageW(hwnd, WM_APP+6, 1, 0);
                                             }
                                             posb = (eol==std::string::npos) ? acc.size() : eol + 1;
@@ -2268,11 +2519,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                                                 // map overall installed count to percent
                                                 int pct = (int)((installedCount * 100) / (std::max(1, totalCount)));
                                                 SendMessageW(hProg, PBM_SETPOS, (WPARAM)pct, 0);
-                                                // restore overall-count range
+                                                // restore overall-count range and continue showing animation overlay
                                                 SendMessageW(hProg, PBM_SETRANGE, 0, MAKELPARAM(0, totalCount));
                                                 usingMbProgress = false;
-                                                // restore marquee and show animation again
-                                                SendMessageW(hProg, PBM_SETMARQUEE, TRUE, 300);
                                                 if (g_hInstallAnim) PostMessageW(hwnd, WM_APP+6, 1, 0);
                                             } else {
                                                 SendMessageW(hProg, PBM_SETPOS, (WPARAM)installedCount, 0);
