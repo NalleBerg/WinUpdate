@@ -9,3 +9,4 @@
 *.user
 *.suo
 wup_run_log.txt
+wup_winget_list_fallback.txt
