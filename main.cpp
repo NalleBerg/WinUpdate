@@ -1,4 +1,4 @@
-#include <windows.h>
+﻿#include <windows.h>
 #include <commctrl.h>
 #include <shellapi.h>
 #include "resource.h"
@@ -125,7 +125,6 @@ static std::unordered_map<std::string,std::string> GetAvailableVersionsCached() 
         std::lock_guard<std::mutex> lk(g_versions_mutex);
         if (!g_last_avail_versions.empty()) return g_last_avail_versions;
     }
-<<<<<<< HEAD:src/main.cpp
     auto m = MapAvailableVersions();
     {
         std::lock_guard<std::mutex> lk(g_versions_mutex);
@@ -133,21 +132,6 @@ static std::unordered_map<std::string,std::string> GetAvailableVersionsCached() 
     }
     // (startup capture intentionally handled by the async scan code path)
     return m;
-=======
-    // Do not block: spawn background thread to populate cache and return empty map immediately.
-    std::thread([](){
-        try {
-            auto m = MapAvailableVersions();
-            {
-                std::lock_guard<std::mutex> lk(g_versions_mutex);
-                g_last_avail_versions = m;
-            }
-            // notify UI that versions are available
-            if (g_hMainWindow) PostMessageW(g_hMainWindow, WM_APP+8, 0, 0);
-        } catch(...) {}
-    }).detach();
-    return std::unordered_map<std::string,std::string>();
->>>>>>> 56ee9a3f4c5f83f987979a87959200542c48b932:main.cpp
 }
 
 static std::unordered_map<std::string,std::string> GetInstalledVersionsCached() {
@@ -155,7 +139,6 @@ static std::unordered_map<std::string,std::string> GetInstalledVersionsCached() 
         std::lock_guard<std::mutex> lk(g_versions_mutex);
         if (!g_last_inst_versions.empty()) return g_last_inst_versions;
     }
-<<<<<<< HEAD:src/main.cpp
     auto m = MapInstalledVersions();
     {
         std::lock_guard<std::mutex> lk(g_versions_mutex);
@@ -163,20 +146,6 @@ static std::unordered_map<std::string,std::string> GetInstalledVersionsCached() 
     }
     // (startup capture intentionally handled by the async scan code path)
     return m;
-=======
-    // Non-blocking: populate installed-version cache asynchronously
-    std::thread([](){
-        try {
-            auto m = MapInstalledVersions();
-            {
-                std::lock_guard<std::mutex> lk(g_versions_mutex);
-                g_last_inst_versions = m;
-            }
-            if (g_hMainWindow) PostMessageW(g_hMainWindow, WM_APP+8, 0, 0);
-        } catch(...) {}
-    }).detach();
-    return std::unordered_map<std::string,std::string>();
->>>>>>> 56ee9a3f4c5f83f987979a87959200542c48b932:main.cpp
 }
 
 // Parse raw winget output in memory by trying multiple parsers (fast -> tolerant -> table)
@@ -1460,35 +1429,8 @@ static void PopulateListView(HWND hList) {
         lvi.pszText = (LPWSTR)wname.c_str();
         lvi.lParam = i;
         SendMessageW(hList, LVM_INSERTITEMW, 0, (LPARAM)&lvi);
-<<<<<<< HEAD:src/main.cpp
         // Current version (subitem 1)
         LVITEMW lviCur{}; lviCur.mask = LVIF_TEXT; lviCur.iItem = i; lviCur.iSubItem = 1;
-=======
-        // restore preserved check for this package id if present and not skipped/not-applicable
-        bool shouldCheck = false;
-        auto itc = preservedChecks.find(id);
-        if (itc != preservedChecks.end()) shouldCheck = itc->second;
-        bool skip = false;
-        {
-            std::lock_guard<std::mutex> lk(g_packages_mutex);
-            skip = (g_skipped_versions.find(id) != g_skipped_versions.end());
-        }
-        bool notapp = false;
-        if (i >= 0 && i < (int)g_packages.size()) {
-            std::string _idchk = g_packages[i].first;
-            std::lock_guard<std::mutex> _lk(g_packages_mutex);
-            notapp = (g_not_applicable_ids.find(_idchk) != g_not_applicable_ids.end());
-        }
-        if (!skip && !notapp && shouldCheck) ListView_SetCheckState(hList, i, TRUE);
-        LVITEMW lvi2{};
-        lvi2.mask = LVIF_TEXT;
-        lvi2.iItem = i;
-        lvi2.iSubItem = 1;
-        lvi2.pszText = (LPWSTR)wid.c_str();
-        SendMessageW(hList, LVM_SETITEMW, 0, (LPARAM)&lvi2);
-        // Current version (subitem 2)
-        LVITEMW lviCur{}; lviCur.mask = LVIF_TEXT; lviCur.iItem = i; lviCur.iSubItem = 2;
->>>>>>> 56ee9a3f4c5f83f987979a87959200542c48b932:main.cpp
         std::wstring wcur = L"";
         // resolve installed/available version robustly with normalization
         auto normalize = [&](const std::string &s)->std::string{
@@ -1570,18 +1512,10 @@ static void AdjustListColumns(HWND hList) {
     RECT rc; GetClientRect(hList, &rc);
     int totalW = rc.right - rc.left;
     if (totalW <= 0) return;
-<<<<<<< HEAD:src/main.cpp
     int wCur = (int)(totalW * 0.15);
     int wAvail = (int)(totalW * 0.15);
     int wSkip = (int)(totalW * 0.10);
     int wName = totalW - (wCur + wAvail + wSkip) - 4;
-=======
-    int wName = (int)(totalW * 0.50);
-    int wId = (int)(totalW * 0.18);
-    int wCur = (int)(totalW * 0.12);
-    int wAvail = (int)(totalW * 0.15);
-    int wSkip = totalW - (wName + wId + wCur + wAvail) - 4;
->>>>>>> 56ee9a3f4c5f83f987979a87959200542c48b932:main.cpp
     ListView_SetColumnWidth(hList, 0, wName);
     ListView_SetColumnWidth(hList, 1, wCur);
     ListView_SetColumnWidth(hList, 2, wAvail);
@@ -1892,22 +1826,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         col.cx = 420;
         col.pszText = (LPWSTR)g_colHeaders[0].c_str();
         ListView_InsertColumn(hList, 0, &col);
-<<<<<<< HEAD:src/main.cpp
         LVCOLUMNW colCur{}; colCur.mask = LVCF_TEXT | LVCF_WIDTH; colCur.cx = 100; colCur.pszText = (LPWSTR)g_colHeaders[1].c_str(); ListView_InsertColumn(hList, 1, &colCur);
         LVCOLUMNW colAvail{}; colAvail.mask = LVCF_TEXT | LVCF_WIDTH; colAvail.cx = 100; colAvail.pszText = (LPWSTR)g_colHeaders[2].c_str(); ListView_InsertColumn(hList, 2, &colAvail);
         LVCOLUMNW colSkip{}; colSkip.mask = LVCF_TEXT | LVCF_WIDTH; colSkip.cx = 80; colSkip.pszText = (LPWSTR)g_colHeaders[3].c_str(); ListView_InsertColumn(hList, 3, &colSkip);
-=======
-        LVCOLUMNW col2{}; col2.mask = LVCF_TEXT | LVCF_WIDTH; col2.cx = 140; col2.pszText = (LPWSTR)g_colHeaders[1].c_str(); ListView_InsertColumn(hList, 1, &col2);
-        LVCOLUMNW colCur{}; colCur.mask = LVCF_TEXT | LVCF_WIDTH; colCur.cx = 100; colCur.pszText = (LPWSTR)g_colHeaders[2].c_str(); ListView_InsertColumn(hList, 2, &colCur);
-        LVCOLUMNW colAvail{}; colAvail.mask = LVCF_TEXT | LVCF_WIDTH; colAvail.cx = 100; colAvail.pszText = (LPWSTR)g_colHeaders[3].c_str(); ListView_InsertColumn(hList, 3, &colAvail);
-        LVCOLUMNW colSkip{}; colSkip.mask = LVCF_TEXT | LVCF_WIDTH; colSkip.cx = 80; colSkip.pszText = (LPWSTR)g_colHeaders[4].c_str(); ListView_InsertColumn(hList, 4, &colSkip);
-        // Adjust initial column widths to fit the control
-        AdjustListColumns(hList);
-        // ensure header texts show full words immediately
-        if (hList) UpdateListViewHeaders(hList);
-        // Do not populate list synchronously here — PopulateListView may probe winget and block startup.
-        // The async refresh will populate the list and update headers when complete.
->>>>>>> 56ee9a3f4c5f83f987979a87959200542c48b932:main.cpp
 
         hCheckAll = CreateWindowExW(0, L"Button", t("select_all").c_str(), WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, 10, 350, 120, 24, hwnd, (HMENU)IDC_CHECK_SELECTALL, NULL, NULL);
         HWND hCheckSkip = CreateWindowExW(0, L"Button", t("skip_col").c_str(), WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, 140, 350, 140, 24, hwnd, (HMENU)IDC_CHECK_SKIPSELECTED, NULL, NULL);
@@ -2017,7 +1938,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 
             // Start background population of available/installed versions without blocking the initial scan.
             try {
-<<<<<<< HEAD:src/main.cpp
                 auto avail = MapAvailableVersions();
                 auto inst = MapInstalledVersions();
                 {
@@ -2029,20 +1949,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                 try {
                     CaptureStartupVersions(out, results, avail, inst, false);
                 } catch(...) {}
-=======
-                std::thread([](){
-                    try {
-                        auto avail = MapAvailableVersions();
-                        auto inst = MapInstalledVersions();
-                        {
-                            std::lock_guard<std::mutex> lk(g_versions_mutex);
-                            g_last_avail_versions = avail;
-                            g_last_inst_versions = inst;
-                        }
-                        if (g_hMainWindow) PostMessageW(g_hMainWindow, WM_APP+8, 0, 0);
-                    } catch(...) {}
-                }).detach();
->>>>>>> 56ee9a3f4c5f83f987979a87959200542c48b932:main.cpp
             } catch(...) {}
 
             if (out.empty() || timedOut) {
