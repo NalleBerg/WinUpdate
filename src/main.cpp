@@ -83,6 +83,10 @@ static std::vector<std::wstring> g_colHeaders;
 static std::unordered_map<std::string,std::string> g_last_avail_versions;
 static std::unordered_map<std::string,std::string> g_last_inst_versions;
 static std::mutex g_versions_mutex;
+// Startup snapshot maps (preserve the first successful scan results)
+static std::unordered_map<std::string,std::string> g_startup_avail_versions;
+static std::unordered_map<std::string,std::string> g_startup_inst_versions;
+static std::mutex g_startup_versions_mutex;
 static std::atomic<bool> g_refresh_in_progress{false};
 static std::wstring g_last_install_outfile;
 static HWND g_hTitle = NULL;
@@ -124,6 +128,7 @@ static std::unordered_map<std::string,std::string> GetAvailableVersionsCached() 
         std::lock_guard<std::mutex> lk(g_versions_mutex);
         g_last_avail_versions = m;
     }
+    // (startup capture intentionally handled by the async scan code path)
     return m;
 }
 
@@ -137,6 +142,7 @@ static std::unordered_map<std::string,std::string> GetInstalledVersionsCached() 
         std::lock_guard<std::mutex> lk(g_versions_mutex);
         g_last_inst_versions = m;
     }
+    // (startup capture intentionally handled by the async scan code path)
     return m;
 }
 
@@ -1317,28 +1323,22 @@ static void PopulateListView(HWND hList) {
         lvi.pszText = (LPWSTR)wname.c_str();
         lvi.lParam = i;
         SendMessageW(hList, LVM_INSERTITEMW, 0, (LPARAM)&lvi);
-        LVITEMW lvi2{};
-        lvi2.mask = LVIF_TEXT;
-        lvi2.iItem = i;
-        lvi2.iSubItem = 1;
-        lvi2.pszText = (LPWSTR)wid.c_str();
-        SendMessageW(hList, LVM_SETITEMW, 0, (LPARAM)&lvi2);
-        // Current version (subitem 2)
-        LVITEMW lviCur{}; lviCur.mask = LVIF_TEXT; lviCur.iItem = i; lviCur.iSubItem = 2;
+        // Current version (subitem 1)
+        LVITEMW lviCur{}; lviCur.mask = LVIF_TEXT; lviCur.iItem = i; lviCur.iSubItem = 1;
         std::wstring wcur = L"";
         auto fit = inst.find(id);
         if (fit != inst.end()) wcur = Utf8ToWide(fit->second);
         lviCur.pszText = (LPWSTR)wcur.c_str();
         SendMessageW(hList, LVM_SETITEMW, 0, (LPARAM)&lviCur);
-        // Available version (subitem 3)
-        LVITEMW lviAvail{}; lviAvail.mask = LVIF_TEXT; lviAvail.iItem = i; lviAvail.iSubItem = 3;
+        // Available version (subitem 2)
+        LVITEMW lviAvail{}; lviAvail.mask = LVIF_TEXT; lviAvail.iItem = i; lviAvail.iSubItem = 2;
         std::wstring wavail = L"";
         auto ait = avail.find(id);
         if (ait != avail.end()) wavail = Utf8ToWide(ait->second);
         lviAvail.pszText = (LPWSTR)wavail.c_str();
         SendMessageW(hList, LVM_SETITEMW, 0, (LPARAM)&lviAvail);
-        // Skip column (subitem 4): show localized Skip label if present
-        LVITEMW lviSkip{}; lviSkip.mask = LVIF_TEXT; lviSkip.iItem = i; lviSkip.iSubItem = 4;
+        // Skip column (subitem 3): show localized Skip label if present
+        LVITEMW lviSkip{}; lviSkip.mask = LVIF_TEXT; lviSkip.iItem = i; lviSkip.iSubItem = 3;
         std::wstring skipText = L"";
         {
             std::lock_guard<std::mutex> lk(g_packages_mutex);
@@ -1354,16 +1354,14 @@ static void AdjustListColumns(HWND hList) {
     RECT rc; GetClientRect(hList, &rc);
     int totalW = rc.right - rc.left;
     if (totalW <= 0) return;
-    int wName = (int)(totalW * 0.40);
-    int wId = (int)(totalW * 0.20);
-    int wCur = (int)(totalW * 0.13);
-    int wAvail = (int)(totalW * 0.17);
-    int wSkip = totalW - (wName + wId + wCur + wAvail) - 4;
+    int wCur = (int)(totalW * 0.15);
+    int wAvail = (int)(totalW * 0.15);
+    int wSkip = (int)(totalW * 0.10);
+    int wName = totalW - (wCur + wAvail + wSkip) - 4;
     ListView_SetColumnWidth(hList, 0, wName);
-    ListView_SetColumnWidth(hList, 1, wId);
-    ListView_SetColumnWidth(hList, 2, wCur);
-    ListView_SetColumnWidth(hList, 3, wAvail);
-    ListView_SetColumnWidth(hList, 4, wSkip);
+    ListView_SetColumnWidth(hList, 1, wCur);
+    ListView_SetColumnWidth(hList, 2, wAvail);
+    ListView_SetColumnWidth(hList, 3, wSkip);
     // Adjust font if needed (shrink if columns exceed width)
     // For simplicity, leave font as-is; could implement dynamic font sizing here.
 }
@@ -1507,6 +1505,117 @@ static void CheckAllItems(HWND hList, bool check) {
     }
 }
 
+// Parse raw winget upgrade output, update startup/live version maps and write logfile.
+static void CaptureStartupVersions(const std::string &rawOut,
+                                   const std::vector<std::pair<std::string,std::string>> &results,
+                                   const std::unordered_map<std::string,std::string> &avail,
+                                   const std::unordered_map<std::string,std::string> &inst,
+                                   bool forceOverwrite = false) {
+    try {
+        std::vector<std::tuple<std::string,std::string,std::string,std::string>> parsedRows;
+        std::string localRaw = rawOut;
+        // prefer existing raw file if present
+        try {
+            std::string fileTxt = ReadFileUtf8(std::wstring(L"logs\\wup_winget_raw.txt"));
+            if (!fileTxt.empty()) localRaw = fileTxt;
+        } catch(...) {}
+        if (localRaw.empty()) {
+            try {
+                auto fresh = RunProcessCaptureExitCode(L"winget upgrade", 15000);
+                if (!fresh.second.empty()) localRaw = fresh.second;
+            } catch(...) {}
+        }
+        // Right-to-left token parsing (robust against variable name widths)
+        if (!localRaw.empty()) {
+            std::istringstream ois(localRaw);
+            std::string line;
+            std::vector<std::string> allLines;
+            while (std::getline(ois, line)) allLines.push_back(line);
+            size_t startIdx = (allLines.size() > 2) ? 2 : 0;
+            for (size_t i = startIdx; i < allLines.size(); ++i) {
+                std::string row = allLines[i];
+                auto trimRow = [](std::string &s){ while(!s.empty() && (s.back()=='\r' || s.back()=='\n')) s.pop_back(); while(!s.empty() && isspace((unsigned char)s.front())) s.erase(s.begin()); while(!s.empty() && isspace((unsigned char)s.back())) s.pop_back(); };
+                trimRow(row);
+                if (row.empty()) continue;
+                if (row.find("----") != std::string::npos) continue;
+                if (row.find("upgrades available") != std::string::npos) break;
+                std::istringstream ls(row);
+                std::vector<std::string> toks;
+                std::string tok;
+                while (ls >> tok) toks.push_back(tok);
+                if (toks.size() < 4) continue;
+                std::string source = toks.back(); toks.pop_back();
+                std::string available = toks.back(); toks.pop_back();
+                std::string installed = toks.back(); toks.pop_back();
+                std::string id = toks.back(); toks.pop_back();
+                std::string name;
+                for (size_t k = 0; k < toks.size(); ++k) { if (k) name += " "; name += toks[k]; }
+                if (name.empty()) name = id;
+                parsedRows.emplace_back(name, id, installed, available);
+            }
+        }
+
+        // If parsed rows found, update startup maps and live caches
+        if (!parsedRows.empty()) {
+            try {
+                std::lock_guard<std::mutex> lk(g_startup_versions_mutex);
+                if (forceOverwrite || g_startup_avail_versions.empty() && g_startup_inst_versions.empty()) {
+                    for (auto &t : parsedRows) {
+                        const std::string &id = std::get<1>(t);
+                        const std::string &installed = std::get<2>(t);
+                        const std::string &available = std::get<3>(t);
+                        g_startup_inst_versions[id] = installed;
+                        g_startup_avail_versions[id] = available;
+                    }
+                }
+            } catch(...) {}
+            try {
+                std::lock_guard<std::mutex> vlk(g_versions_mutex);
+                for (auto &t : parsedRows) {
+                    const std::string &id = std::get<1>(t);
+                    const std::string &installed = std::get<2>(t);
+                    const std::string &available = std::get<3>(t);
+                    if (!installed.empty()) g_last_inst_versions[id] = installed;
+                    if (!available.empty()) g_last_avail_versions[id] = available;
+                }
+            } catch(...) {}
+        } else {
+            // fallback: use avail/inst maps and discovered results
+            try {
+                std::lock_guard<std::mutex> lk(g_startup_versions_mutex);
+                std::unordered_set<std::string> candidateIds;
+                for (auto &p : results) candidateIds.insert(p.first);
+                if (candidateIds.empty()) {
+                    for (auto &a : avail) {
+                        const std::string &id = a.first;
+                        auto itInst = inst.find(id);
+                        if (itInst == inst.end()) continue;
+                        try {
+                            if (CompareVersions(itInst->second, a.second) < 0) candidateIds.insert(id);
+                        } catch(...) {
+                            if (itInst->second != a.second) candidateIds.insert(id);
+                        }
+                    }
+                }
+                for (auto &id : candidateIds) {
+                    auto ait = avail.find(id);
+                    if (ait != avail.end()) g_startup_avail_versions[id] = ait->second;
+                    auto iit = inst.find(id);
+                    if (iit != inst.end()) g_startup_inst_versions[id] = iit->second;
+                    // also update live caches
+                    try {
+                        std::lock_guard<std::mutex> vlk(g_versions_mutex);
+                        if (iit != inst.end() && !iit->second.empty()) g_last_inst_versions[id] = iit->second;
+                        if (ait != avail.end() && !ait->second.empty()) g_last_avail_versions[id] = ait->second;
+                    } catch(...) {}
+                }
+            } catch(...) {}
+        }
+
+        // No logfile output requested: keep parsed startup data in memory only.
+    } catch(...) {}
+}
+
 LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     static HWND hRadioShow, hRadioAll, hBtnRefresh, hList, hCheckAll, hBtnUpgrade;
     switch (uMsg) {
@@ -1551,19 +1660,17 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         // prepare persistent column header strings so pointers remain valid
         g_colHeaders.clear();
         g_colHeaders.push_back(t("package_col"));
-        g_colHeaders.push_back(t("id_col"));
         g_colHeaders.push_back(t("current_col"));
         g_colHeaders.push_back(t("available_col"));
         g_colHeaders.push_back(t("skip_col"));
         LVCOLUMNW col{};
         col.mask = LVCF_TEXT | LVCF_WIDTH;
-        col.cx = 360;
+        col.cx = 420;
         col.pszText = (LPWSTR)g_colHeaders[0].c_str();
         ListView_InsertColumn(hList, 0, &col);
-        LVCOLUMNW col2{}; col2.mask = LVCF_TEXT | LVCF_WIDTH; col2.cx = 140; col2.pszText = (LPWSTR)g_colHeaders[1].c_str(); ListView_InsertColumn(hList, 1, &col2);
-        LVCOLUMNW colCur{}; colCur.mask = LVCF_TEXT | LVCF_WIDTH; colCur.cx = 100; colCur.pszText = (LPWSTR)g_colHeaders[2].c_str(); ListView_InsertColumn(hList, 2, &colCur);
-        LVCOLUMNW colAvail{}; colAvail.mask = LVCF_TEXT | LVCF_WIDTH; colAvail.cx = 100; colAvail.pszText = (LPWSTR)g_colHeaders[3].c_str(); ListView_InsertColumn(hList, 3, &colAvail);
-        LVCOLUMNW colSkip{}; colSkip.mask = LVCF_TEXT | LVCF_WIDTH; colSkip.cx = 80; colSkip.pszText = (LPWSTR)g_colHeaders[4].c_str(); ListView_InsertColumn(hList, 4, &colSkip);
+        LVCOLUMNW colCur{}; colCur.mask = LVCF_TEXT | LVCF_WIDTH; colCur.cx = 100; colCur.pszText = (LPWSTR)g_colHeaders[1].c_str(); ListView_InsertColumn(hList, 1, &colCur);
+        LVCOLUMNW colAvail{}; colAvail.mask = LVCF_TEXT | LVCF_WIDTH; colAvail.cx = 100; colAvail.pszText = (LPWSTR)g_colHeaders[2].c_str(); ListView_InsertColumn(hList, 2, &colAvail);
+        LVCOLUMNW colSkip{}; colSkip.mask = LVCF_TEXT | LVCF_WIDTH; colSkip.cx = 80; colSkip.pszText = (LPWSTR)g_colHeaders[3].c_str(); ListView_InsertColumn(hList, 3, &colSkip);
 
         hCheckAll = CreateWindowExW(0, L"Button", t("select_all").c_str(), WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, 10, 350, 120, 24, hwnd, (HMENU)IDC_CHECK_SELECTALL, NULL, NULL);
         HWND hCheckSkip = CreateWindowExW(0, L"Button", t("skip_col").c_str(), WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, 140, 350, 140, 24, hwnd, (HMENU)IDC_CHECK_SKIPSELECTED, NULL, NULL);
@@ -1675,9 +1782,15 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             try {
                 auto avail = MapAvailableVersions();
                 auto inst = MapInstalledVersions();
-                std::lock_guard<std::mutex> lk(g_versions_mutex);
-                g_last_avail_versions = avail;
-                g_last_inst_versions = inst;
+                {
+                    std::lock_guard<std::mutex> lk(g_versions_mutex);
+                    g_last_avail_versions = avail;
+                    g_last_inst_versions = inst;
+                }
+                // Also capture a startup snapshot (write to logs for verification)
+                try {
+                    CaptureStartupVersions(out, results, avail, inst, false);
+                } catch(...) {}
             } catch(...) {}
 
             if (out.empty() || timedOut) {

@@ -1,6 +1,6 @@
 CMakeFiles/WinUpdate.dir/src/About.cpp.obj: \
- C:\Users\nalle\Documents\C++\Workspace\WinUpdate\src\About.cpp \
- C:\Users\nalle\Documents\C++\Workspace\WinUpdate\src\About.h \
+ C:\Users\NalleBerg\Documents\C++\Workspace\WinUpdate\src\About.cpp \
+ C:\Users\NalleBerg\Documents\C++\Workspace\WinUpdate\src\About.h \
  C:/mingw64/x86_64-w64-mingw32/include/windows.h \
  C:/mingw64/x86_64-w64-mingw32/include/_mingw.h \
  C:/mingw64/x86_64-w64-mingw32/include/_mingw_mac.h \

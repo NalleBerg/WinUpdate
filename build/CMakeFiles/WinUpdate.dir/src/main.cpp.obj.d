@@ -1,5 +1,5 @@
 CMakeFiles/WinUpdate.dir/src/main.cpp.obj: \
- C:\Users\nalle\Documents\C++\Workspace\WinUpdate\src\main.cpp \
+ C:\Users\NalleBerg\Documents\C++\Workspace\WinUpdate\src\main.cpp \
  C:/mingw64/x86_64-w64-mingw32/include/windows.h \
  C:/mingw64/x86_64-w64-mingw32/include/_mingw.h \
  C:/mingw64/x86_64-w64-mingw32/include/_mingw_mac.h \
@@ -234,7 +234,7 @@ CMakeFiles/WinUpdate.dir/src/main.cpp.obj: \
  C:/mingw64/x86_64-w64-mingw32/include/commctrl.h \
  C:/mingw64/x86_64-w64-mingw32/include/prsht.h \
  C:/mingw64/x86_64-w64-mingw32/include/shellapi.h \
- C:/Users/nalle/Documents/C++/Workspace/WinUpdate/resource.h \
+ C:/Users/NalleBerg/Documents/C++/Workspace/WinUpdate/resource.h \
  C:/mingw64/lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/string \
  C:/mingw64/lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/bits/requires_hosted.h \
  C:/mingw64/lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/bits/stringfwd.h \
@@ -451,4 +451,4 @@ CMakeFiles/WinUpdate.dir/src/main.cpp.obj: \
  C:/mingw64/lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/bits/atomic_futex.h \
  C:/mingw64/lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/unordered_set \
  C:/mingw64/lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/bits/unordered_set.h \
- C:\Users\nalle\Documents\C++\Workspace\WinUpdate\src\About.h
+ C:\Users\NalleBerg\Documents\C++\Workspace\WinUpdate\src\About.h

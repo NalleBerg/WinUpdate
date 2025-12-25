@@ -1,0 +1,8 @@
+HEADER='   -                                                                                                                            -                                                                                                                         Name                            Id                        Version   Available Source'
+NAME_POS=256 VER_POS=314 AVAIL_POS=324
+LINE='Mozilla Thunderbird (x64 nb-NO) Mozilla.Thunderbird.nb-NO 146.0     146.0.1   winget'
+  name='' ver='' avail=''
+---
+LINE='Vulkan SDK 1.4.328.1            KhronosGroup.VulkanSDK    1.4.328.1 1.4.335.0 winget'
+  name='' ver='' avail=''
+---

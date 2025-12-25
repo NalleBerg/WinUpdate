@@ -1,0 +1,2 @@
+﻿backup created: 20251221_154624
+files: src\main.cpp, src\scan_runner.cpp, src\parsing.cpp, CMakeLists.txt, src\parsing.h, src\scan_runner.h
