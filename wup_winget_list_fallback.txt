@@ -30,3 +30,4 @@ Gadwin PrintScreen (64-Bit)       Gadwin.PrintScreen                6.5.0.0     
 NVIDIA Grafikkdriver 511.65       ARP\Machine\X64\{B2FE1952-0186-4… 511.65                                       
 Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.8.JRE     8.0.472.8                                    winget
 Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.8.JRE     8.0.462.8                                    winget
+Eclipse Temurin JDK with Hotspot… EclipseAdoptium.Temurin.11.JDK    11.0.29.7                                    winget
