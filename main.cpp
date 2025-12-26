@@ -398,7 +398,7 @@ static void InitDefaultTranslations() {
     g_i18n_default["package_col"] = "Package";
     g_i18n_default["id_col"] = "Id";
     g_i18n_default["loading_title"] = "Loading, please";
-    g_i18n_default["loading_desc"] = "Querying winget";
+    g_i18n_default["loading_desc"] = "Querying winget — application will start when the scan completes";
     g_i18n_default["installing_label"] = "Installing update";
     g_i18n_default["your_system_updated"] = "Your system is updated!";
     g_i18n_default["your_system_updated"] = "Your system is up to date";
@@ -1880,6 +1880,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         // clean up any stale install temp files from previous runs
         CleanupStaleInstallFiles();
         UpdateLastUpdatedLabel(hwnd);
+        // Start with the list hidden and controls disabled while we scan winget.
+        if (hList) ShowWindow(hList, SW_HIDE);
+        if (hBtnRefresh) EnableWindow(hBtnRefresh, FALSE);
+        if (hBtnUpgrade) EnableWindow(hBtnUpgrade, FALSE);
+        EnableWindow(GetDlgItem(hwnd, IDC_CHECK_SELECTALL), FALSE);
+        EnableWindow(GetDlgItem(hwnd, IDC_COMBO_LANG), FALSE);
+        // Show descriptive loading overlay and start async refresh
         ShowLoading(hwnd);
         if (!g_refresh_in_progress.load()) PostMessageW(hwnd, WM_REFRESH_ASYNC, 0, 0);
         break;
