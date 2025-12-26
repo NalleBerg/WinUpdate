@@ -2021,6 +2021,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                 if (hList) PopulateListView(hList);
                 if (hList) AdjustListColumns(hList);
                 if (hList) UpdateListViewHeaders(hList);
+                // Make sure the list is visible after we've populated it
+                if (hList) ShowWindow(hList, SW_SHOW);
                 // re-enable buttons
                 if (hBtnRefresh) EnableWindow(hBtnRefresh, TRUE);
                 if (hBtnUpgrade) EnableWindow(hBtnUpgrade, TRUE);
