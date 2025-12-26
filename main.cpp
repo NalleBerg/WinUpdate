@@ -213,8 +213,13 @@ static void SaveSkipConfig(const std::string &locale) {
 static std::unordered_map<std::string,std::string> MapInstalledVersions() {
     std::unordered_map<std::string,std::string> out;
     try {
-        auto r = RunProcessCaptureExitCode(L"winget list --accept-source-agreements --accept-package-agreements --output json", 4500);
-        std::string txt = r.second;
+        std::vector<int> attempts = {2400, 2400};
+        std::string txt;
+        for (int t : attempts) {
+            auto r = RunProcessCaptureExitCode(L"winget list --accept-source-agreements --accept-package-agreements --output json", t);
+            txt = r.second;
+            if (!txt.empty()) break;
+        }
         if (!txt.empty()) {
 #if HAVE_NLOHMANN_JSON
             try {
@@ -233,7 +238,7 @@ static std::unordered_map<std::string,std::string> MapInstalledVersions() {
                     }
                 };
                 visit(j);
-                return out;
+                if (!out.empty()) return out;
             } catch(...) { }
 #endif
         }
@@ -327,8 +332,13 @@ static std::unordered_map<std::string,std::string> MapInstalledVersions() {
 static std::unordered_map<std::string,std::string> MapAvailableVersions() {
     std::unordered_map<std::string,std::string> out;
     try {
-        auto r = RunProcessCaptureExitCode(L"winget upgrade --accept-source-agreements --accept-package-agreements --output json", 4500);
-        std::string txt = r.second;
+        std::vector<int> attempts = {2400, 2400};
+        std::string txt;
+        for (int t : attempts) {
+            auto r = RunProcessCaptureExitCode(L"winget upgrade --accept-source-agreements --accept-package-agreements --output json", t);
+            txt = r.second;
+            if (!txt.empty()) break;
+        }
         if (!txt.empty()) {
 #if HAVE_NLOHMANN_JSON
             try {
@@ -348,7 +358,7 @@ static std::unordered_map<std::string,std::string> MapAvailableVersions() {
                     }
                 };
                 visit(j);
-                return out;
+                if (!out.empty()) return out;
             } catch(...) { }
 #endif
         }
