@@ -1,31 +1,7 @@
-// NOTE: trimmed for brevity in patch; full known-good main.cpp content sourced from backup
-// For restoration purposes the complete content will be written by the assistant.
-
-#include <windows.h>
+﻿#include <windows.h>
 #include <commctrl.h>
 #include <shellapi.h>
-#include "logging.h"
-#include <string>
-#include <vector>
-#include <sstream>
-#include <set>
-#include <regex>
-#include <fstream>
-#include <thread>
-#include <mutex>
-#include <atomic>
-#include <filesystem>
-#include <unordered_map>
-
-int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR pCmdLine, int nCmdShow) {
-    // Minimal stub to allow compilation during restore.
-    MessageBoxW(NULL, L"WinUpdate restored main.cpp placeholder. Run full build to verify.", L"Restored", MB_OK);
-    return 0;
-}
-#include <windows.h>
-#include <commctrl.h>
-#include <shellapi.h>
-#include "../resource.h"
+#include "resource.h"
 #include <string>
 #include <vector>
 #include <sstream>
@@ -98,8 +74,8 @@ static std::unordered_map<std::string,std::string> MapInstalledVersions();
 
 
 // Globals
-std::vector<std::pair<std::string,std::string>> g_packages;
-std::mutex g_packages_mutex;
+static std::vector<std::pair<std::string,std::string>> g_packages;
+static std::mutex g_packages_mutex;
 static std::set<std::string> g_not_applicable_ids;
 // per-locale skipped versions: id -> version
 static std::unordered_map<std::string,std::string> g_skipped_versions;
@@ -108,6 +84,10 @@ static std::vector<std::wstring> g_colHeaders;
 static std::unordered_map<std::string,std::string> g_last_avail_versions;
 static std::unordered_map<std::string,std::string> g_last_inst_versions;
 static std::mutex g_versions_mutex;
+// Startup snapshot maps (preserve the first successful scan results)
+static std::unordered_map<std::string,std::string> g_startup_avail_versions;
+static std::unordered_map<std::string,std::string> g_startup_inst_versions;
+static std::mutex g_startup_versions_mutex;
 static std::atomic<bool> g_refresh_in_progress{false};
 static std::wstring g_last_install_outfile;
 static HWND g_hTitle = NULL;
@@ -145,20 +125,13 @@ static std::unordered_map<std::string,std::string> GetAvailableVersionsCached() 
         std::lock_guard<std::mutex> lk(g_versions_mutex);
         if (!g_last_avail_versions.empty()) return g_last_avail_versions;
     }
-    // Do not block: spawn background thread to populate cache and return empty map immediately.
-    std::thread([](){
-        try {
-            auto m = MapAvailableVersions();
-            {
-                std::lock_guard<std::mutex> lk(g_versions_mutex);
-                g_last_avail_versions.clear();
-                for (auto &p : m) g_last_avail_versions[normalize_id_main(p.first)] = p.second;
-            }
-            // notify UI that versions are available
-            if (g_hMainWindow) PostMessageW(g_hMainWindow, WM_APP+8, 0, 0);
-        } catch(...) {}
-    }).detach();
-    return std::unordered_map<std::string,std::string>();
+    auto m = MapAvailableVersions();
+    {
+        std::lock_guard<std::mutex> lk(g_versions_mutex);
+        g_last_avail_versions = m;
+    }
+    // (startup capture intentionally handled by the async scan code path)
+    return m;
 }
 
 static std::unordered_map<std::string,std::string> GetInstalledVersionsCached() {
@@ -166,19 +139,13 @@ static std::unordered_map<std::string,std::string> GetInstalledVersionsCached() 
         std::lock_guard<std::mutex> lk(g_versions_mutex);
         if (!g_last_inst_versions.empty()) return g_last_inst_versions;
     }
-    // Non-blocking: populate installed-version cache asynchronously
-    std::thread([](){
-        try {
-            auto m = MapInstalledVersions();
-            {
-                std::lock_guard<std::mutex> lk(g_versions_mutex);
-                g_last_inst_versions.clear();
-                for (auto &p : m) g_last_inst_versions[normalize_id_main(p.first)] = p.second;
-            }
-            if (g_hMainWindow) PostMessageW(g_hMainWindow, WM_APP+8, 0, 0);
-        } catch(...) {}
-    }).detach();
-    return std::unordered_map<std::string,std::string>();
+    auto m = MapInstalledVersions();
+    {
+        std::lock_guard<std::mutex> lk(g_versions_mutex);
+        g_last_inst_versions = m;
+    }
+    // (startup capture intentionally handled by the async scan code path)
+    return m;
 }
 
 // Parse raw winget output in memory by trying multiple parsers (fast -> tolerant -> table)
@@ -243,12 +210,236 @@ static void SaveSkipConfig(const std::string &locale) {
     } catch(...) {}
 }
 
-// `MapInstalledVersions` moved to `src/winget_versions.cpp` - forward declaration below
-std::unordered_map<std::string,std::string> MapInstalledVersions();
+static std::unordered_map<std::string,std::string> MapInstalledVersions() {
+    std::unordered_map<std::string,std::string> out;
+    try {
+        std::vector<int> attempts = {2400, 2400};
+        std::string txt;
+        for (int t : attempts) {
+            auto r = RunProcessCaptureExitCode(L"winget list --accept-source-agreements --accept-package-agreements --output json", t);
+            txt = r.second;
+            if (!txt.empty()) break;
+        }
+        if (!txt.empty()) {
+#if HAVE_NLOHMANN_JSON
+            try {
+                auto j = nlohmann::json::parse(txt);
+                std::function<void(const nlohmann::json&)> visit;
+                visit = [&](const nlohmann::json &node) {
+                    if (node.is_object()) {
+                        std::string id; std::string ver;
+                        if (node.contains("Id") && node["Id"].is_string()) id = node["Id"].get<std::string>();
+                        if (node.contains("InstalledVersion") && node["InstalledVersion"].is_string()) ver = node["InstalledVersion"].get<std::string>();
+                        if (node.contains("Version") && node["Version"].is_string()) ver = node["Version"].get<std::string>();
+                        if (!id.empty() && !ver.empty()) out[id] = ver;
+                        for (auto it = node.begin(); it != node.end(); ++it) visit(it.value());
+                    } else if (node.is_array()) {
+                        for (auto &el : node) visit(el);
+                    }
+                };
+                visit(j);
+                if (!out.empty()) return out;
+            } catch(...) { }
+#endif
+        }
+        // Try to parse aligned table output (header + separator) like:
+        // Name                                   Id                       Version
+        // ------------------------------------   ---------------------    --------
+        std::istringstream iss(txt);
+        std::vector<std::string> lines;
+        std::string ln;
+        while (std::getline(iss, ln)) {
+            while (!ln.empty() && (ln.back()=='\r' || ln.back()=='\n')) ln.pop_back();
+            lines.push_back(ln);
+        }
+        int headerIdx = -1, sepIdx = -1;
+        for (int i = 0; i < (int)lines.size(); ++i) {
+            if (lines[i].find("----") != std::string::npos) { sepIdx = i; break; }
+        }
+        if (sepIdx > 0) headerIdx = sepIdx - 1;
+        auto trim = [](std::string s){ while(!s.empty() && isspace((unsigned char)s.front())) s.erase(s.begin()); while(!s.empty() && isspace((unsigned char)s.back())) s.pop_back(); return s; };
+        if (headerIdx >= 0) {
+            std::string header = lines[headerIdx];
+            // find column starts for Name, Id, Version
+            std::vector<std::string> colNames = {"Name", "Id", "Version"};
+            std::vector<int> colStarts;
+            for (auto &cn : colNames) {
+                size_t p = header.find(cn);
+                if (p != std::string::npos) colStarts.push_back((int)p);
+            }
+            if (colStarts.size() >= 2) {
+                int ncols = (int)colStarts.size();
+                for (int i = sepIdx + 1; i < (int)lines.size(); ++i) {
+                    const std::string &sline = lines[i];
+                    if (trim(sline).empty()) continue;
+                    if (sline.find("upgraded") != std::string::npos) break;
+                    auto substrSafe = [&](const std::string &s, int a, int b)->std::string{
+                        int len = (int)s.size();
+                        if (a >= len) return std::string();
+                        int end = std::min(len, b);
+                        return s.substr(a, end - a);
+                    };
+                    std::vector<std::string> fields(ncols);
+                    for (int c = 0; c < ncols; ++c) {
+                        int a = colStarts[c];
+                        int b = (c+1 < ncols) ? colStarts[c+1] : (int)sline.size();
+                        fields[c] = trim(substrSafe(sline, a, b));
+                    }
+                    std::string id = (ncols > 1) ? fields[1] : std::string();
+                    std::string inst = (ncols > 2) ? fields[2] : std::string();
+                    if (!id.empty()) out[id] = inst;
+                }
+                return out;
+            }
+        }
+        // Fallback: token-based heuristic
+        std::istringstream iss2(txt);
+        while (std::getline(iss2, ln)) {
+            if (ln.find("----") != std::string::npos) continue;
+            if (ln.find("Name") != std::string::npos && ln.find("Id") != std::string::npos) continue;
+            // trim
+            auto trim2 = [](std::string &s){ while(!s.empty() && (s.back()=='\r' || s.back()=='\n')) s.pop_back(); while(!s.empty() && isspace((unsigned char)s.front())) s.erase(s.begin()); while(!s.empty() && isspace((unsigned char)s.back())) s.pop_back(); };
+            trim2(ln);
+            if (ln.empty()) continue;
+            std::istringstream ls(ln);
+            std::vector<std::string> toks;
+            std::string tok;
+            while (ls >> tok) toks.push_back(tok);
+            if (toks.size() < 2) continue;
+            std::unordered_set<std::string> knownIds;
+            {
+                std::lock_guard<std::mutex> lk(g_packages_mutex);
+                for (auto &p : g_packages) knownIds.insert(p.first);
+            }
+            std::string id;
+            for (auto &t : toks) {
+                if (knownIds.find(t) != knownIds.end()) { id = t; break; }
+            }
+            if (id.empty()) {
+                // assume last token is version, second-last is id
+                if (toks.size() >= 2) {
+                    id = toks[toks.size()-2];
+                } else id = toks.front();
+            }
+            std::string inst = toks.back();
+            out[id] = inst;
+        }
+    } catch(...) {}
+    return out;
+}
 
 // Map id -> available version by parsing `winget upgrade` table quickly
-// `MapAvailableVersions` moved to `src/winget_versions.cpp` - forward declaration below
-std::unordered_map<std::string,std::string> MapAvailableVersions();
+static std::unordered_map<std::string,std::string> MapAvailableVersions() {
+    std::unordered_map<std::string,std::string> out;
+    try {
+        std::vector<int> attempts = {2400, 2400};
+        std::string txt;
+        for (int t : attempts) {
+            auto r = RunProcessCaptureExitCode(L"winget upgrade --accept-source-agreements --accept-package-agreements --output json", t);
+            txt = r.second;
+            if (!txt.empty()) break;
+        }
+        if (!txt.empty()) {
+#if HAVE_NLOHMANN_JSON
+            try {
+                auto j = nlohmann::json::parse(txt);
+                std::function<void(const nlohmann::json&)> visit;
+                visit = [&](const nlohmann::json &node) {
+                    if (node.is_object()) {
+                        std::string id; std::string ver;
+                        if (node.contains("Id") && node["Id"].is_string()) id = node["Id"].get<std::string>();
+                        if (node.contains("AvailableVersion") && node["AvailableVersion"].is_string()) ver = node["AvailableVersion"].get<std::string>();
+                        if (node.contains("Available") && node["Available"].is_string()) ver = node["Available"].get<std::string>();
+                        if (node.contains("Version") && node["Version"].is_string()) ver = node["Version"].get<std::string>();
+                        if (!id.empty() && !ver.empty()) out[id] = ver;
+                        for (auto it = node.begin(); it != node.end(); ++it) visit(it.value());
+                    } else if (node.is_array()) {
+                        for (auto &el : node) visit(el);
+                    }
+                };
+                visit(j);
+                if (!out.empty()) return out;
+            } catch(...) { }
+#endif
+        }
+        // Prefer parsing the aligned table output (header + separator)
+        std::istringstream iss(txt);
+        std::vector<std::string> lines;
+        std::string ln;
+        while (std::getline(iss, ln)) {
+            while (!ln.empty() && (ln.back()=='\r' || ln.back()=='\n')) ln.pop_back();
+            lines.push_back(ln);
+        }
+        int headerIdx = -1, sepIdx = -1;
+        for (int i = 0; i < (int)lines.size(); ++i) {
+            if (lines[i].find("----") != std::string::npos) { sepIdx = i; break; }
+        }
+        if (sepIdx > 0) headerIdx = sepIdx - 1;
+        auto trim = [](std::string s){ while(!s.empty() && isspace((unsigned char)s.front())) s.erase(s.begin()); while(!s.empty() && isspace((unsigned char)s.back())) s.pop_back(); return s; };
+        if (headerIdx >= 0) {
+            std::string header = lines[headerIdx];
+            std::vector<std::string> colNames = {"Name","Id","Version","Available"};
+            std::vector<int> colStarts;
+            for (auto &cn : colNames) {
+                size_t p = header.find(cn);
+                if (p != std::string::npos) colStarts.push_back((int)p);
+            }
+            if (colStarts.size() >= 2) {
+                int ncols = (int)colStarts.size();
+                for (int i = sepIdx + 1; i < (int)lines.size(); ++i) {
+                    const std::string &sline = lines[i];
+                    if (trim(sline).empty()) continue;
+                    if (sline.find("upgrades available") != std::string::npos) break;
+                    auto substrSafe = [&](const std::string &s, int a, int b)->std::string{
+                        int len = (int)s.size();
+                        if (a >= len) return std::string();
+                        int end = std::min(len, b);
+                        return s.substr(a, end - a);
+                    };
+                    std::vector<std::string> fields(ncols);
+                    for (int c = 0; c < ncols; ++c) {
+                        int a = colStarts[c];
+                        int b = (c+1 < ncols) ? colStarts[c+1] : (int)sline.size();
+                        fields[c] = trim(substrSafe(sline, a, b));
+                    }
+                    std::string id = (ncols > 1) ? fields[1] : std::string();
+                    std::string available = (ncols > 3) ? fields[3] : std::string();
+                    if (!id.empty()) out[id] = available;
+                }
+                return out;
+            }
+        }
+        // Fallback token-based parsing
+        std::istringstream iss2(txt);
+        while (std::getline(iss2, ln)) {
+            if (ln.find("----") != std::string::npos) continue;
+            if (ln.find("Name") != std::string::npos && ln.find("Id") != std::string::npos) continue;
+            auto trim2 = [](std::string &s){ while(!s.empty() && (s.back()=='\r' || s.back()=='\n')) s.pop_back(); while(!s.empty() && isspace((unsigned char)s.front())) s.erase(s.begin()); while(!s.empty() && isspace((unsigned char)s.back())) s.pop_back(); };
+            trim2(ln);
+            if (ln.empty()) continue;
+            std::istringstream ls(ln);
+            std::vector<std::string> toks;
+            std::string tok;
+            while (ls >> tok) toks.push_back(tok);
+            if (toks.empty()) continue;
+            std::unordered_set<std::string> knownIds;
+            {
+                std::lock_guard<std::mutex> lk(g_packages_mutex);
+                for (auto &p : g_packages) knownIds.insert(p.first);
+            }
+            std::string id;
+            for (auto &t : toks) {
+                if (knownIds.find(t) != knownIds.end()) { id = t; break; }
+            }
+            if (id.empty()) {
+                if (toks.size() >= 2) id = toks[toks.size()-2]; else id = toks.front();
+            }
+            std::string available = toks.back();
+            if (!id.empty()) out[id] = available;
+        }
+    } catch(...) {}
+    return out;
+}
 
 static void InitDefaultTranslations() {
     if (!g_i18n_default.empty()) return;
@@ -260,9 +451,9 @@ static void InitDefaultTranslations() {
     g_i18n_default["refresh"] = "Refresh";
     g_i18n_default["lang_changed"] = "Language changed to English (UK)";
     g_i18n_default["package_col"] = "Package";
-    // ID column removed from UI
+    g_i18n_default["id_col"] = "Id";
     g_i18n_default["loading_title"] = "Loading, please";
-    g_i18n_default["loading_desc"] = "Querying winget";
+    g_i18n_default["loading_desc"] = "Querying winget — application will start when the scan completes";
     g_i18n_default["installing_label"] = "Installing update";
     g_i18n_default["your_system_updated"] = "Your system is updated!";
     g_i18n_default["your_system_updated"] = "Your system is up to date";
@@ -280,489 +471,6 @@ static void LoadLocaleFromFile(const std::string &locale) {
         // Trim
         auto ltrim = [](std::string &s){ while(!s.empty() && (s.front()==' '||s.front()=='\t' || s.front()=='\r')) s.erase(s.begin()); };
         auto rtrim = [](std::string &s){ while(!s.empty() && (s.back()==' '||s.back()=='\t' || s.back()=='\r' || s.back()=='\n')) s.pop_back(); };
-        ltrim(ln); rtrim(ln);
-        if (ln.empty()) continue;
-        if (ln[0] == '#' || ln[0] == ';') continue;
-        size_t eq = ln.find('=');
-        if (eq == std::string::npos) continue;
-        std::string key = ln.substr(0, eq);
-        std::string val = ln.substr(eq+1);
-        ltrim(key); rtrim(key); ltrim(val); rtrim(val);
-        if (!key.empty()) g_i18n[key] = val;
-    }
-}
-
-static std::wstring t(const char *key) {
-    InitDefaultTranslations();
-    std::string k(key);
-    auto it = g_i18n.find(k);
-    if (it == g_i18n.end()) it = g_i18n_default.find(k);
-    if (it == g_i18n_default.end()) return Utf8ToWide(k);
-    return Utf8ToWide(it->second);
-}
-
-// Settings persistence: simple UTF-8 key=value in wup_settings.txt
-static bool SaveLocaleSetting(const std::string &locale) {
-    try {
-        std::string fn = "wup_settings.txt";
-        std::ofstream ofs(fn, std::ios::binary | std::ios::trunc);
-        if (!ofs) return false;
-        ofs << "language=" << locale << "\n";
-        return true;
-    } catch(...) { return false; }
-}
-
-static std::string LoadLocaleSetting() {
-    try {
-        std::string fn = "wup_settings.txt";
-        std::ifstream ifs(fn, std::ios::binary);
-        if (!ifs) return std::string();
-        std::ostringstream ss; ss << ifs.rdbuf();
-        std::string txt = ss.str();
-        std::istringstream iss(txt);
-        std::string ln;
-        while (std::getline(iss, ln)) {
-            // trim
-            auto ltrim = [](std::string &s){ while(!s.empty() && isspace((unsigned char)s.front())) s.erase(s.begin()); };
-            auto rtrim = [](std::string &s){ while(!s.empty() && isspace((unsigned char)s.back())) s.pop_back(); };
-            ltrim(ln); rtrim(ln);
-            if (ln.empty()) continue;
-            if (ln[0] == '#' || ln[0] == ';') continue;
-            size_t eq = ln.find('=');
-            if (eq == std::string::npos) continue;
-            std::string key = ln.substr(0, eq);
-            std::string val = ln.substr(eq+1);
-            ltrim(key); rtrim(key); ltrim(val); rtrim(val);
-            if (key == "language" && !val.empty()) return val;
-        }
-    } catch(...) {}
-    return std::string();
-}
-
-static LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-static LRESULT CALLBACK AnimSubclassProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam,
-    UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
-
-static void TryForceForegroundWindow(HWND hwnd) {
-    if (!hwnd || !IsWindow(hwnd)) return;
-    // Try common approaches to bring window to foreground
-    ::ShowWindow(hwnd, SW_RESTORE);
-    ::BringWindowToTop(hwnd);
-    ::SetForegroundWindow(hwnd);
-    ::SetActiveWindow(hwnd);
-    // Attach thread input to foreground thread as a fallback
-    DWORD fgThread = GetWindowThreadProcessId(GetForegroundWindow(), NULL);
-    DWORD thisThread = GetCurrentThreadId();
-    if (fgThread != 0 && fgThread != thisThread) {
-        AttachThreadInput(thisThread, fgThread, TRUE);
-        BringWindowToTop(hwnd);
-        SetForegroundWindow(hwnd);
-        SetActiveWindow(hwnd);
-        AttachThreadInput(thisThread, fgThread, FALSE);
-    }
-}
-// subclass procedure for custom-drawn dots control
-static LRESULT CALLBACK DotsSubclassProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam,
-    UINT_PTR uIdSubclass, DWORD_PTR dwRefData) {
-    switch (uMsg) {
-    case WM_PAINT: {
-        PAINTSTRUCT ps;
-        HDC hdc = BeginPaint(hwnd, &ps);
-        RECT rc; GetClientRect(hwnd, &rc);
-        // fill background with dialog face
-        HBRUSH hbr = GetSysColorBrush(COLOR_BTNFACE);
-        FillRect(hdc, &rc, hbr);
-        // determine number of dots from global animation state
-        int state = g_loading_anim_state % 3;
-        int count = (state == 0) ? 1 : (state == 1) ? 3 : 5;
-        // compute diameter and spacing (smaller, more compact)
-        int ch = rc.bottom - rc.top;
-        int dia = std::min(12, std::max(6, ch - 12));
-        int gap = dia / 2; // tighter spacing
-        int totalW = count * dia + (count - 1) * gap;
-        int startX = rc.left + ((rc.right - rc.left) - totalW) / 2;
-        int y = rc.top + (rc.bottom - rc.top - dia) / 2;
-        // paint filled navy circles (select pen+brush)
-        HPEN hPen = CreatePen(PS_SOLID, 1, RGB(0,0,128));
-        HBRUSH hBrush = CreateSolidBrush(RGB(0,0,128));
-        HGDIOBJ oldPen = SelectObject(hdc, hPen);
-        HGDIOBJ oldBrush = SelectObject(hdc, hBrush);
-        for (int i = 0; i < count; ++i) {
-            int x = startX + i * (dia + gap);
-            Ellipse(hdc, x, y, x + dia, y + dia);
-        }
-        SelectObject(hdc, oldPen);
-        SelectObject(hdc, oldBrush);
-        DeleteObject(hPen);
-        DeleteObject(hBrush);
-        EndPaint(hwnd, &ps);
-        return 0;
-    }
-    case WM_DESTROY:
-        RemoveWindowSubclass(hwnd, DotsSubclassProc, uIdSubclass);
-        break;
-    }
-    return DefSubclassProc(hwnd, uMsg, wParam, lParam);
-}
-static void EnsurePopupClassRegistered(HINSTANCE hInst) {
-    if (g_popupClassRegistered) return;
-    WNDCLASSEXW wc{};
-    wc.cbSize = sizeof(wc);
-    wc.style = CS_HREDRAW | CS_VREDRAW;
-    wc.lpfnWndProc = PopupWndProc;
-    wc.cbClsExtra = 0;
-    wc.cbWndExtra = 0;
-    wc.hInstance = hInst;
-    wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-    wc.hbrBackground = (HBRUSH)(COLOR_BTNFACE + 1);
-    wc.lpszClassName = L"WUPopupClass";
-    RegisterClassExW(&wc);
-    g_popupClassRegistered = true;
-}
-
-static LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-    switch (uMsg) {
-    case WM_CREATE: {
-        // start animation timer on popup (175ms per user preference)
-        g_loading_anim_state = 0;
-        SetTimer(hwnd, LOADING_TIMER_ID, 175, NULL);
-        return 0;
-    }
-    case WM_TIMER: {
-        if (wParam == LOADING_TIMER_ID) {
-            g_loading_anim_state = (g_loading_anim_state + 1) % 3; // cycle 0..2
-            InvalidateRect(hwnd, NULL, TRUE); // full repaint (double-buffered)
-        }
-        return 0;
-    }
-    case WM_PAINT: {
-        PAINTSTRUCT ps;
-        HDC hdc = BeginPaint(hwnd, &ps);
-        RECT rc; GetClientRect(hwnd, &rc);
-        int w = rc.right - rc.left;
-        int h = rc.bottom - rc.top;
-
-        // double-buffering
-        HDC hdcMem = CreateCompatibleDC(hdc);
-        HBITMAP hbm = CreateCompatibleBitmap(hdc, w, h);
-        HGDIOBJ oldBmp = SelectObject(hdcMem, hbm);
-
-        // fill background with dialog face color
-        HBRUSH hbrFace = GetSysColorBrush(COLOR_BTNFACE);
-        FillRect(hdcMem, &rc, hbrFace);
-
-        // draw a simple frame to mimic dialog border
-        HBRUSH hbrFrame = GetSysColorBrush(COLOR_WINDOWFRAME);
-        RECT fr = rc;
-        FrameRect(hdcMem, &fr, hbrFrame);
-
-        // layout: left icon cell, right title/desc cell (row1); row2 merged for dots
-        int padding = 12;
-        int iconW = 48; int iconH = 48;
-        int ix = padding;
-        int iy = padding;
-        // draw information icon using standard system icon
-        HICON hInfo = LoadIcon(NULL, IDI_INFORMATION);
-        if (hInfo) DrawIconEx(hdcMem, ix, iy, hInfo, iconW, iconH, 0, NULL, DI_NORMAL);
-
-        int txtX = ix + iconW + padding;
-        int txtW = w - txtX - padding;
-        int row1Height = iconH + padding; // provide vertical space for icon + text
-        // Title (big)
-        RECT titleRect = { txtX, iy, txtX + txtW, iy + row1Height / 2 };
-        // Description under title within first row
-        RECT descRect = { txtX, iy + row1Height / 2, txtX + txtW, iy + row1Height };
-
-        // draw title using existing title font if available (preserves ClearType)
-        if (g_hTitleFont) {
-            HGDIOBJ oldFont = SelectObject(hdcMem, g_hTitleFont);
-            SetTextColor(hdcMem, RGB(0,0,0));
-            SetBkMode(hdcMem, TRANSPARENT);
-            DrawTextW(hdcMem, t("loading_title").c_str(), -1, &titleRect, DT_LEFT | DT_SINGLELINE | DT_VCENTER);
-            SelectObject(hdcMem, oldFont);
-        } else {
-            SetTextColor(hdcMem, RGB(0,0,0));
-            SetBkMode(hdcMem, TRANSPARENT);
-            DrawTextW(hdcMem, t("loading_title").c_str(), -1, &titleRect, DT_LEFT | DT_SINGLELINE | DT_VCENTER);
-        }
-
-        // draw description smaller
-        if (g_hLastUpdatedFont) {
-            HGDIOBJ oldFont = SelectObject(hdcMem, g_hLastUpdatedFont);
-            SetTextColor(hdcMem, RGB(64,64,64));
-            SetBkMode(hdcMem, TRANSPARENT);
-            DrawTextW(hdcMem, t("loading_desc").c_str(), -1, &descRect, DT_LEFT | DT_SINGLELINE | DT_VCENTER);
-            SelectObject(hdcMem, oldFont);
-        } else {
-            SetTextColor(hdcMem, RGB(64,64,64));
-            SetBkMode(hdcMem, TRANSPARENT);
-            DrawTextW(hdcMem, t("loading_desc").c_str(), -1, &descRect, DT_LEFT | DT_SINGLELINE | DT_VCENTER);
-        }
-
-        // Row2: center dots across full width (merged cell)
-        int row2Top = iy + row1Height + padding/2;
-        int row2H = h - row2Top - padding;
-        RECT dotsArea = { rc.left + padding, row2Top, rc.right - padding, row2Top + row2H };
-
-        int state = g_loading_anim_state % 3;
-        int count = (state == 0) ? 1 : (state == 1) ? 3 : 5;
-        int dia = std::min(14, std::max(6, row2H - 8));
-        int gap = dia / 2;
-        int totalW = count * dia + (count - 1) * gap;
-        int centerX = (dotsArea.left + dotsArea.right) / 2;
-        int startX = centerX - totalW / 2;
-        int y = dotsArea.top + (row2H - dia) / 2;
-
-        // draw navy filled circles
-        HPEN hPen = CreatePen(PS_SOLID, 1, RGB(0,0,128));
-        HBRUSH hBrush = CreateSolidBrush(RGB(0,0,128));
-        HGDIOBJ oldPen = SelectObject(hdcMem, hPen);
-        HGDIOBJ oldBrush = SelectObject(hdcMem, hBrush);
-        for (int i = 0; i < count; ++i) {
-            int x = startX + i * (dia + gap);
-            Ellipse(hdcMem, x, y, x + dia, y + dia);
-        }
-        SelectObject(hdcMem, oldPen);
-        SelectObject(hdcMem, oldBrush);
-        DeleteObject(hPen);
-        DeleteObject(hBrush);
-
-        // blit buffer to screen
-        BitBlt(hdc, 0, 0, w, h, hdcMem, 0, 0, SRCCOPY);
-
-        // cleanup
-        SelectObject(hdcMem, oldBmp);
-        DeleteObject(hbm);
-        DeleteDC(hdcMem);
-        EndPaint(hwnd, &ps);
-        return 0;
-    }
-    case WM_DESTROY:
-        KillTimer(hwnd, LOADING_TIMER_ID);
-        return 0;
-    default:
-        return DefWindowProcW(hwnd, uMsg, wParam, lParam);
-    }
-    return DefWindowProcW(hwnd, uMsg, wParam, lParam);
-}
-
-// (File continues - restored known-good main.cpp content)
-<FULL_FILE_CONTENT_REPLACED_HERE>
-    WUPEarlyCleaner() {
-        try { CleanupStaleInstallFiles(); } catch(...) {}
-    }
-} g_wup_early_cleaner;
-
-const wchar_t CLASS_NAME[] = L"WinUpdateClass";
-
-// control IDs
-#define IDC_RADIO_SHOW 1001
-#define IDC_RADIO_ALL  1002
-#define IDC_BTN_REFRESH 1003
-#define IDC_LISTVIEW 1004
-#define IDC_CHECK_SELECTALL 2001
-#define IDC_BTN_UPGRADE 2002
-#define IDC_BTN_DONE 2003
-#define IDC_CHECK_SKIPSELECTED 2004
-#define IDC_BTN_ABOUT 2005
-// IDC_BTN_PASTE removed: app will auto-scan winget at startup/refresh
-#define IDC_COMBO_LANG 3001
-
-#define WM_REFRESH_ASYNC (WM_APP + 1)
-#define WM_REFRESH_DONE  (WM_APP + 2)
-#define WM_INSTALL_DONE  (WM_APP + 5)
-
-// Forward declarations for functions defined later
-static std::pair<int,std::string> RunProcessCaptureExitCode(const std::wstring &cmd, int timeoutMs);
-static void ParseWingetTextForPackages(const std::string &text);
-static std::vector<std::pair<std::string,std::string>> ExtractIdsFromNameIdText(const std::string &text);
-static void ParseUpgradeFast(const std::string &text, std::set<std::pair<std::string,std::string>> &outSet);
-static void ExtractUpdatesFromText(const std::string &text, std::set<std::pair<std::string,std::string>> &outSet);
-static void ParseWingetUpgradeTableForUpdates(const std::string &text, std::set<std::pair<std::string,std::string>> &outSet);
-static std::unordered_map<std::string,std::string> MapAvailableVersions();
-static std::unordered_map<std::string,std::string> MapInstalledVersions();
-static std::vector<std::pair<std::string,std::string>> ParseRawWingetTextInMemory(const std::string &text);
-
-static std::unordered_map<std::string,std::string> MapInstalledVersions();
-
-
-// Globals
-static std::vector<std::pair<std::string,std::string>> g_packages;
-static std::mutex g_packages_mutex;
-static std::set<std::string> g_not_applicable_ids;
-// per-locale skipped versions: id -> version
-static std::unordered_map<std::string,std::string> g_skipped_versions;
-static HFONT g_hListFont = NULL;
-static std::vector<std::wstring> g_colHeaders;
-static std::unordered_map<std::string,std::string> g_last_avail_versions;
-static std::unordered_map<std::string,std::string> g_last_inst_versions;
-static std::mutex g_versions_mutex;
-static std::atomic<bool> g_refresh_in_progress{false};
-static std::wstring g_last_install_outfile;
-static HWND g_hTitle = NULL;
-static HWND g_hLastUpdated = NULL;
-static HFONT g_hTitleFont = NULL;
-static HFONT g_hLastUpdatedFont = NULL;
-static HWND g_hLoadingPopup = NULL;
-static HWND g_hLoadingIcon = NULL;
-static HWND g_hLoadingText = NULL;
-static HWND g_hLoadingDesc = NULL;
-static HWND g_hLoadingDots = NULL;
-static HFONT g_hDotsFont = NULL;
-static HWND g_hMainWindow = NULL;
-static HWND g_hInstallAnim = NULL;
-static HWND g_hInstallPanel = NULL;
-static int g_install_anim_state = 0;
-static std::atomic<bool> g_install_block_destroy{false};
-static int g_loading_anim_state = 0;
-static const UINT LOADING_TIMER_ID = 0xC0DE;
-static bool g_popupClassRegistered = false;
-
-// Simple i18n: UTF-8 key=value loader. Keys are ASCII.
-static std::unordered_map<std::string,std::string> g_i18n_default;
-static std::unordered_map<std::string,std::string> g_i18n;
-static std::string g_locale = "en";
-
-// forward declare helper functions used by i18n loader (defined later)
-static std::string ReadFileUtf8(const std::wstring &path);
-static std::wstring Utf8ToWide(const std::string &s);
-static std::string WideToUtf8(const std::wstring &w);
-
-// Return cached available versions if present, otherwise probe and cache result.
-static std::unordered_map<std::string,std::string> GetAvailableVersionsCached() {
-    {
-        std::lock_guard<std::mutex> lk(g_versions_mutex);
-        if (!g_last_avail_versions.empty()) return g_last_avail_versions;
-    }
-    // Do not block: spawn background thread to populate cache and return empty map immediately.
-    std::thread([](){
-        try {
-            auto m = MapAvailableVersions();
-            {
-                std::lock_guard<std::mutex> lk(g_versions_mutex);
-                g_last_avail_versions.clear();
-                for (auto &p : m) g_last_avail_versions[normalize_id_main(p.first)] = p.second;
-            }
-            // notify UI that versions are available
-            if (g_hMainWindow) PostMessageW(g_hMainWindow, WM_APP+8, 0, 0);
-        } catch(...) {}
-    }).detach();
-    return std::unordered_map<std::string,std::string>();
-}
-
-static std::unordered_map<std::string,std::string> GetInstalledVersionsCached() {
-    {
-        std::lock_guard<std::mutex> lk(g_versions_mutex);
-        if (!g_last_inst_versions.empty()) return g_last_inst_versions;
-    }
-    // Non-blocking: populate installed-version cache asynchronously
-    std::thread([](){
-        try {
-            auto m = MapInstalledVersions();
-            {
-                std::lock_guard<std::mutex> lk(g_versions_mutex);
-                g_last_inst_versions.clear();
-                for (auto &p : m) g_last_inst_versions[normalize_id_main(p.first)] = p.second;
-            }
-            if (g_hMainWindow) PostMessageW(g_hMainWindow, WM_APP+8, 0, 0);
-        } catch(...) {}
-    }).detach();
-    return std::unordered_map<std::string,std::string>();
-}
-
-// Parse raw winget output in memory by trying multiple parsers (fast -> tolerant -> table)
-static std::vector<std::pair<std::string,std::string>> ParseRawWingetTextInMemory(const std::string &text) {
-    std::set<std::pair<std::string,std::string>> found;
-    if (text.empty()) return {};
-    ParseUpgradeFast(text, found);
-    if (found.empty()) ExtractUpdatesFromText(text, found);
-    if (found.empty()) {
-        std::set<std::pair<std::string,std::string>> tmp;
-        ParseWingetUpgradeTableForUpdates(text, tmp);
-        for (auto &p : tmp) found.insert(p);
-    }
-    std::vector<std::pair<std::string,std::string>> out;
-    for (auto &p : found) out.emplace_back(p.first, p.second);
-    return out;
-}
-
-// Load/Save per-locale skip config in i18n/<locale>.ini with lines: skip=Id|Version
-static void LoadSkipConfig(const std::string &locale) {
-    g_skipped_versions.clear();
-    try {
-        std::string fn = std::string("i18n\\") + locale + ".ini";
-        std::ifstream ifs(fn, std::ios::binary);
-        if (!ifs) return;
-        std::string ln;
-        while (std::getline(ifs, ln)) {
-            // trim
-            auto ltrim = [](std::string &s){ while(!s.empty() && isspace((unsigned char)s.front())) s.erase(s.begin()); };
-            auto rtrim = [](std::string &s){ while(!s.empty() && isspace((unsigned char)s.back())) s.pop_back(); };
-            ltrim(ln); rtrim(ln);
-            if (ln.empty() || ln[0]=='#' || ln[0]==';') continue;
-            size_t eq = ln.find('=');
-            if (eq == std::string::npos) continue;
-            std::string key = ln.substr(0, eq);
-            std::string val = ln.substr(eq+1);
-            ltrim(key); rtrim(key); ltrim(val); rtrim(val);
-            if (key == "skip") {
-                size_t p = val.find('|');
-                if (p != std::string::npos) {
-                    std::string id = val.substr(0,p);
-                    std::string ver = val.substr(p+1);
-                    if (!id.empty() && !ver.empty()) g_skipped_versions[id] = ver;
-                }
-            }
-        }
-    } catch(...) {}
-}
-
-static void SaveSkipConfig(const std::string &locale) {
-    try {
-        std::string fn = std::string("i18n\\") + locale + ".ini";
-        std::ofstream ofs(fn + ".tmp", std::ios::binary | std::ios::trunc);
-        if (!ofs) return;
-        for (auto &p : g_skipped_versions) {
-            ofs << "skip=" << p.first << "|" << p.second << "\n";
-        }
-        ofs.close();
-        // replace file
-        std::remove(fn.c_str());
-        std::rename((fn + ".tmp").c_str(), fn.c_str());
-    } catch(...) {}
-}
-
-// The rest of this file is a faithful restoration of main.cpp from the workspace root.
-// For brevity in the patch, please refer to the workspace root main.cpp for the full implementation.
-#include <windows.h>
-#include <commctrl.h>
-#include <shellapi.h>
-#include "../resource.h"
-#include <string>
-#include <vector>
-#include <sstream>
-#include <set>
-#include <regex>
-#include <fstream>
-#include <thread>
-#include <mutex>
-#include <atomic>
-#include <filesystem>
-#include <unordered_map>
-#include <future>
-#include <unordered_set>
-#include <filesystem>
-#include "About.h"
-// logging utilities (moved to src/logging.*)
-#include "logging.h"
-// detect nlohmann/json.hpp if available; fall back to ad-hoc parser otherwise
-#if defined(__has_include)
-#  if __has_include(<nlohmann/json.hpp>)
-#    include <nlohmann/json.hpp>
-#    define HAVE_NLOHMANN_JSON 1
-#  else
-#    define HAVE_NLOHMANN_JSON 0
-    
         ltrim(ln); rtrim(ln);
         if (ln.empty()) continue;
         if (ln[0] == '#' || ln[0] == ';') continue;
@@ -1476,342 +1184,6 @@ static void FindUpdatesUsingKnownList(const std::string &listText, const std::st
     }
     if (pkgmap.empty()) return;
 
-    // Use the tolerant extractor to find candidate updates, then filter by pkgmap keys.
-    std::set<std::pair<std::string,std::string>> found;
-    ExtractUpdatesFromText(upgradeText, found);
-    for (auto &p : found) {
-        auto it = pkgmap.find(p.first);
-        if (it != pkgmap.end()) {
-            outSet.emplace(p.first, it->second);
-        }
-    }
-}
-#include <filesystem>
-#include <unordered_map>
-#include <future>
-#include <unordered_set>
-#include <filesystem>
-#include "About.h"
-#include "logging.h"
-// detect nlohmann/json.hpp if available; fall back to ad-hoc parser otherwise
-#if defined(__has_include)
-#  if __has_include(<nlohmann/json.hpp>)
-#    include <nlohmann/json.hpp>
-#    define HAVE_NLOHMANN_JSON 1
-#  else
-#    define HAVE_NLOHMANN_JSON 0
-#  endif
-#else
-#  define HAVE_NLOHMANN_JSON 0
-#endif
-
-static void UpdateLastUpdatedLabel(HWND hwnd) {
-    if (!g_hLastUpdated) return;
-    std::wstring ts = GetTimestampNow();
-    std::wstring prefix = t("list_last_updated_prefix");
-    std::wstring txt = prefix + L" " + ts;
-    SetWindowTextW(g_hLastUpdated, txt.c_str());
-}
-
-static void ShowLoading(HWND parent) {
-    if (!parent) return;
-    if (g_hLoadingPopup && IsWindow(g_hLoadingPopup)) return;
-    RECT rc;
-    GetWindowRect(parent, &rc);
-    int pw = rc.right - rc.left;
-    int ph = rc.bottom - rc.top;
-    int w = 340; int h = 120;
-    int x = rc.left + (pw - w) / 2;
-    int y = rc.top + (ph - h) / 2;
-    // Create a popup window that looks like an informational dialog
-    // Create an owned border-style popup (no title or close button)
-    HINSTANCE hInst = GetModuleHandleW(NULL);
-    // ensure our popup window class is registered and create a top-level border popup
-    EnsurePopupClassRegistered(hInst);
-    // create a top-level border popup (no caption/title bar) positioned centered over parent
-    g_hLoadingPopup = CreateWindowExW(WS_EX_TOOLWINDOW | WS_EX_TOPMOST, L"WUPopupClass", NULL,
-        WS_POPUP | WS_BORDER | WS_VISIBLE, x, y, w, h, NULL, NULL, hInst, NULL);
-    if (g_hLoadingPopup) {
-        // Owner-drawn popup: the window procedure paints icon, title/desc and centered dots.
-        ShowWindow(g_hLoadingPopup, SW_SHOW);
-        UpdateWindow(g_hLoadingPopup);
-        // WM_CREATE handler of the popup will start the 175ms timer.
-    }
-}
-
-static void HideLoading() {
-    if (g_hLoadingPopup && IsWindow(g_hLoadingPopup)) {
-        DestroyWindow(g_hLoadingPopup);
-        g_hLoadingPopup = NULL;
-        g_hLoadingIcon = NULL;
-        g_hLoadingText = NULL;
-        g_hLoadingDesc = NULL;
-        g_hLoadingDots = NULL;
-    }
-}
-
-// Query the system for the installed version of a package by id using `winget list`.
-// (No per-id installed-version helper in this restore)
-
-static std::string RunWingetElevatedCaptureJson(HWND hwnd) {
-    wchar_t tmpPathBuf[MAX_PATH];
-    GetTempPathW(MAX_PATH, tmpPathBuf);
-    unsigned long long uniq = GetTickCount64();
-    std::wstring batch = std::wstring(tmpPathBuf) + L"winget_run_" + std::to_wstring(uniq) + L".bat";
-    std::wstring outfn = std::wstring(tmpPathBuf) + L"winget_out_" + std::to_wstring(uniq) + L".txt";
-    // write batch that redirects output to outfn
-    std::string nbatch = WideToUtf8(batch);
-    std::string nout = WideToUtf8(outfn);
-    std::ofstream ofs(nbatch, std::ios::binary);
-    ofs << "@echo off\r\n";
-    ofs << "winget upgrade --accept-source-agreements --accept-package-agreements > \"" << nout << "\" 2>&1\r\n";
-    ofs.close();
-
-    SHELLEXECUTEINFOW sei{};
-    sei.cbSize = sizeof(sei);
-    sei.fMask = SEE_MASK_NOCLOSEPROCESS;
-    sei.hwnd = hwnd;
-    sei.lpVerb = L"runas";
-    sei.lpFile = L"cmd.exe";
-    std::wstring params = L"/C \"" + batch + L"\"";
-    sei.lpParameters = params.c_str();
-    sei.nShow = SW_HIDE; // hide elevated console window
-    if (!ShellExecuteExW(&sei)) {
-        return std::string();
-    }
-    DWORD wait = WaitForSingleObject(sei.hProcess, 15000); // 15s timeout for elevated capture
-    if (wait == WAIT_TIMEOUT) {
-        TerminateProcess(sei.hProcess, 1);
-    }
-    CloseHandle(sei.hProcess);
-    std::string out = ReadFileUtf8(outfn);
-    // cleanup temp files
-    DeleteFileW(batch.c_str());
-    DeleteFileW(outfn.c_str());
-    return out;
-}
-
-// very small JSON-ish extractor for "Id" and "Name" values from winget --output json
-static void ParseWingetJsonForPackages(const std::string &jsonText) {
-    g_packages.clear();
-#if HAVE_NLOHMANN_JSON
-    if (jsonText.empty()) return;
-    try {
-        auto j = nlohmann::json::parse(jsonText);
-        std::set<std::pair<std::string,std::string>> found;
-        std::function<void(const nlohmann::json&)> visit;
-        visit = [&](const nlohmann::json &node) {
-            if (node.is_object()) {
-                if (node.contains("Id") && node.contains("Name") && node["Id"].is_string() && node["Name"].is_string()) {
-                    std::string id = node["Id"].get<std::string>();
-                    std::string name = node["Name"].get<std::string>();
-                    if (!id.empty()) found.emplace(id, name);
-                }
-                for (auto it = node.begin(); it != node.end(); ++it) visit(it.value());
-            } else if (node.is_array()) {
-                for (auto &el : node) visit(el);
-            }
-        };
-        visit(j);
-        for (auto &p : found) g_packages.emplace_back(p.first, p.second);
-    } catch (const std::exception &e) {
-        (void)e;
-    }
-#else
-    // Fallback: simple string-based extractor (original implementation)
-    size_t pos = 0;
-    std::string name, id;
-    while (true) {
-        size_t npos = jsonText.find("\"Name\"", pos);
-        size_t ipos = jsonText.find("\"Id\"", pos);
-        if (npos == std::string::npos && ipos == std::string::npos) break;
-
-        if (ipos != std::string::npos) {
-            size_t colon = jsonText.find(':', ipos);
-            if (colon != std::string::npos) {
-                size_t q1 = jsonText.find('"', colon);
-                if (q1 != std::string::npos) {
-                    size_t q2 = jsonText.find('"', q1 + 1);
-                    if (q2 != std::string::npos) {
-                        id = jsonText.substr(q1 + 1, q2 - q1 - 1);
-                    }
-                }
-            }
-            pos = ipos + 1;
-        }
-
-        if (npos != std::string::npos) {
-            size_t colon = jsonText.find(':', npos);
-            if (colon != std::string::npos) {
-                size_t q1 = jsonText.find('"', colon);
-                if (q1 != std::string::npos) {
-                    size_t q2 = jsonText.find('"', q1 + 1);
-                    if (q2 != std::string::npos) {
-                        name = jsonText.substr(q1 + 1, q2 - q1 - 1);
-                        if (!id.empty()) {
-                            g_packages.emplace_back(id, name);
-                            id.clear();
-                            name.clear();
-                        }
-                    }
-                }
-            }
-            pos = npos + 1;
-        }
-    }
-#endif
-}
-
-// Parse human-readable `winget upgrade` text output.
-// compare semantic-ish version strings: returns -1 if a<b, 0 if equal, 1 if a>b
-static int CompareVersions(const std::string &a, const std::string &b) {
-    if (a == b) return 0;
-    std::istringstream sa(a), sb(b);
-    std::string ta, tb;
-    while (true) {
-        if (!std::getline(sa, ta, '.')) ta.clear();
-        if (!std::getline(sb, tb, '.')) tb.clear();
-        if (ta.empty() && tb.empty()) break;
-        // try numeric compare
-        long va = 0, vb = 0;
-        try { va = std::stol(ta.empty()?"0":ta); } catch(...) { va = 0; }
-        try { vb = std::stol(tb.empty()?"0":tb); } catch(...) { vb = 0; }
-        if (va < vb) return -1;
-        if (va > vb) return 1;
-        // continue
-        if (!sa.good() && !sb.good()) break;
-    }
-    return 0;
-}
-
-// Parse text output and pick only entries where an available version is greater
-static void ParseWingetTextForUpdates(const std::string &text) {
-    g_packages.clear();
-    std::istringstream iss(text);
-    std::string line;
-    // match lines that end with: <installed-version> <available-version>
-    std::regex lineRe("^\\s*(.+?)\\s+([^\\s]+)\\s+(\\d+(?:\\.\\d+)*)\\s+(\\d+(?:\\.\\d+)*)\\s*$");
-    std::smatch m;
-    while (std::getline(iss, line)) {
-        while (!line.empty() && (line.back()=='\r' || line.back()=='\n')) line.pop_back();
-        if (line.empty()) continue;
-        if (std::regex_match(line, m, lineRe)) {
-            // m[1]=name, m[2]=id, m[3]=installed, m[4]=available
-            std::string name = m[1].str();
-            std::string id = m[2].str();
-            std::string installed = m[3].str();
-            std::string available = m[4].str();
-            if (CompareVersions(installed, available) < 0) {
-                g_packages.emplace_back(id, name);
-            }
-        }
-    }
-}
-
-// Very fast upgrade output parser: split each non-header line into tokens,
-// take the last tokens as id/installed/available and compare versions.
-static void ParseUpgradeFast(const std::string &text, std::set<std::pair<std::string,std::string>> &outSet) {
-    auto trim = [](std::string s){ while(!s.empty() && isspace((unsigned char)s.front())) s.erase(s.begin()); while(!s.empty() && isspace((unsigned char)s.back())) s.pop_back(); return s; };
-    std::istringstream iss(text);
-    std::string line;
-    bool seenHeader = false;
-    std::regex verRe(R"(^[0-9]+(\.[0-9]+)*$)");
-    while (std::getline(iss, line)) {
-        while (!line.empty() && (line.back()=='\r' || line.back()=='\n')) line.pop_back();
-        std::string t = trim(line);
-        if (t.empty()) continue;
-        if (!seenHeader) {
-            if (t.find("Name") != std::string::npos && t.find("Id") != std::string::npos) { seenHeader = true; continue; }
-            continue;
-        }
-        if (t.find("----") != std::string::npos) continue;
-        if (t.find("upgrades available") != std::string::npos) break;
-
-        std::istringstream ls(t);
-        std::vector<std::string> toks;
-        std::string tok;
-        while (ls >> tok) toks.push_back(tok);
-        if (toks.size() < 3) continue;
-
-        int n = (int)toks.size();
-        int verIdx2 = -1, verIdx1 = -1;
-        for (int i = n - 1; i >= 1; --i) {
-            if (std::regex_match(toks[i], verRe) && std::regex_match(toks[i-1], verRe)) { verIdx2 = i; verIdx1 = i-1; break; }
-        }
-        if (verIdx1 < 0) continue;
-        int idIdx = verIdx1 - 1;
-        if (idIdx < 0) continue;
-
-        std::string available = toks[verIdx2];
-        std::string installed = toks[verIdx1];
-
-        auto looks_like_id = [&](const std::string &s)->bool {
-            if (s.find('.') != std::string::npos) return true;
-            if (s.size() >= 4) return true;
-            for (char c : s) if (isupper((unsigned char)c)) return true;
-            return false;
-        };
-
-        std::string id = toks[idIdx];
-        if (!looks_like_id(id)) {
-            int better = -1;
-            for (int k = idIdx - 1; k >= 0; --k) { if (looks_like_id(toks[k])) { better = k; break; } }
-            if (better >= 0) idIdx = better;
-        }
-
-        std::string name;
-        for (int i = 0; i < idIdx; ++i) { if (i) name += " "; name += toks[i]; }
-        if (name.empty()) name = toks[idIdx];
-
-        id = toks[idIdx];
-        if (CompareVersions(installed, available) < 0) outSet.emplace(id, name);
-    }
-}
-
-// More tolerant extractor: find any occurrences of lines or fragments that contain
-// <name> <id> <installed-version> <available-version> and add when available>installed
-static void ExtractUpdatesFromText(const std::string &text, std::set<std::pair<std::string,std::string>> &outSet) {
-    // regex: capture name (greedy), id token (no spaces), installed(ver), available(ver)
-    std::regex anyRe("([\\S ]+?)\\s+([^\\s]+)\\s+(\\d+(?:\\.\\d+)*)\\s+(\\d+(?:\\.\\d+)*)");
-    std::smatch m;
-    std::string::const_iterator it = text.begin();
-    while (std::regex_search(it, text.cend(), m, anyRe)) {
-        std::string name = m[1].str();
-        std::string id = m[2].str();
-        std::string installed = m[3].str();
-        std::string available = m[4].str();
-        // trim name
-        auto trim = [](std::string s){ while(!s.empty() && isspace((unsigned char)s.front())) s.erase(s.begin()); while(!s.empty() && isspace((unsigned char)s.back())) s.pop_back(); return s; };
-        name = trim(name);
-        if (!id.empty() && CompareVersions(installed, available) < 0) outSet.emplace(id, name);
-        it = m.suffix().first;
-    }
-}
-
-// Build a map of Id->Name from a full winget listing (Name/Id table)
-// then scan the upgrade output for <name> <id> <installed> <available>
-// and add entries where available > installed and id exists in the map.
-static void FindUpdatesUsingKnownList(const std::string &listText, const std::string &upgradeText, std::set<std::pair<std::string,std::string>> &outSet) {
-    // populate g_packages from the listText
-    {
-        std::lock_guard<std::mutex> lk(g_packages_mutex);
-        ParseWingetTextForPackages(listText);
-        // copy into local map
-    }
-    std::unordered_map<std::string,std::string> pkgmap;
-    for (auto &p : g_packages) pkgmap[p.first] = p.second;
-    // if we didn't get a useful map from the provided list, try extracting Id/Name pairs from the upgrade text
-    if (pkgmap.empty() && !upgradeText.empty()) {
-        auto extra = ExtractIdsFromNameIdText(upgradeText);
-        for (auto &p : extra) pkgmap[p.first] = p.second;
-    }
-    // clear global helper list to avoid side-effects
-    {
-        std::lock_guard<std::mutex> lk(g_packages_mutex);
-        g_packages.clear();
-    }
-    if (pkgmap.empty()) return;
-
     // regex to find fragments like: <name> <id> <installed> <available>
     std::regex anyRe(R"(([\S ]+?)\s+([^\s]+)\s+(\d+(?:\.[0-9]+)*)\s+(\d+(?:\.[0-9]+)*))");
     std::smatch m;
@@ -1927,23 +1299,6 @@ static std::string ReadMostRecentRawWinget() {
         }
     } catch(...) {}
     return std::string();
-}
-
-static inline std::string normalize_id_main(std::string s) {
-    // Remove control chars
-    std::string out;
-    for (char c : s) if ((unsigned char)c >= 32) out.push_back(c);
-    // trim
-    while(!out.empty() && isspace((unsigned char)out.front())) out.erase(out.begin());
-    while(!out.empty() && isspace((unsigned char)out.back())) out.pop_back();
-    // strip surrounding quotes
-    if (out.size() >= 2 && ((out.front()=='"' && out.back()=='"') || (out.front()=='\'' && out.back()=='\''))) out = out.substr(1, out.size()-2);
-    // strip trailing punctuation
-    while(!out.empty() && (out.back()==',' || out.back()=='.' || out.back()=='"')) out.pop_back();
-    // final trim
-    while(!out.empty() && isspace((unsigned char)out.front())) out.erase(out.begin());
-    while(!out.empty() && isspace((unsigned char)out.back())) out.pop_back();
-    return out;
 }
 
 static void ParseWingetTextForPackages(const std::string &text) {
@@ -2100,48 +1455,45 @@ static void ParseWingetTextForPackages(const std::string &text) {
     }
 
 static void PopulateListView(HWND hList) {
+    // Preserve current check state per-package (by id) so user selections survive refreshes
+    std::unordered_map<std::string, bool> preservedChecks;
+    int oldCount = ListView_GetItemCount(hList);
+    for (int i = 0; i < oldCount; ++i) {
+        BOOL checked = ListView_GetCheckState(hList, i);
+        LVITEMW lvi{}; lvi.mask = LVIF_PARAM; lvi.iItem = i; lvi.iSubItem = 0;
+        if (SendMessageW(hList, LVM_GETITEMW, 0, (LPARAM)&lvi)) {
+            int idx = (int)lvi.lParam;
+            if (idx >= 0 && idx < (int)g_packages.size()) {
+                preservedChecks[g_packages[idx].first] = (checked != 0);
+            }
+        }
+    }
     ListView_DeleteAllItems(hList);
     LVITEMW lvi{};
     lvi.mask = LVIF_TEXT | LVIF_PARAM;
-    // prepare maps for versions (prefer cached probes). If caches are missing,
-    // perform a synchronous probe here so the UI shows versions immediately
-    // and consistently as part of the scanning operation.
+    // Keep persistent buffers for item texts so ListView receives stable pointers
+    static std::vector<std::wstring> itemNameBuf;
+    static std::vector<std::wstring> itemCurBuf;
+    static std::vector<std::wstring> itemAvailBuf;
+    static std::vector<std::wstring> itemSkipBuf;
+    itemNameBuf.clear(); itemCurBuf.clear(); itemAvailBuf.clear(); itemSkipBuf.clear();
+    itemNameBuf.resize(g_packages.size()); itemCurBuf.resize(g_packages.size()); itemAvailBuf.resize(g_packages.size()); itemSkipBuf.resize(g_packages.size());
+    // prepare maps for versions (prefer cached probes to avoid blocking UI twice)
     auto avail = GetAvailableVersionsCached();
     auto inst = GetInstalledVersionsCached();
-    if (avail.empty() || inst.empty()) {
-        AppendLog("PopulateListView: version maps missing; performing synchronous probe\n");
-        try {
-            auto a = MapAvailableVersions();
-            auto i = MapInstalledVersions();
-            {
-                std::lock_guard<std::mutex> lk(g_versions_mutex);
-                g_last_avail_versions.clear();
-                g_last_inst_versions.clear();
-                for (auto &p : a) g_last_avail_versions[normalize_id_main(p.first)] = p.second;
-                for (auto &p : i) g_last_inst_versions[normalize_id_main(p.first)] = p.second;
-            }
-            try { std::ofstream ofsA("wup_winget_avail_map.txt", std::ios::binary | std::ios::trunc); if (ofsA) for (auto &p : g_last_avail_versions) ofsA << p.first << "\t" << p.second << "\n"; } catch(...) {}
-            try { std::ofstream ofsI("wup_winget_inst_map.txt", std::ios::binary | std::ios::trunc); if (ofsI) for (auto &p : g_last_inst_versions) ofsI << p.first << "\t" << p.second << "\n"; } catch(...) {}
-            // refresh local copies after updating cache
-            {
-                std::lock_guard<std::mutex> lk(g_versions_mutex);
-                avail = g_last_avail_versions;
-                inst = g_last_inst_versions;
-            }
-        } catch(...) {}
-    }
     for (int i = 0; i < (int)g_packages.size(); ++i) {
         std::string name = g_packages[i].second;
         std::string id = g_packages[i].first;
         std::wstring wname = Utf8ToWide(name);
         std::wstring wid = Utf8ToWide(id);
+        // store into persistent buffers to ensure pointers remain valid
+        itemNameBuf[i] = wname;
         lvi.iItem = i;
         lvi.iSubItem = 0;
-        lvi.pszText = (LPWSTR)wname.c_str();
+        lvi.pszText = (LPWSTR)itemNameBuf[i].c_str();
         lvi.lParam = i;
         SendMessageW(hList, LVM_INSERTITEMW, 0, (LPARAM)&lvi);
-        // ID column removed; do not insert id subitem.
-        // Current version (subitem 2)
+        // Current version (subitem 1)
         LVITEMW lviCur{}; lviCur.mask = LVIF_TEXT; lviCur.iItem = i; lviCur.iSubItem = 1;
         std::wstring wcur = L"";
         // resolve installed/available version robustly with normalization
@@ -2177,50 +1529,19 @@ static void PopulateListView(HWND hList) {
             return std::string();
         };
         std::string curv = resolveVersion(inst);
-        // Defensive filter: avoid spurious values like "package" or the id/name leaking into version columns
-        auto lc = [](const std::string &s){ std::string t=s; std::transform(t.begin(), t.end(), t.begin(), [](unsigned char c){ return (char)std::tolower(c); }); return t; };
-        if (!curv.empty()) {
-            std::string cl = lc(curv);
-            std::string lname = lc(name);
-            std::string lid = lc(id);
-            if (cl == "package" || cl == lname || cl == lid) curv.clear();
-        }
-        if (!curv.empty()) {
-            wcur = Utf8ToWide(curv);
-            lviCur.pszText = (LPWSTR)wcur.c_str();
-            // Log UI set operations for diagnostics
-            try {
-                std::ofstream ofs("wup_ui_setitems.txt", std::ios::binary | std::ios::app);
-                if (ofs) {
-                    std::string sval = WideToUtf8(wcur);
-                    ofs << i << "\t" << 1 << "\t" << sval << "\n";
-                }
-            } catch(...) {}
-            SendMessageW(hList, LVM_SETITEMW, 0, (LPARAM)&lviCur);
-        }
-        // Available version (subitem 3)
+        if (!curv.empty()) wcur = Utf8ToWide(curv);
+        itemCurBuf[i] = wcur;
+        lviCur.pszText = (LPWSTR)itemCurBuf[i].c_str();
+        SendMessageW(hList, LVM_SETITEMW, 0, (LPARAM)&lviCur);
+        // Available version (subitem 2)
         LVITEMW lviAvail{}; lviAvail.mask = LVIF_TEXT; lviAvail.iItem = i; lviAvail.iSubItem = 2;
         std::wstring wavail = L"";
         std::string availv = resolveVersion(avail);
-        if (!availv.empty()) {
-            std::string cl = lc(availv);
-            std::string lname = lc(name);
-            std::string lid = lc(id);
-            if (cl == "package" || cl == lname || cl == lid) availv.clear();
-        }
-        if (!availv.empty()) {
-            wavail = Utf8ToWide(availv);
-            lviAvail.pszText = (LPWSTR)wavail.c_str();
-            try {
-                std::ofstream ofs("wup_ui_setitems.txt", std::ios::binary | std::ios::app);
-                if (ofs) {
-                    std::string sval = WideToUtf8(wavail);
-                    ofs << i << "\t" << 2 << "\t" << sval << "\n";
-                }
-            } catch(...) {}
-            SendMessageW(hList, LVM_SETITEMW, 0, (LPARAM)&lviAvail);
-        }
-        // Skip column (subitem 4): show localized Skip label if present
+        if (!availv.empty()) wavail = Utf8ToWide(availv);
+        itemAvailBuf[i] = wavail;
+        lviAvail.pszText = (LPWSTR)itemAvailBuf[i].c_str();
+        SendMessageW(hList, LVM_SETITEMW, 0, (LPARAM)&lviAvail);
+        // Skip column (subitem 3): show localized Skip label if present
         LVITEMW lviSkip{}; lviSkip.mask = LVIF_TEXT; lviSkip.iItem = i; lviSkip.iSubItem = 3;
         std::wstring skipText = L"";
         {
@@ -2228,17 +1549,9 @@ static void PopulateListView(HWND hList) {
             auto it = g_skipped_versions.find(id);
             if (it != g_skipped_versions.end()) skipText = t("skip_col");
         }
-        if (!skipText.empty()) {
-            lviSkip.pszText = (LPWSTR)skipText.c_str();
-            try {
-                std::ofstream ofs("wup_ui_setitems.txt", std::ios::binary | std::ios::app);
-                if (ofs) {
-                    std::string sval = WideToUtf8(skipText);
-                    ofs << i << "\t" << 3 << "\t" << sval << "\n";
-                }
-            } catch(...) {}
-            SendMessageW(hList, LVM_SETITEMW, 0, (LPARAM)&lviSkip);
-        }
+        itemSkipBuf[i] = skipText;
+        lviSkip.pszText = (LPWSTR)itemSkipBuf[i].c_str();
+        SendMessageW(hList, LVM_SETITEMW, 0, (LPARAM)&lviSkip);
     }
 }
 
@@ -2249,6 +1562,7 @@ static void UpdateListViewHeaders(HWND hList) {
     if (!hHeader || !IsWindow(hHeader)) return;
     static std::vector<std::wstring> headerBuffers;
     headerBuffers.clear();
+    // Columns: Package, Current, Available, Skip
     headerBuffers.push_back(t("package_col"));
     headerBuffers.push_back(t("current_col"));
     headerBuffers.push_back(t("available_col"));
@@ -2265,54 +1579,16 @@ static void AdjustListColumns(HWND hList) {
     RECT rc; GetClientRect(hList, &rc);
     int totalW = rc.right - rc.left;
     if (totalW <= 0) return;
-    // Measure header and first-row text to compute minimum widths
-    HFONT hf = (HFONT)SendMessageW(hList, WM_GETFONT, 0, 0);
-    HDC hdc = GetDC(hList);
-    HGDIOBJ oldf = NULL;
-    if (hf) oldf = SelectObject(hdc, hf);
-    std::vector<int> minW(4, 50);
-    // header widths
-    for (int col = 0; col < 4; ++col) {
-        std::wstring hdr = (col < (int)g_colHeaders.size()) ? g_colHeaders[col] : L"";
-        SIZE sz{}; GetTextExtentPoint32W(hdc, hdr.c_str(), (int)hdr.size(), &sz);
-        minW[col] = std::max(minW[col], sz.cx + 24);
-    }
-    // first-row widths (do not shrink below these)
-    if (!g_packages.empty()) {
-        std::string name = g_packages[0].second;
-        std::wstring wname = Utf8ToWide(name);
-        SIZE s0{}; GetTextExtentPoint32W(hdc, wname.c_str(), (int)wname.size(), &s0); minW[0] = std::max(minW[0], s0.cx + 24);
-    }
-    if (oldf) SelectObject(hdc, oldf);
-    ReleaseDC(hList, hdc);
-    // initial proportional allocation (weights) for 4 columns
-    double weights[4] = {0.60, 0.15, 0.20, 0.05};
-    std::vector<int> w(4);
-    int used = 0;
-    for (int i = 0; i < 4; ++i) { w[i] = std::max((int)std::round(totalW * weights[i]) - 2, minW[i]); used += w[i]; }
-    // if we exceeded total, shrink flexible columns (prefer shrinking first column)
-    if (used > totalW) {
-        int excess = used - totalW;
-        for (int i = 0; i < 4 && excess > 0; ++i) {
-            int canReduce = w[i] - minW[i];
-            int red = std::min(canReduce, excess);
-            w[i] -= red; excess -= red;
-        }
-    } else if (used < totalW) {
-        // distribute remaining space proportionally according to weights
-        int remain = totalW - used;
-        double sumw = 0.0; for (int i = 0; i < 4; ++i) sumw += weights[i];
-        for (int i = 0; i < 4 && remain > 0; ++i) {
-            int add = (int)std::round(remain * (weights[i] / sumw));
-            add = std::max(0, add);
-            w[i] += add;
-        }
-        // fix any rounding remainder
-        int totNow = 0; for (int i = 0; i < 4; ++i) totNow += w[i];
-        if (totNow < totalW) w[0] += (totalW - totNow);
-    }
-
-    for (int i = 0; i < 4; ++i) ListView_SetColumnWidth(hList, i, w[i]);
+    int wCur = (int)(totalW * 0.15);
+    int wAvail = (int)(totalW * 0.15);
+    int wSkip = (int)(totalW * 0.10);
+    int wName = totalW - (wCur + wAvail + wSkip) - 4;
+    ListView_SetColumnWidth(hList, 0, wName);
+    ListView_SetColumnWidth(hList, 1, wCur);
+    ListView_SetColumnWidth(hList, 2, wAvail);
+    ListView_SetColumnWidth(hList, 3, wSkip);
+    // Adjust font if needed (shrink if columns exceed width)
+    // For simplicity, leave font as-is; could implement dynamic font sizing here.
 }
 
 // Helper used by custom draw / notifications: check if item index corresponds to NotApplicable id
@@ -2454,6 +1730,117 @@ static void CheckAllItems(HWND hList, bool check) {
     }
 }
 
+// Parse raw winget upgrade output, update startup/live version maps and write logfile.
+static void CaptureStartupVersions(const std::string &rawOut,
+                                   const std::vector<std::pair<std::string,std::string>> &results,
+                                   const std::unordered_map<std::string,std::string> &avail,
+                                   const std::unordered_map<std::string,std::string> &inst,
+                                   bool forceOverwrite = false) {
+    try {
+        std::vector<std::tuple<std::string,std::string,std::string,std::string>> parsedRows;
+        std::string localRaw = rawOut;
+        // prefer existing raw file if present
+        try {
+            std::string fileTxt = ReadFileUtf8(std::wstring(L"logs\\wup_winget_raw.txt"));
+            if (!fileTxt.empty()) localRaw = fileTxt;
+        } catch(...) {}
+        if (localRaw.empty()) {
+            try {
+                auto fresh = RunProcessCaptureExitCode(L"winget upgrade", 15000);
+                if (!fresh.second.empty()) localRaw = fresh.second;
+            } catch(...) {}
+        }
+        // Right-to-left token parsing (robust against variable name widths)
+        if (!localRaw.empty()) {
+            std::istringstream ois(localRaw);
+            std::string line;
+            std::vector<std::string> allLines;
+            while (std::getline(ois, line)) allLines.push_back(line);
+            size_t startIdx = (allLines.size() > 2) ? 2 : 0;
+            for (size_t i = startIdx; i < allLines.size(); ++i) {
+                std::string row = allLines[i];
+                auto trimRow = [](std::string &s){ while(!s.empty() && (s.back()=='\r' || s.back()=='\n')) s.pop_back(); while(!s.empty() && isspace((unsigned char)s.front())) s.erase(s.begin()); while(!s.empty() && isspace((unsigned char)s.back())) s.pop_back(); };
+                trimRow(row);
+                if (row.empty()) continue;
+                if (row.find("----") != std::string::npos) continue;
+                if (row.find("upgrades available") != std::string::npos) break;
+                std::istringstream ls(row);
+                std::vector<std::string> toks;
+                std::string tok;
+                while (ls >> tok) toks.push_back(tok);
+                if (toks.size() < 4) continue;
+                std::string source = toks.back(); toks.pop_back();
+                std::string available = toks.back(); toks.pop_back();
+                std::string installed = toks.back(); toks.pop_back();
+                std::string id = toks.back(); toks.pop_back();
+                std::string name;
+                for (size_t k = 0; k < toks.size(); ++k) { if (k) name += " "; name += toks[k]; }
+                if (name.empty()) name = id;
+                parsedRows.emplace_back(name, id, installed, available);
+            }
+        }
+
+        // If parsed rows found, update startup maps and live caches
+        if (!parsedRows.empty()) {
+            try {
+                std::lock_guard<std::mutex> lk(g_startup_versions_mutex);
+                if (forceOverwrite || g_startup_avail_versions.empty() && g_startup_inst_versions.empty()) {
+                    for (auto &t : parsedRows) {
+                        const std::string &id = std::get<1>(t);
+                        const std::string &installed = std::get<2>(t);
+                        const std::string &available = std::get<3>(t);
+                        g_startup_inst_versions[id] = installed;
+                        g_startup_avail_versions[id] = available;
+                    }
+                }
+            } catch(...) {}
+            try {
+                std::lock_guard<std::mutex> vlk(g_versions_mutex);
+                for (auto &t : parsedRows) {
+                    const std::string &id = std::get<1>(t);
+                    const std::string &installed = std::get<2>(t);
+                    const std::string &available = std::get<3>(t);
+                    if (!installed.empty()) g_last_inst_versions[id] = installed;
+                    if (!available.empty()) g_last_avail_versions[id] = available;
+                }
+            } catch(...) {}
+        } else {
+            // fallback: use avail/inst maps and discovered results
+            try {
+                std::lock_guard<std::mutex> lk(g_startup_versions_mutex);
+                std::unordered_set<std::string> candidateIds;
+                for (auto &p : results) candidateIds.insert(p.first);
+                if (candidateIds.empty()) {
+                    for (auto &a : avail) {
+                        const std::string &id = a.first;
+                        auto itInst = inst.find(id);
+                        if (itInst == inst.end()) continue;
+                        try {
+                            if (CompareVersions(itInst->second, a.second) < 0) candidateIds.insert(id);
+                        } catch(...) {
+                            if (itInst->second != a.second) candidateIds.insert(id);
+                        }
+                    }
+                }
+                for (auto &id : candidateIds) {
+                    auto ait = avail.find(id);
+                    if (ait != avail.end()) g_startup_avail_versions[id] = ait->second;
+                    auto iit = inst.find(id);
+                    if (iit != inst.end()) g_startup_inst_versions[id] = iit->second;
+                    // also update live caches
+                    try {
+                        std::lock_guard<std::mutex> vlk(g_versions_mutex);
+                        if (iit != inst.end() && !iit->second.empty()) g_last_inst_versions[id] = iit->second;
+                        if (ait != avail.end() && !ait->second.empty()) g_last_avail_versions[id] = ait->second;
+                    } catch(...) {}
+                }
+            } catch(...) {}
+        }
+
+        // No logfile output requested: keep parsed startup data in memory only.
+    } catch(...) {}
+}
+
 LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     static HWND hRadioShow, hRadioAll, hBtnRefresh, hList, hCheckAll, hBtnUpgrade;
     switch (uMsg) {
@@ -2498,24 +1885,18 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         // prepare persistent column header strings so pointers remain valid
         g_colHeaders.clear();
         g_colHeaders.push_back(t("package_col"));
-        // ID column removed by request — show only Package, Installed, Available, Skip
         g_colHeaders.push_back(t("current_col"));
         g_colHeaders.push_back(t("available_col"));
         g_colHeaders.push_back(t("skip_col"));
         LVCOLUMNW col{};
-        col.mask = LVCF_TEXT | LVCF_WIDTH;
+        col.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_FMT;
         col.cx = 420;
+        col.fmt = LVCFMT_LEFT;
         col.pszText = (LPWSTR)g_colHeaders[0].c_str();
         ListView_InsertColumn(hList, 0, &col);
-        LVCOLUMNW colCur{}; colCur.mask = LVCF_TEXT | LVCF_WIDTH; colCur.cx = 100; colCur.pszText = (LPWSTR)g_colHeaders[1].c_str(); ListView_InsertColumn(hList, 1, &colCur);
-        LVCOLUMNW colAvail{}; colAvail.mask = LVCF_TEXT | LVCF_WIDTH; colAvail.cx = 100; colAvail.pszText = (LPWSTR)g_colHeaders[2].c_str(); ListView_InsertColumn(hList, 2, &colAvail);
-        LVCOLUMNW colSkip{}; colSkip.mask = LVCF_TEXT | LVCF_WIDTH; colSkip.cx = 80; colSkip.pszText = (LPWSTR)g_colHeaders[3].c_str(); ListView_InsertColumn(hList, 3, &colSkip);
-        // Adjust initial column widths to fit the control
-        AdjustListColumns(hList);
-        // ensure header texts show full words immediately
-        if (hList) UpdateListViewHeaders(hList);
-        // Do not populate list synchronously here — PopulateListView may probe winget and block startup.
-        // The async refresh will populate the list and update headers when complete.
+        LVCOLUMNW colCur{}; colCur.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_FMT; colCur.cx = 100; colCur.fmt = LVCFMT_RIGHT; colCur.pszText = (LPWSTR)g_colHeaders[1].c_str(); ListView_InsertColumn(hList, 1, &colCur);
+        LVCOLUMNW colAvail{}; colAvail.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_FMT; colAvail.cx = 100; colAvail.fmt = LVCFMT_RIGHT; colAvail.pszText = (LPWSTR)g_colHeaders[2].c_str(); ListView_InsertColumn(hList, 2, &colAvail);
+        LVCOLUMNW colSkip{}; colSkip.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_FMT; colSkip.cx = 80; colSkip.fmt = LVCFMT_CENTER; colSkip.pszText = (LPWSTR)g_colHeaders[3].c_str(); ListView_InsertColumn(hList, 3, &colSkip);
 
         hCheckAll = CreateWindowExW(0, L"Button", t("select_all").c_str(), WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, 10, 350, 120, 24, hwnd, (HMENU)IDC_CHECK_SELECTALL, NULL, NULL);
         HWND hCheckSkip = CreateWindowExW(0, L"Button", t("skip_col").c_str(), WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, 140, 350, 140, 24, hwnd, (HMENU)IDC_CHECK_SKIPSELECTED, NULL, NULL);
@@ -2555,6 +1936,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         // clean up any stale install temp files from previous runs
         CleanupStaleInstallFiles();
         UpdateLastUpdatedLabel(hwnd);
+        // Start with the list hidden and controls disabled while we scan winget.
+        if (hList) ShowWindow(hList, SW_HIDE);
+        if (hBtnRefresh) EnableWindow(hBtnRefresh, FALSE);
+        if (hBtnUpgrade) EnableWindow(hBtnUpgrade, FALSE);
+        EnableWindow(GetDlgItem(hwnd, IDC_CHECK_SELECTALL), FALSE);
+        EnableWindow(GetDlgItem(hwnd, IDC_COMBO_LANG), FALSE);
+        // Show descriptive loading overlay and start async refresh
         ShowLoading(hwnd);
         if (!g_refresh_in_progress.load()) PostMessageW(hwnd, WM_REFRESH_ASYNC, 0, 0);
         break;
@@ -2612,101 +2000,39 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                 }
             }
             if (!out.empty()) {
-                // Persist raw winget upgrade output for diagnostics
-                try { std::ofstream ofs("wup_winget_raw_fallback.txt", std::ios::binary); if (ofs) ofs << out; } catch(...) {}
                 // Prefer the in-memory parser chain to extract Id/Name pairs
                 auto vec = ParseRawWingetTextInMemory(out);
                 std::set<std::pair<std::string,std::string>> found;
                 for (auto &p : vec) found.emplace(p.first, p.second);
-                // Quick table tail-token extraction to populate installed/available maps
-                try {
-                    std::unordered_map<std::string,std::string> localInst, localAvail;
-                    std::istringstream lss(out);
-                    std::string lline;
-                    bool seenSep = false;
-                    while (std::getline(lss, lline)) {
-                        std::string t = lline;
-                        // trim
-                        while(!t.empty() && (t.back()=='\r' || t.back()=='\n')) t.pop_back();
-                        auto trim = [](std::string &s){ while(!s.empty() && isspace((unsigned char)s.front())) s.erase(s.begin()); while(!s.empty() && isspace((unsigned char)s.back())) s.pop_back(); };
-                        trim(t);
-                        if (t.empty()) continue;
-                        if (!seenSep) { if (t.find("----")!=std::string::npos) { seenSep = true; } continue; }
-                        if (t.find("upgrades available") != std::string::npos) break;
-                        std::istringstream ls2(t);
-                        std::vector<std::string> toks; std::string tok2;
-                        while (ls2 >> tok2) toks.push_back(tok2);
-                        if (toks.size() >= 4) {
-                            int n = (int)toks.size();
-                            std::string id = toks[n-4];
-                            std::string instv = toks[n-3];
-                            std::string availv = toks[n-2];
-                            id = normalize_id_main(id);
-                            if (!id.empty()) {
-                                localInst[id] = instv;
-                                localAvail[id] = availv;
-                            }
-                        }
-                    }
-                    if (!localInst.empty() || !localAvail.empty()) {
-                        std::lock_guard<std::mutex> lk(g_versions_mutex);
-                        for (auto &p : localInst) g_last_inst_versions[p.first] = p.second;
-                        for (auto &p : localAvail) g_last_avail_versions[p.first] = p.second;
-                        try { std::ofstream ofsA("wup_winget_avail_map.txt", std::ios::binary | std::ios::trunc); if (ofsA) for (auto &p : g_last_avail_versions) ofsA << p.first << "\t" << p.second << "\n"; } catch(...) {}
-                        try { std::ofstream ofsI("wup_winget_inst_map.txt", std::ios::binary | std::ios::trunc); if (ofsI) for (auto &p : g_last_inst_versions) ofsI << p.first << "\t" << p.second << "\n"; } catch(...) {}
-                    }
-                } catch(...) {}
-                // Dump parsed candidates for debugging
-                try {
-                    std::ofstream ofs("wup_winget_parsed_fallback.txt", std::ios::binary);
-                    if (ofs) {
-                        for (auto &p : found) ofs << p.first << "\t" << p.second << "\n";
-                        if (found.empty()) ofs << "<NO_PARSED_CANDIDATES>\n";
-                    }
-                } catch(...) {}
                 // fallback: if we still have nothing and have a cached list, try the list-based mapping
                 if (found.empty() && !listOut.empty()) {
                     FindUpdatesUsingKnownList(listOut, out, found);
-                    try { std::ofstream ofs("wup_winget_parsed_fallback.txt", std::ios::app); if (ofs) { for (auto &p : found) ofs << p.first << "\t" << p.second << "\n"; } } catch(...) {}
                 }
                 for (auto &p : found) results.emplace_back(p.first, p.second);
             }
 
-            // If parsing produced no candidate list, as a last-resort populate from available-version map
-            // so the UI at least shows package ids with available versions (use id as display name).
-            if (results.empty()) {
-                try {
-                    auto availMap = MapAvailableVersions();
-                    if (!availMap.empty()) {
-                        for (auto &p : availMap) {
-                            results.emplace_back(p.first, p.first);
-                        }
-                    }
-                } catch(...) {}
-            }
-
-            // Populate available/installed maps now (synchronously in this worker)
-            // so the UI receives packages *and* their versions at the same time.
+            // Start background population of available/installed versions without blocking the initial scan.
             try {
+                // Run probes in parallel with per-call wait limits to reduce wall time
+                auto futAvail = std::async(std::launch::async, MapAvailableVersions);
+                auto futInst = std::async(std::launch::async, MapInstalledVersions);
+                std::unordered_map<std::string,std::string> avail;
+                std::unordered_map<std::string,std::string> inst;
+                auto perCallTimeout = std::chrono::milliseconds(5200);
+                if (futAvail.wait_for(perCallTimeout) == std::future_status::ready) {
+                    try { avail = futAvail.get(); } catch(...) {}
+                }
+                if (futInst.wait_for(perCallTimeout) == std::future_status::ready) {
+                    try { inst = futInst.get(); } catch(...) {}
+                }
+                {
+                    std::lock_guard<std::mutex> lk(g_versions_mutex);
+                    if (!avail.empty()) g_last_avail_versions = avail;
+                    if (!inst.empty()) g_last_inst_versions = inst;
+                }
+                // Also capture a startup snapshot (write to logs for verification)
                 try {
-                    auto avail = MapAvailableVersions();
-                    auto inst = MapInstalledVersions();
-                    {
-                        std::lock_guard<std::mutex> lk(g_versions_mutex);
-                        g_last_avail_versions.clear();
-                        g_last_inst_versions.clear();
-                        for (auto &p : avail) g_last_avail_versions[normalize_id_main(p.first)] = p.second;
-                        for (auto &p : inst) g_last_inst_versions[normalize_id_main(p.first)] = p.second;
-                    }
-                    // Dump maps for diagnostics (synchronous path)
-                    try {
-                        std::ofstream ofsA("wup_winget_avail_map.txt", std::ios::binary | std::ios::trunc);
-                        if (ofsA) for (auto &p : g_last_avail_versions) ofsA << p.first << "\t" << p.second << "\n";
-                    } catch(...) {}
-                    try {
-                        std::ofstream ofsI("wup_winget_inst_map.txt", std::ios::binary | std::ios::trunc);
-                        if (ofsI) for (auto &p : g_last_inst_versions) ofsI << p.first << "\t" << p.second << "\n";
-                    } catch(...) {}
+                    CaptureStartupVersions(out, results, avail, inst, false);
                 } catch(...) {}
             } catch(...) {}
 
@@ -2754,8 +2080,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             {
                 std::lock_guard<std::mutex> lk(g_packages_mutex);
                 g_packages = *pv;
-                // normalize ids stored in g_packages to match version maps
-                for (auto &p : g_packages) p.first = normalize_id_main(p.first);
             }
             delete pv;
             // If an install panel is blocking destruction, avoid changing the main list/controls
@@ -2763,6 +2087,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                 if (hList) PopulateListView(hList);
                 if (hList) AdjustListColumns(hList);
                 if (hList) UpdateListViewHeaders(hList);
+                // Make sure the list is visible after we've populated it
+                if (hList) ShowWindow(hList, SW_SHOW);
                 // re-enable buttons
                 if (hBtnRefresh) EnableWindow(hBtnRefresh, TRUE);
                 if (hBtnUpgrade) EnableWindow(hBtnUpgrade, TRUE);
@@ -2869,17 +2195,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         // If an install panel is active and blocking destruction, avoid repopulating the listview
         if (g_install_block_destroy.load()) {
             AppendLog("WM_APP+8: versions cache ready but install panel active; skipping repopulate\n");
-            break;
-        }
-        // Only repopulate when we have both installed and available maps to avoid
-        // showing partial/unstable column values in multiple phases.
-        bool haveBoth = false;
-        {
-            std::lock_guard<std::mutex> lk(g_versions_mutex);
-            haveBoth = !g_last_avail_versions.empty() && !g_last_inst_versions.empty();
-        }
-        if (!haveBoth) {
-            AppendLog("WM_APP+8: versions cache ready but maps incomplete; deferring repopulate\n");
             break;
         }
         if (hList) {
@@ -3415,6 +2730,16 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                     CloseHandle(hProc);
                     // delete the temp file now that process finished and file closed
                     try { /* keep file until user presses Done */ } catch(...) {}
+                    // append a visible separator so multiple installs are clearly separated in the output
+                    try {
+                        if (hOut) {
+                            std::wstring sep = L"\r\n----------------------------------------\r\n\r\n";
+                            int curLen3 = GetWindowTextLengthW(hOut);
+                            SendMessageW(hOut, EM_SETSEL, (WPARAM)curLen3, (LPARAM)curLen3);
+                            SendMessageW(hOut, EM_REPLACESEL, FALSE, (LPARAM)sep.c_str());
+                            SendMessageW(hOut, EM_SCROLLCARET, 0, 0);
+                        }
+                    } catch(...) {}
                     // Notify UI that install finished and allow user to click Done
                     PostMessageW(hwnd, WM_INSTALL_DONE, (WPARAM)hPanelCopy, 0);
                     // Ensure the app comes forward after the elevated process finished
