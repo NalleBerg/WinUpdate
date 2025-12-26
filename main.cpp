@@ -213,8 +213,30 @@ static void SaveSkipConfig(const std::string &locale) {
 static std::unordered_map<std::string,std::string> MapInstalledVersions() {
     std::unordered_map<std::string,std::string> out;
     try {
-        auto r = RunProcessCaptureExitCode(L"winget list", 8000);
+        auto r = RunProcessCaptureExitCode(L"winget list --accept-source-agreements --accept-package-agreements --output json", 4500);
         std::string txt = r.second;
+        if (!txt.empty()) {
+#if HAVE_NLOHMANN_JSON
+            try {
+                auto j = nlohmann::json::parse(txt);
+                std::function<void(const nlohmann::json&)> visit;
+                visit = [&](const nlohmann::json &node) {
+                    if (node.is_object()) {
+                        std::string id; std::string ver;
+                        if (node.contains("Id") && node["Id"].is_string()) id = node["Id"].get<std::string>();
+                        if (node.contains("InstalledVersion") && node["InstalledVersion"].is_string()) ver = node["InstalledVersion"].get<std::string>();
+                        if (node.contains("Version") && node["Version"].is_string()) ver = node["Version"].get<std::string>();
+                        if (!id.empty() && !ver.empty()) out[id] = ver;
+                        for (auto it = node.begin(); it != node.end(); ++it) visit(it.value());
+                    } else if (node.is_array()) {
+                        for (auto &el : node) visit(el);
+                    }
+                };
+                visit(j);
+                return out;
+            } catch(...) { }
+#endif
+        }
         // Try to parse aligned table output (header + separator) like:
         // Name                                   Id                       Version
         // ------------------------------------   ---------------------    --------
@@ -305,8 +327,31 @@ static std::unordered_map<std::string,std::string> MapInstalledVersions() {
 static std::unordered_map<std::string,std::string> MapAvailableVersions() {
     std::unordered_map<std::string,std::string> out;
     try {
-        auto r = RunProcessCaptureExitCode(L"winget upgrade", 10000);
+        auto r = RunProcessCaptureExitCode(L"winget upgrade --accept-source-agreements --accept-package-agreements --output json", 4500);
         std::string txt = r.second;
+        if (!txt.empty()) {
+#if HAVE_NLOHMANN_JSON
+            try {
+                auto j = nlohmann::json::parse(txt);
+                std::function<void(const nlohmann::json&)> visit;
+                visit = [&](const nlohmann::json &node) {
+                    if (node.is_object()) {
+                        std::string id; std::string ver;
+                        if (node.contains("Id") && node["Id"].is_string()) id = node["Id"].get<std::string>();
+                        if (node.contains("AvailableVersion") && node["AvailableVersion"].is_string()) ver = node["AvailableVersion"].get<std::string>();
+                        if (node.contains("Available") && node["Available"].is_string()) ver = node["Available"].get<std::string>();
+                        if (node.contains("Version") && node["Version"].is_string()) ver = node["Version"].get<std::string>();
+                        if (!id.empty() && !ver.empty()) out[id] = ver;
+                        for (auto it = node.begin(); it != node.end(); ++it) visit(it.value());
+                    } else if (node.is_array()) {
+                        for (auto &el : node) visit(el);
+                    }
+                };
+                visit(j);
+                return out;
+            } catch(...) { }
+#endif
+        }
         // Prefer parsing the aligned table output (header + separator)
         std::istringstream iss(txt);
         std::vector<std::string> lines;
