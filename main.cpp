@@ -18,6 +18,7 @@
 #include <filesystem>
 #include "About.h"
 #include "logging.h"
+#include "hyperlink.h"
 // detect nlohmann/json.hpp if available; fall back to ad-hoc parser otherwise
 #if defined(__has_include)
 #  if __has_include(<nlohmann/json.hpp>)
@@ -1541,14 +1542,11 @@ static void PopulateListView(HWND hList) {
         itemAvailBuf[i] = wavail;
         lviAvail.pszText = (LPWSTR)itemAvailBuf[i].c_str();
         SendMessageW(hList, LVM_SETITEMW, 0, (LPARAM)&lviAvail);
-        // Skip column (subitem 3): show localized Skip label if present
+        // Skip column (subitem 3): always show localized Skip label (clickable hyperlink)
         LVITEMW lviSkip{}; lviSkip.mask = LVIF_TEXT; lviSkip.iItem = i; lviSkip.iSubItem = 3;
         std::wstring skipText = L"";
-        {
-            std::lock_guard<std::mutex> lk(g_packages_mutex);
-            auto it = g_skipped_versions.find(id);
-            if (it != g_skipped_versions.end()) skipText = t("skip_col");
-        }
+        // Always display the Skip label so the hyperlink can be shown; actual skip state is stored separately
+        skipText = t("skip_col");
         itemSkipBuf[i] = skipText;
         lviSkip.pszText = (LPWSTR)itemSkipBuf[i].c_str();
         SendMessageW(hList, LVM_SETITEMW, 0, (LPARAM)&lviSkip);
@@ -2290,7 +2288,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                 int idx = ListView_HitTest(hListLocal, &ht);
                 if (idx >= 0) {
                     int sub = ht.iSubItem;
-                    if (sub == 4) {
+                    if (sub == 3) {
                         // toggle skip for this item
                         std::string id = g_packages[idx].first;
                         std::lock_guard<std::mutex> lk(g_packages_mutex);
@@ -2333,6 +2331,31 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                     int idx = (int)lvc->nmcd.dwItemSpec;
                     if (IsItemNotApplicable(idx)) {
                         lvc->clrText = RGB(160,160,160);
+                    }
+                    return CDRF_NOTIFYPOSTPAINT | CDRF_DODEFAULT;
+                }
+                case (CDDS_ITEMPREPAINT | CDDS_SUBITEM): {
+                    int sub = lvc->iSubItem;
+                    // subitem index 3 (or 4 in some hit-test setups) is the Skip column; draw as hyperlink
+                    if (sub == 3) {
+                        int idx = (int)lvc->nmcd.dwItemSpec;
+                        HWND hListLocal = GetDlgItem(hwnd, IDC_LISTVIEW);
+                        if (hListLocal && IsWindow(hListLocal)) {
+                            wchar_t buf[256] = {0};
+                            LVITEMW _lvit{};
+                            _lvit.iSubItem = sub;
+                            _lvit.cchTextMax = (int)(sizeof(buf)/sizeof(buf[0]));
+                            _lvit.pszText = buf;
+                            SendMessageW(hListLocal, LVM_GETITEMTEXTW, (WPARAM)idx, (LPARAM)&_lvit);
+                            RECT tr = lvc->nmcd.rc;
+                            // determine hover by hit-testing current cursor position
+                            POINT pt; GetCursorPos(&pt); ScreenToClient(hListLocal, &pt);
+                            LVHITTESTINFO ht{}; ht.pt = pt;
+                            int hit = ListView_HitTest(hListLocal, &ht);
+                            bool hovered = (hit == idx && ht.iSubItem == sub);
+                            DrawHyperlink(lvc->nmcd.hdc, tr, std::wstring(buf), g_hListFont, hovered);
+                            return CDRF_SKIPDEFAULT;
+                        }
                     }
                     return CDRF_DODEFAULT;
                 }
