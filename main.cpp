@@ -1880,6 +1880,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 
         hList = CreateWindowExW(WS_EX_CLIENTEDGE, WC_LISTVIEWW, NULL, WS_CHILD | WS_VISIBLE | LVS_REPORT | LVS_SHOWSELALWAYS | LVS_SINGLESEL, 10, 60, 600, 284, hwnd, (HMENU)IDC_LISTVIEW, NULL, NULL);
         ListView_SetExtendedListViewStyle(hList, LVS_EX_CHECKBOXES | LVS_EX_FULLROWSELECT);
+        // attach hyperlink behavior to list so hover/click are handled inside src/hyperlink.*
+        Hyperlink_Attach(hList);
         // prepare persistent column header strings so pointers remain valid
         g_colHeaders.clear();
         g_colHeaders.push_back(t("package_col"));
@@ -2326,6 +2328,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                 LPNMLVCUSTOMDRAW lvc = (LPNMLVCUSTOMDRAW)lParam;
                 switch (lvc->nmcd.dwDrawStage) {
                 case CDDS_PREPAINT:
+                    // clear hyperlink tracking before painting items
+                    {
+                        HWND hListLocal = GetDlgItem(hwnd, IDC_LISTVIEW);
+                        if (hListLocal) Hyperlink_Clear(hListLocal);
+                    }
                     return CDRF_NOTIFYITEMDRAW;
                 case CDDS_ITEMPREPAINT: {
                     int idx = (int)lvc->nmcd.dwItemSpec;
@@ -2334,27 +2341,26 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                     }
                     return CDRF_NOTIFYPOSTPAINT | CDRF_DODEFAULT;
                 }
-                case (CDDS_ITEMPREPAINT | CDDS_SUBITEM): {
-                    int sub = lvc->iSubItem;
-                    // subitem index 3 (or 4 in some hit-test setups) is the Skip column; draw as hyperlink
-                    if (sub == 3) {
-                        int idx = (int)lvc->nmcd.dwItemSpec;
-                        HWND hListLocal = GetDlgItem(hwnd, IDC_LISTVIEW);
-                        if (hListLocal && IsWindow(hListLocal)) {
+                case CDDS_ITEMPOSTPAINT: {
+                    int idx = (int)lvc->nmcd.dwItemSpec;
+                    int sub = 3; // Skip column
+                    HWND hListLocal = GetDlgItem(hwnd, IDC_LISTVIEW);
+                    if (hListLocal && IsWindow(hListLocal)) {
+                        // get subitem rect
+                        RECT tr{};
+                        if (ListView_GetSubItemRect(hListLocal, idx, sub, LVIR_BOUNDS, &tr)) {
                             wchar_t buf[256] = {0};
                             LVITEMW _lvit{};
                             _lvit.iSubItem = sub;
                             _lvit.cchTextMax = (int)(sizeof(buf)/sizeof(buf[0]));
                             _lvit.pszText = buf;
                             SendMessageW(hListLocal, LVM_GETITEMTEXTW, (WPARAM)idx, (LPARAM)&_lvit);
-                            RECT tr = lvc->nmcd.rc;
                             // determine hover by hit-testing current cursor position
                             POINT pt; GetCursorPos(&pt); ScreenToClient(hListLocal, &pt);
                             LVHITTESTINFO ht{}; ht.pt = pt;
                             int hit = ListView_HitTest(hListLocal, &ht);
                             bool hovered = (hit == idx && ht.iSubItem == sub);
-                            DrawHyperlink(lvc->nmcd.hdc, tr, std::wstring(buf), g_hListFont, hovered);
-                            return CDRF_SKIPDEFAULT;
+                            DrawAndTrackHyperlink(lvc->nmcd.hdc, hListLocal, tr, std::wstring(buf), g_hListFont, hovered, idx, sub);
                         }
                     }
                     return CDRF_DODEFAULT;
