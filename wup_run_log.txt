@@ -17108,3 +17108,264 @@ Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.8.JRE     8.0.462.8 
 
 
 WM_REFRESH_DONE: refresh complete, forcing main window to foreground
+--- CMD: winget list ---
+Exit: -2
+(TIMEOUT)
+Output:
+   -    \    |    / 
+
+--- CMD: winget upgrade ---
+Exit: 0
+Output:
+   -    \    |    /                                                                                                                           ████████████▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  1024 KB / 2.47 MB  ████████████████████████▒▒▒▒▒▒  2.00 MB / 2.47 MB  ██████████████████████████████  2.47 MB / 2.47 MB                                                                                                                          ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  0%  ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  0%  ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  1%  ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  3%  █▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  4%  █▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  5%  █▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  6%  ██▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  7%  ██▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  8%  ██████▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  21%  ██████████▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  34%  ██████████████▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  48%  ██████████████████▒▒▒▒▒▒▒▒▒▒▒▒  61%  ██████████████████████▒▒▒▒▒▒▒▒  74%  ██████████████████████▒▒▒▒▒▒▒▒  76%  ███████████████████████▒▒▒▒▒▒▒  77%  ████████████████████████▒▒▒▒▒▒  81%  ████████████████████████▒▒▒▒▒▒  82%  ██████████████████████████▒▒▒▒  89%  █████████████████████████████▒  99%  █████████████████████████████▒  99%  ██████████████████████████████  100%                                                                                                                           -                                                                                                                         Name                            Id                        Version   Available Source
+------------------------------------------------------------------------------------
+Mozilla Thunderbird (x64 nb-NO) Mozilla.Thunderbird.nb-NO 146.0     146.0.1   winget
+Vulkan SDK 1.4.328.1            KhronosGroup.VulkanSDK    1.4.328.1 1.4.335.0 winget
+2 upgrades available.
+
+
+--- CMD: winget upgrade ---
+Exit: 0
+Output:
+   -                                                                                                                         Name                            Id                        Version   Available Source
+------------------------------------------------------------------------------------
+Mozilla Thunderbird (x64 nb-NO) Mozilla.Thunderbird.nb-NO 146.0     146.0.1   winget
+Vulkan SDK 1.4.328.1            KhronosGroup.VulkanSDK    1.4.328.1 1.4.335.0 winget
+2 upgrades available.
+
+
+--- CMD: winget list ---
+Exit: -2
+(TIMEOUT)
+Output:
+   -                                                                                                                         Name                              Id                                Version                            Available Source
+-----------------------------------------------------------------------------------------------------------------------
+7-Zip 25.01 (x64)                 7zip.7zip                         25.01                                        winget
+AutoHotkey                        AutoHotkey.AutoHotkey             2.0.19                                       winget
+Combined Community Codec Pack 64… ARP\Machine\X64\Combined Communi… 2015.10.19.0                                 
+GIMP 3.0.6-1                      GIMP.GIMP.3                       3.0.6.1                                      winget
+Git                               ARP\Machine\X64\Git_is1           2.51.2                                       
+Mozilla Thunderbird (x64 nb-NO)   Mozilla.Thunderbird.nb-NO         146.0                              146.0.1   winget
+Mozilla Maintenance Service       ARP\Machine\X64\MozillaMaintenan… 146.0                                        
+Notepad++ (64-bit x64)            Notepad++.Notepad++               8.8.9                                        winget
+RustDesk                          RustDesk.RustDesk                 1.4.1                                        winget
+SteelSeries GG 101.0.0            SteelSeries.GG                    101.0.0                                      winget
+Total Commander 64-bit (Remove o… Ghisler.TotalCommander            11.56                                        winget
+VLC media player                  VideoLAN.VLC                      3.0.22                                       winget
+Eclipse Temurin JDK with Hotspot… EclipseAdoptium.Temurin.21.JDK    21.0.9.10                                    winget
+MiniTool Partition Wizard Free 1… MiniTool.PartitionWizard.Free     13.5                                         winget
+Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.17.JRE    17.0.17.10                                   winget
+Blender                           BlenderFoundation.Blender         5.0.1                                        winget
+Blender                           BlenderFoundation.Blender         4.4.3                                        winget
+LibreOffice 25.8.4.2              TheDocumentFoundation.LibreOffice 25.8.4.2                                     winget
+IPGui                             ARP\Machine\X64\{4442AFA4-18F8-4… 4.0.5                                        
+Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.11.JRE    11.0.29.7                                    winget
+Eclipse Temurin JDK with Hotspot… EclipseAdoptium.Temurin.8.JDK     8.0.472.8                                    winget
+Eclipse Temurin JDK with Hotspot… EclipseAdoptium.Temurin.8.JDK     8.0.462.8                                    winget
+Microsoft Visual Studio Installer ARP\Machine\X64\{6F320B93-EE3C-4… 4.0.2167.44905                               
+InfoWinApp                        ARP\Machine\X64\{75B92123-BF92-4… 0.9.8                                        
+Google Earth Pro                  Google.EarthPro                   7.3.6.10441                                  winget
+Eclipse Temurin JDK with Hotspot… ARP\Machine\X64\{8D9A718A-EA20-4… 17.0.16.8                                    
+Gadwin PrintScreen (64-Bit)       Gadwin.PrintScreen                6.5.0.0                                      winget
+NVIDIA Grafikkdriver 511.65       ARP\Machine\X64\{B2FE1952-0186-4… 511.65                                       
+Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.8.JRE     8.0.472.8                                    winget
+Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.8.JRE     8.0.462.8                                    winget
+
+
+WM_REFRESH_DONE: refresh complete, forcing main window to foreground
+--- CMD: winget list ---
+Exit: -2
+(TIMEOUT)
+Output:
+   -                                                                                                                         Name                              Id                                Version                            Available Source
+-----------------------------------------------------------------------------------------------------------------------
+7-Zip 25.01 (x64)                 7zip.7zip                         25.01                                        winget
+AutoHotkey                        AutoHotkey.AutoHotkey             2.0.19                                       winget
+Combined Community Codec Pack 64… ARP\Machine\X64\Combined Communi… 2015.10.19.0                                 
+GIMP 3.0.6-1                      GIMP.GIMP.3                       3.0.6.1                                      winget
+Git                               ARP\Machine\X64\Git_is1           2.51.2                                       
+Mozilla Thunderbird (x64 nb-NO)   Mozilla.Thunderbird.nb-NO         146.0                              146.0.1   winget
+Mozilla Maintenance Service       ARP\Machine\X64\MozillaMaintenan… 146.0                                        
+Notepad++ (64-bit x64)            Notepad++.Notepad++               8.8.9                                        winget
+RustDesk                          RustDesk.RustDesk                 1.4.1                                        winget
+SteelSeries GG 101.0.0            SteelSeries.GG                    101.0.0                                      winget
+Total Commander 64-bit (Remove o… Ghisler.TotalCommander            11.56                                        winget
+VLC media player                  VideoLAN.VLC                      3.0.22                                       winget
+Eclipse Temurin JDK with Hotspot… EclipseAdoptium.Temurin.21.JDK    21.0.9.10                                    winget
+MiniTool Partition Wizard Free 1… MiniTool.PartitionWizard.Free     13.5                                         winget
+Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.17.JRE    17.0.17.10                                   winget
+Blender                           BlenderFoundation.Blender         5.0.1                                        winget
+Blender                           BlenderFoundation.Blender         4.4.3                                        winget
+LibreOffice 25.8.4.2              TheDocumentFoundation.LibreOffice 25.8.4.2                                     winget
+IPGui                             ARP\Machine\X64\{4442AFA4-18F8-4… 4.0.5                                        
+Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.11.JRE    11.0.29.7                                    winget
+Eclipse Temurin JDK with Hotspot… EclipseAdoptium.Temurin.8.JDK     8.0.472.8                                    winget
+Eclipse Temurin JDK with Hotspot… EclipseAdoptium.Temurin.8.JDK     8.0.462.8                                    winget
+Microsoft Visual Studio Installer ARP\Machine\X64\{6F320B93-EE3C-4… 4.0.2167.44905                               
+InfoWinApp                        ARP\Machine\X64\{75B92123-BF92-4… 0.9.8                                        
+Google Earth Pro                  Google.EarthPro                   7.3.6.10441                                  winget
+Eclipse Temurin JDK with Hotspot… ARP\Machine\X64\{8D9A718A-EA20-4… 17.0.16.8                                    
+Gadwin PrintScreen (64-Bit)       Gadwin.PrintScreen                6.5.0.0                                      winget
+NVIDIA Grafikkdriver 511.65       ARP\Machine\X64\{B2FE1952-0186-4… 511.65                                       
+Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.8.JRE     8.0.472.8                                    winget
+Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.8.JRE     8.0.462.8                                    winget
+Eclipse Temurin JDK with Hotspot… EclipseAdoptium.Temurin.11.JDK    11.0.29.7                                    winget
+
+
+--- CMD: winget upgrade ---
+Exit: 0
+Output:
+   -                                                                                                                         Name                            Id                        Version   Available Source
+------------------------------------------------------------------------------------
+Mozilla Thunderbird (x64 nb-NO) Mozilla.Thunderbird.nb-NO 146.0     146.0.1   winget
+Vulkan SDK 1.4.328.1            KhronosGroup.VulkanSDK    1.4.328.1 1.4.335.0 winget
+2 upgrades available.
+
+
+--- CMD: winget upgrade ---
+Exit: 0
+Output:
+   -                                                                                                                         Name                            Id                        Version   Available Source
+------------------------------------------------------------------------------------
+Mozilla Thunderbird (x64 nb-NO) Mozilla.Thunderbird.nb-NO 146.0     146.0.1   winget
+Vulkan SDK 1.4.328.1            KhronosGroup.VulkanSDK    1.4.328.1 1.4.335.0 winget
+2 upgrades available.
+
+
+--- CMD: winget list ---
+Exit: -2
+(TIMEOUT)
+Output:
+   -                                                                                                                         Name                              Id                                Version                            Available Source
+-----------------------------------------------------------------------------------------------------------------------
+7-Zip 25.01 (x64)                 7zip.7zip                         25.01                                        winget
+AutoHotkey                        AutoHotkey.AutoHotkey             2.0.19                                       winget
+Combined Community Codec Pack 64… ARP\Machine\X64\Combined Communi… 2015.10.19.0                                 
+GIMP 3.0.6-1                      GIMP.GIMP.3                       3.0.6.1                                      winget
+Git                               ARP\Machine\X64\Git_is1           2.51.2                                       
+Mozilla Thunderbird (x64 nb-NO)   Mozilla.Thunderbird.nb-NO         146.0                              146.0.1   winget
+Mozilla Maintenance Service       ARP\Machine\X64\MozillaMaintenan… 146.0                                        
+Notepad++ (64-bit x64)            Notepad++.Notepad++               8.8.9                                        winget
+RustDesk                          RustDesk.RustDesk                 1.4.1                                        winget
+SteelSeries GG 101.0.0            SteelSeries.GG                    101.0.0                                      winget
+Total Commander 64-bit (Remove o… Ghisler.TotalCommander            11.56                                        winget
+VLC media player                  VideoLAN.VLC                      3.0.22                                       winget
+Eclipse Temurin JDK with Hotspot… EclipseAdoptium.Temurin.21.JDK    21.0.9.10                                    winget
+MiniTool Partition Wizard Free 1… MiniTool.PartitionWizard.Free     13.5                                         winget
+Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.17.JRE    17.0.17.10                                   winget
+Blender                           BlenderFoundation.Blender         5.0.1                                        winget
+Blender                           BlenderFoundation.Blender         4.4.3                                        winget
+LibreOffice 25.8.4.2              TheDocumentFoundation.LibreOffice 25.8.4.2                                     winget
+IPGui                             ARP\Machine\X64\{4442AFA4-18F8-4… 4.0.5                                        
+Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.11.JRE    11.0.29.7                                    winget
+Eclipse Temurin JDK with Hotspot… EclipseAdoptium.Temurin.8.JDK     8.0.472.8                                    winget
+Eclipse Temurin JDK with Hotspot… EclipseAdoptium.Temurin.8.JDK     8.0.462.8                                    winget
+Microsoft Visual Studio Installer ARP\Machine\X64\{6F320B93-EE3C-4… 4.0.2167.44905                               
+InfoWinApp                        ARP\Machine\X64\{75B92123-BF92-4… 0.9.8                                        
+Google Earth Pro                  Google.EarthPro                   7.3.6.10441                                  winget
+Eclipse Temurin JDK with Hotspot… ARP\Machine\X64\{8D9A718A-EA20-4… 17.0.16.8                                    
+Gadwin PrintScreen (64-Bit)       Gadwin.PrintScreen                6.5.0.0                                      winget
+NVIDIA Grafikkdriver 511.65       ARP\Machine\X64\{B2FE1952-0186-4… 511.65                                       
+Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.8.JRE     8.0.472.8                                    winget
+Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.8.JRE     8.0.462.8                                    winget
+Eclipse Temurin JDK with Hotspot… EclipseAdoptium.Temurin.11.JDK    11.0.29.7                                    winget
+
+
+WM_REFRESH_DONE: refresh complete, forcing main window to foreground
+--- CMD: winget list ---
+Exit: -2
+(TIMEOUT)
+Output:
+   -                                                                                                                         Name                              Id                                Version                            Available Source
+-----------------------------------------------------------------------------------------------------------------------
+7-Zip 25.01 (x64)                 7zip.7zip                         25.01                                        winget
+AutoHotkey                        AutoHotkey.AutoHotkey             2.0.19                                       winget
+Combined Community Codec Pack 64… ARP\Machine\X64\Combined Communi… 2015.10.19.0                                 
+GIMP 3.0.6-1                      GIMP.GIMP.3                       3.0.6.1                                      winget
+Git                               ARP\Machine\X64\Git_is1           2.51.2                                       
+Mozilla Thunderbird (x64 nb-NO)   Mozilla.Thunderbird.nb-NO         146.0                              146.0.1   winget
+Mozilla Maintenance Service       ARP\Machine\X64\MozillaMaintenan… 146.0                                        
+Notepad++ (64-bit x64)            Notepad++.Notepad++               8.8.9                                        winget
+RustDesk                          RustDesk.RustDesk                 1.4.1                                        winget
+SteelSeries GG 101.0.0            SteelSeries.GG                    101.0.0                                      winget
+Total Commander 64-bit (Remove o… Ghisler.TotalCommander            11.56                                        winget
+VLC media player                  VideoLAN.VLC                      3.0.22                                       winget
+Eclipse Temurin JDK with Hotspot… EclipseAdoptium.Temurin.21.JDK    21.0.9.10                                    winget
+MiniTool Partition Wizard Free 1… MiniTool.PartitionWizard.Free     13.5                                         winget
+Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.17.JRE    17.0.17.10                                   winget
+Blender                           BlenderFoundation.Blender         5.0.1                                        winget
+Blender                           BlenderFoundation.Blender         4.4.3                                        winget
+LibreOffice 25.8.4.2              TheDocumentFoundation.LibreOffice 25.8.4.2                                     winget
+IPGui                             ARP\Machine\X64\{4442AFA4-18F8-4… 4.0.5                                        
+Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.11.JRE    11.0.29.7                                    winget
+Eclipse Temurin JDK with Hotspot… EclipseAdoptium.Temurin.8.JDK     8.0.472.8                                    winget
+Eclipse Temurin JDK with Hotspot… EclipseAdoptium.Temurin.8.JDK     8.0.462.8                                    winget
+Microsoft Visual Studio Installer ARP\Machine\X64\{6F320B93-EE3C-4… 4.0.2167.44905                               
+InfoWinApp                        ARP\Machine\X64\{75B92123-BF92-4… 0.9.8                                        
+Google Earth Pro                  Google.EarthPro                   7.3.6.10441                                  winget
+Eclipse Temurin JDK with Hotspot… ARP\Machine\X64\{8D9A718A-EA20-4… 17.0.16.8                                    
+Gadwin PrintScreen (64-Bit)       Gadwin.PrintScreen                6.5.0.0                                      winget
+NVIDIA Grafikkdriver 511.65       ARP\Machine\X64\{B2FE1952-0186-4… 511.65                                       
+Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.8.JRE     8.0.472.8                                    winget
+Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.8.JRE     8.0.462.8                                    winget
+
+
+--- CMD: winget upgrade ---
+Exit: 0
+Output:
+   -                                                                                                                         Name                            Id                        Version   Available Source
+------------------------------------------------------------------------------------
+Mozilla Thunderbird (x64 nb-NO) Mozilla.Thunderbird.nb-NO 146.0     146.0.1   winget
+Vulkan SDK 1.4.328.1            KhronosGroup.VulkanSDK    1.4.328.1 1.4.335.0 winget
+2 upgrades available.
+
+
+--- CMD: winget upgrade ---
+Exit: 0
+Output:
+   -                                                                                                                         Name                            Id                        Version   Available Source
+------------------------------------------------------------------------------------
+Mozilla Thunderbird (x64 nb-NO) Mozilla.Thunderbird.nb-NO 146.0     146.0.1   winget
+Vulkan SDK 1.4.328.1            KhronosGroup.VulkanSDK    1.4.328.1 1.4.335.0 winget
+2 upgrades available.
+
+
+--- CMD: winget list ---
+Exit: -2
+(TIMEOUT)
+Output:
+   -                                                                                                                         Name                              Id                                Version                            Available Source
+-----------------------------------------------------------------------------------------------------------------------
+7-Zip 25.01 (x64)                 7zip.7zip                         25.01                                        winget
+AutoHotkey                        AutoHotkey.AutoHotkey             2.0.19                                       winget
+Combined Community Codec Pack 64… ARP\Machine\X64\Combined Communi… 2015.10.19.0                                 
+GIMP 3.0.6-1                      GIMP.GIMP.3                       3.0.6.1                                      winget
+Git                               ARP\Machine\X64\Git_is1           2.51.2                                       
+Mozilla Thunderbird (x64 nb-NO)   Mozilla.Thunderbird.nb-NO         146.0                              146.0.1   winget
+Mozilla Maintenance Service       ARP\Machine\X64\MozillaMaintenan… 146.0                                        
+Notepad++ (64-bit x64)            Notepad++.Notepad++               8.8.9                                        winget
+RustDesk                          RustDesk.RustDesk                 1.4.1                                        winget
+SteelSeries GG 101.0.0            SteelSeries.GG                    101.0.0                                      winget
+Total Commander 64-bit (Remove o… Ghisler.TotalCommander            11.56                                        winget
+VLC media player                  VideoLAN.VLC                      3.0.22                                       winget
+Eclipse Temurin JDK with Hotspot… EclipseAdoptium.Temurin.21.JDK    21.0.9.10                                    winget
+MiniTool Partition Wizard Free 1… MiniTool.PartitionWizard.Free     13.5                                         winget
+Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.17.JRE    17.0.17.10                                   winget
+Blender                           BlenderFoundation.Blender         5.0.1                                        winget
+Blender                           BlenderFoundation.Blender         4.4.3                                        winget
+LibreOffice 25.8.4.2              TheDocumentFoundation.LibreOffice 25.8.4.2                                     winget
+IPGui                             ARP\Machine\X64\{4442AFA4-18F8-4… 4.0.5                                        
+Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.11.JRE    11.0.29.7                                    winget
+Eclipse Temurin JDK with Hotspot… EclipseAdoptium.Temurin.8.JDK     8.0.472.8                                    winget
+Eclipse Temurin JDK with Hotspot… EclipseAdoptium.Temurin.8.JDK     8.0.462.8                                    winget
+Microsoft Visual Studio Installer ARP\Machine\X64\{6F320B93-EE3C-4… 4.0.2167.44905                               
+InfoWinApp                        ARP\Machine\X64\{75B92123-BF92-4… 0.9.8                                        
+Google Earth Pro                  Google.EarthPro                   7.3.6.10441                                  winget
+Eclipse Temurin JDK with Hotspot… ARP\Machine\X64\{8D9A718A-EA20-4… 17.0.16.8                                    
+Gadwin PrintScreen (64-Bit)       Gadwin.PrintScreen                6.5.0.0                                      winget
+NVIDIA Grafikkdriver 511.65       ARP\Machine\X64\{B2FE1952-0186-4… 511.65                                       
+Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.8.JRE     8.0.472.8                                    winget
+Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.8.JRE     8.0.462.8                                    winget
+
+
+WM_REFRESH_DONE: refresh complete, forcing main window to foreground
