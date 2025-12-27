@@ -30187,3 +30187,2350 @@ WM_REFRESH_DONE: refresh complete, forcing main window to foreground
 [hyperlink] Hiding custom tooltip
 [hyperlink] Hiding custom tooltip
 [hyperlink] WM_MOUSELEAVE - hiding custom tooltip
+--- CMD: winget list ---
+Exit: -2
+(TIMEOUT)
+Output:
+   -    \                                                                                                                            - 
+
+--- CMD: winget upgrade ---
+Exit: 0
+Output:
+   -                                                                                                                         Name                            Id                        Version   Available Source
+------------------------------------------------------------------------------------
+Mozilla Thunderbird (x64 nb-NO) Mozilla.Thunderbird.nb-NO 146.0     146.0.1   winget
+Vulkan SDK 1.4.328.1            KhronosGroup.VulkanSDK    1.4.328.1 1.4.335.0 winget
+2 upgrades available.
+
+
+--- CMD: winget upgrade --accept-source-agreements --accept-package-agreements --output json ---
+Exit: -2
+(TIMEOUT)
+Output:
+Windows Package Manager v1.12.350
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+Argument name was not recognized for the current command: '--output'
+
+Upgrades the selected package, either found by searching the installed packages list or directly from a manifest. By default, the query must case-insensitively match the id, name, or moniker of the package. Other fields can be used by passing their appropriate option. When no arguments are given, shows the packages with upgrades available
+
+usage: winget upgrade [[-q] <query>...] [<options>]
+
+The following command aliases are available:
+  update
+
+The following arguments are available:
+  -q,--query                           The query used to search for a package
+
+The following options are available:
+  -m,--manifest                        The path to the manifest of the package
+  --id                                 Filter results by id
+  --name                               Filter results by name
+  --moniker                            Filter results by moniker
+  -v,--version                         Use the specified version; default is the latest version
+  -s,--source                          Find package using the specified source
+  -e,--exact                           Find package using exact match
+  -i,--interactive                     Request interactive installation; user input may be needed
+  -h,--silent                          Request silent installation
+  --purge                              Deletes all files and directories in the package directory (portable)
+  -o,--log                             Log location (if supported)
+  --custom                             Arguments to be passed on to the installer in addition to the defaults
+  --override                           Override arguments to be passed on to the installer
+  -l,--location                        Location to install to (if supported)
+  --scope                              Select installed package scope filter (user or machine)
+  -a,--architecture                    Select the architecture
+  --installer-type                     Select the installer type
+  --locale                             Locale to use (BCP47 format)
+  --ignore-security-hash               Ignore the installer hash check failure
+  --allow-reboot                       Allows a reboot if applicable
+  --skip-dependencies                  Skips processing package dependencies and Windows features
+  --ignore-local-archive-malware-scan  Ignore the malware scan performed as part of installing an archive type package from local manifest
+  --accept-package-agreements          Accept all license agreements for packages
+  --accept-source-agreements           Accept all source agreements during source operations
+  --header                             Optional Windows-Package-Manager REST source HTTP header
+  --authentication-mode                Specify authentication window preference (silent, silentPreferred, or interactive)
+  --authentication-account             Specify the account to be used for authentication
+  -r,--recurse,--all                   Upgrade all installed packages to latest if available
+  -u,--unknown,--include-unknown       Upgrade packages even if their current version cannot be determined
+  --pinned,--include-pinned            Upgrade packages even if they have a non-blocking pin
+  --uninstall-previous                 Uninstall the previous version of the package during upgrade
+  --force                              Direct run the command and continue with non security related issues
+  -?,--help                            Shows help about the selected command
+  --wait                               Prompts the user to press any key before exiting
+  --logs,--open-logs                   Open the default logs location
+  --verbose,--verbose-logs             Enables verbose logging for winget
+  --nowarn,--ignore-warnings           Suppresses warning outputs
+  --disable-interactivity              Disable interactive prompts
+  --proxy                              Set a proxy to use for this execution
+
+
+--- CMD: winget list --accept-source-agreements --accept-package-agreements --output json ---
+Exit: -1978335230
+Output:
+Windows Package Manager v1.12.350
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+Argument name was not recognized for the current command: '--accept-package-agreements'
+
+The list command displays the packages installed on the system, as well as whether an upgrade is available. Additional options can be provided to filter the output, much like the search command.
+
+usage: winget list [[-q] <query>] [<options>]
+
+The following command aliases are available:
+  ls
+
+The following arguments are available:
+  -q,--query                      The query used to search for a package
+
+The following options are available:
+  --id                            Filter results by id
+  --name                          Filter results by name
+  --moniker                       Filter results by moniker
+  -s,--source                     Find package using the specified source
+  --tag                           Filter results by tag
+  --cmd,--command                 Filter results by command
+  -n,--count                      Show no more than specified number of results (between 1 and 1000)
+  -e,--exact                      Find package using exact match
+  --scope                         Select installed package scope filter (user or machine)
+  --header                        Optional Windows-Package-Manager REST source HTTP header
+  --authentication-mode           Specify authentication window preference (silent, silentPreferred, or interactive)
+  --authentication-account        Specify the account to be used for authentication
+  --accept-source-agreements      Accept all source agreements during source operations
+  --upgrade-available             Lists only packages which have an upgrade available
+  -u,--unknown,--include-unknown  List packages even if their current version cannot be determined. Can only be used with the --upgrade-available argument
+  --pinned,--include-pinned       List packages even if they have a pin that prevents upgrade. Can only be used with the --upgrade-available argument
+  -?,--help                       Shows help about the selected command
+  --wait                          Prompts the user to press any key before exiting
+  --logs,--open-logs              Open the default logs location
+  --verbose,--verbose-logs        Enables verbose logging for winget
+  --nowarn,--ignore-warnings      Suppresses warning outputs
+  --disable-interactivity         Disable interactive prompts
+  --proxy                         Set a proxy to use for this execution
+  --no-proxy                      Disable the use of proxy for this execution
+
+More help can be found at: https://aka.ms/winget-command-list
+
+
+WM_REFRESH_DONE: refresh complete, forcing main window to foreground
+[hyperlink] Created custom tooltip popup
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] invoking ShowSkipConfirm for app=Vulkan SDK 1.4.328.1 avail=1.4.335.0
+[skip_confirm] ShowSkipConfirm entered
+[skip_confirm] Prepared dialog strings, attempting TaskDialogIndirect
+[skip_confirm] Using MessageBox fallback
+[hyperlink] WM_MOUSELEAVE - hiding custom tooltip
+[skip_confirm] MessageBox returned=6
+[hyperlink] ShowSkipConfirm returned=1
+[hyperlink] posting WM_APP+200 to mainWnd=1445528
+--- CMD: winget list ---
+Exit: -2
+(TIMEOUT)
+Output:
+   -                                                                                                                         Name                              Id                                Version                            Available Source
+-----------------------------------------------------------------------------------------------------------------------
+7-Zip 25.01 (x64)                 7zip.7zip                         25.01                                        winget
+AutoHotkey                        AutoHotkey.AutoHotkey             2.0.19                                       winget
+Combined Community Codec Pack 64… ARP\Machine\X64\Combined Communi… 2015.10.19.0                                 
+GIMP 3.0.6-1                      GIMP.GIMP.3                       3.0.6.1                                      winget
+Git                               ARP\Machine\X64\Git_is1           2.51.2                                       
+Mozilla Thunderbird (x64 nb-NO)   Mozilla.Thunderbird.nb-NO         146.0                              146.0.1   winget
+Mozilla Maintenance Service       ARP\Machine\X64\MozillaMaintenan… 146.0                                        
+Notepad++ (64-bit x64)            Notepad++.Notepad++               8.8.9                                        winget
+RustDesk                          RustDesk.RustDesk                 1.4.1                                        winget
+SteelSeries GG 101.0.0            SteelSeries.GG                    101.0.0                                      winget
+Total Commander 64-bit (Remove o… Ghisler.TotalCommander            11.56                                        winget
+VLC media player                  VideoLAN.VLC                      3.0.22                                       winget
+Eclipse Temurin JDK with Hotspot… EclipseAdoptium.Temurin.21.JDK    21.0.9.10                                    winget
+MiniTool Partition Wizard Free 1… MiniTool.PartitionWizard.Free     13.5                                         winget
+Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.17.JRE    17.0.17.10                                   winget
+Blender                           BlenderFoundation.Blender         5.0.1                                        winget
+Blender                           BlenderFoundation.Blender         4.4.3                                        winget
+LibreOffice 25.8.4.2              TheDocumentFoundation.LibreOffice 25.8.4.2                                     winget
+IPGui                             ARP\Machine\X64\{4442AFA4-18F8-4… 4.0.5                                        
+Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.11.JRE    11.0.29.7                                    winget
+Eclipse Temurin JDK with Hotspot… EclipseAdoptium.Temurin.8.JDK     8.0.472.8                                    winget
+Eclipse Temurin JDK with Hotspot… EclipseAdoptium.Temurin.8.JDK     8.0.462.8                                    winget
+Microsoft Visual Studio Installer ARP\Machine\X64\{6F320B93-EE3C-4… 4.0.2167.44905                               
+InfoWinApp                        ARP\Machine\X64\{75B92123-BF92-4… 0.9.8                                        
+Google Earth Pro                  Google.EarthPro                   7.3.6.10441                                  winget
+Eclipse Temurin JDK with Hotspot… ARP\Machine\X64\{8D9A718A-EA20-4… 17.0.16.8                                    
+Gadwin PrintScreen (64-Bit)       Gadwin.PrintScreen                6.5.0.0                                      winget
+NVIDIA Grafikkdriver 511.65       ARP\Machine\X64\{B2FE1952-0186-4… 511.65                                       
+Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.8.JRE     8.0.472.8                                    winget
+Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.8.JRE     8.0.462.8                                    winget
+
+
+--- CMD: winget upgrade ---
+Exit: 0
+Output:
+   -                                                                                                                         Name                            Id                        Version   Available Source
+------------------------------------------------------------------------------------
+Mozilla Thunderbird (x64 nb-NO) Mozilla.Thunderbird.nb-NO 146.0     146.0.1   winget
+Vulkan SDK 1.4.328.1            KhronosGroup.VulkanSDK    1.4.328.1 1.4.335.0 winget
+2 upgrades available.
+
+
+--- CMD: winget list --accept-source-agreements --accept-package-agreements --output json ---
+Exit: -1978335230
+Output:
+Windows Package Manager v1.12.350
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+Argument name was not recognized for the current command: '--accept-package-agreements'
+
+The list command displays the packages installed on the system, as well as whether an upgrade is available. Additional options can be provided to filter the output, much like the search command.
+
+usage: winget list [[-q] <query>] [<options>]
+
+The following command aliases are available:
+  ls
+
+The following arguments are available:
+  -q,--query                      The query used to search for a package
+
+The following options are available:
+  --id                            Filter results by id
+  --name                          Filter results by name
+  --moniker                       Filter results by moniker
+  -s,--source                     Find package using the specified source
+  --tag                           Filter results by tag
+  --cmd,--command                 Filter results by command
+  -n,--count                      Show no more than specified number of results (between 1 and 1000)
+  -e,--exact                      Find package using exact match
+  --scope                         Select installed package scope filter (user or machine)
+  --header                        Optional Windows-Package-Manager REST source HTTP header
+  --authentication-mode           Specify authentication window preference (silent, silentPreferred, or interactive)
+  --authentication-account        Specify the account to be used for authentication
+  --accept-source-agreements      Accept all source agreements during source operations
+  --upgrade-available             Lists only packages which have an upgrade available
+  -u,--unknown,--include-unknown  List packages even if their current version cannot be determined. Can only be used with the --upgrade-available argument
+  --pinned,--include-pinned       List packages even if they have a pin that prevents upgrade. Can only be used with the --upgrade-available argument
+  -?,--help                       Shows help about the selected command
+  --wait                          Prompts the user to press any key before exiting
+  --logs,--open-logs              Open the default logs location
+  --verbose,--verbose-logs        Enables verbose logging for winget
+  --nowarn,--ignore-warnings      Suppresses warning outputs
+  --disable-interactivity         Disable interactive prompts
+  --proxy                         Set a proxy to use for this execution
+  --no-proxy                      Disable the use of proxy for this execution
+
+More help can be found at: https://aka.ms/winget-command-list
+
+
+--- CMD: winget upgrade --accept-source-agreements --accept-package-agreements --output json ---
+Exit: -2
+(TIMEOUT)
+Output:
+Windows Package Manager v1.12.350
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+Argument name was not recognized for the current command: '--output'
+
+Upgrades the selected package, either found by searching the installed packages list or directly from a manifest. By default, the query must case-insensitively match the id, name, or moniker of the package. Other fields can be used by passing their appropriate option. When no arguments are given, shows the packages with upgrades available
+
+usage: winget upgrade [[-q] <query>...] [<options>]
+
+The following command aliases are available:
+  update
+
+The following arguments are available:
+  -q,--query                           The query used to search for a package
+
+The following options are available:
+  -m,--manifest                        The path to the manifest of the package
+  --id                                 Filter results by id
+  --name                               Filter results by name
+  --moniker                            Filter results by moniker
+  -v,--version                         Use the specified version; default is the latest version
+  -s,--source                          Find package using the specified source
+  -e,--exact                           Find package using exact match
+  -i,--interactive                     Request interactive installation; user input may be needed
+  -h,--silent                          Request silent installation
+  --purge                              Deletes all files and directories in the package directory (portable)
+  -o,--log                             Log location (if supported)
+  --custom                             Arguments to be passed on to the installer in addition to the defaults
+  --override                           Override arguments to be passed on to the installer
+  -l,--location                        Location to install to (if supported)
+  --scope                              Select installed package scope filter (user or machine)
+  -a,--architecture                    Select the architecture
+  --installer-type                     Select the installer type
+  --locale                             Locale to use (BCP47 format)
+  --ignore-security-hash               Ignore the installer hash check failure
+  --allow-reboot                       Allows a reboot if applicable
+  --skip-dependencies                  Skips processing package dependencies and Windows features
+  --ignore-local-archive-malware-scan  Ignore the malware scan performed as part of installing an archive type package from local manifest
+  --accept-package-agreements          Accept all license agreements for packages
+  --accept-source-agreements           Accept all source agreements during source operations
+  --header                             Optional Windows-Package-Manager REST source HTTP header
+  --authentication-mode                Specify authentication window preference (silent, silentPreferred, or interactive)
+  --authentication-account             Specify the account to be used for authentication
+  -r,--recurse,--all                   Upgrade all installed packages to latest if available
+  -u,--unknown,--include-unknown       Upgrade packages even if their current version cannot be determined
+  --pinned,--include-pinned            Upgrade packages even if they have a non-blocking pin
+  --uninstall-previous                 Uninstall the previous version of the package during upgrade
+  --force                              Direct run the command and continue with non security related issues
+  -?,--help                            Shows help about the selected command
+  --wait                               Prompts the user to press any key before exiting
+  --logs,--open-logs                   Open the default logs location
+  --verbose,--verbose-logs             Enables verbose logging for winget
+  --nowarn,--ignore-warnings           Suppresses warning outputs
+  --disable-interactivity              Disable interactive prompts
+
+
+WM_REFRESH_DONE: refresh complete, forcing main window to foreground
+[hyperlink] Created custom tooltip popup
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] invoking ShowSkipConfirm for app=Vulkan SDK 1.4.328.1 avail=1.4.335.0
+[skip_confirm] ShowSkipConfirm entered
+[skip_confirm] Prepared dialog strings, attempting TaskDialogIndirect
+[skip_confirm] Using MessageBox fallback
+[hyperlink] WM_MOUSELEAVE - hiding custom tooltip
+[skip_confirm] MessageBox returned=6
+[hyperlink] ShowSkipConfirm returned=1
+[hyperlink] posting WM_APP+200 to mainWnd=266058
+[hyperlink] Hiding custom tooltip
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] WM_MOUSELEAVE - hiding custom tooltip
+--- CMD: winget list ---
+Exit: -2
+(TIMEOUT)
+Output:
+   - 
+
+--- CMD: winget upgrade ---
+Exit: 0
+Output:
+   -                                                                                                                         Name                            Id                        Version   Available Source
+------------------------------------------------------------------------------------
+Mozilla Thunderbird (x64 nb-NO) Mozilla.Thunderbird.nb-NO 146.0     146.0.1   winget
+Vulkan SDK 1.4.328.1            KhronosGroup.VulkanSDK    1.4.328.1 1.4.335.0 winget
+2 upgrades available.
+
+
+--- CMD: winget upgrade --accept-source-agreements --accept-package-agreements --output json ---
+Exit: -2
+(TIMEOUT)
+Output:
+Windows Package Manager v1.12.350
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+Argument name was not recognized for the current command: '--output'
+
+Upgrades the selected package, either found by searching the installed packages list or directly from a manifest. By default, the query must case-insensitively match the id, name, or moniker of the package. Other fields can be used by passing their appropriate option. When no arguments are given, shows the packages with upgrades available
+
+usage: winget upgrade [[-q] <query>...] [<options>]
+
+The following command aliases are available:
+  update
+
+The following arguments are available:
+  -q,--query                           The query used to search for a package
+
+The following options are available:
+  -m,--manifest                        The path to the manifest of the package
+  --id                                 Filter results by id
+  --name                               Filter results by name
+  --moniker                            Filter results by moniker
+  -v,--version                         Use the specified version; default is the latest version
+  -s,--source                          Find package using the specified source
+  -e,--exact                           Find package using exact match
+  -i,--interactive                     Request interactive installation; user input may be needed
+  -h,--silent                          Request silent installation
+  --purge                              Deletes all files and directories in the package directory (portable)
+  -o,--log                             Log location (if supported)
+  --custom                             Arguments to be passed on to the installer in addition to the defaults
+  --override                           Override arguments to be passed on to the installer
+  -l,--location                        Location to install to (if supported)
+  --scope                              Select installed package scope filter (user or machine)
+  -a,--architecture                    Select the architecture
+  --installer-type                     Select the installer type
+  --locale                             Locale to use (BCP47 format)
+  --ignore-security-hash               Ignore the installer hash check failure
+  --allow-reboot                       Allows a reboot if applicable
+  --skip-dependencies                  Skips processing package dependencies and Windows features
+  --ignore-local-archive-malware-scan  Ignore the malware scan performed as part of installing an archive type package from local manifest
+  --accept-package-agreements          Accept all license agreements for packages
+  --accept-source-agreements           Accept all source agreements during source operations
+  --header                             Optional Windows-Package-Manager REST source HTTP header
+  --authentication-mode                Specify authentication window preference (silent, silentPreferred, or interactive)
+  --authentication-account             Specify the account to be used for authentication
+  -r,--recurse,--all                   Upgrade all installed packages to latest if available
+  -u,--unknown,--include-unknown       Upgrade packages even if their current version cannot be determined
+  --pinned,--include-pinned            Upgrade packages even if they have a non-blocking pin
+  --uninstall-previous                 Uninstall the previous version of the package during upgrade
+  --force                              Direct run the command and continue with non security related issues
+  -?,--help                            Shows help about the selected command
+  --wait                               Prompts the user to press any key before exiting
+  --logs,--open-logs                   Open the default logs location
+  --verbose,--verbose-logs             Enables verbose logging for winget
+  --nowarn,--ignore-warnings           Suppresses warning outputs
+  --disable-interactivity              Disable interactive prompts
+  --proxy                              Set 
+
+--- CMD: winget list --accept-source-agreements --accept-package-agreements --output json ---
+Exit: -1978335230
+Output:
+Windows Package Manager v1.12.350
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+Argument name was not recognized for the current command: '--accept-package-agreements'
+
+The list command displays the packages installed on the system, as well as whether an upgrade is available. Additional options can be provided to filter the output, much like the search command.
+
+usage: winget list [[-q] <query>] [<options>]
+
+The following command aliases are available:
+  ls
+
+The following arguments are available:
+  -q,--query                      The query used to search for a package
+
+The following options are available:
+  --id                            Filter results by id
+  --name                          Filter results by name
+  --moniker                       Filter results by moniker
+  -s,--source                     Find package using the specified source
+  --tag                           Filter results by tag
+  --cmd,--command                 Filter results by command
+  -n,--count                      Show no more than specified number of results (between 1 and 1000)
+  -e,--exact                      Find package using exact match
+  --scope                         Select installed package scope filter (user or machine)
+  --header                        Optional Windows-Package-Manager REST source HTTP header
+  --authentication-mode           Specify authentication window preference (silent, silentPreferred, or interactive)
+  --authentication-account        Specify the account to be used for authentication
+  --accept-source-agreements      Accept all source agreements during source operations
+  --upgrade-available             Lists only packages which have an upgrade available
+  -u,--unknown,--include-unknown  List packages even if their current version cannot be determined. Can only be used with the --upgrade-available argument
+  --pinned,--include-pinned       List packages even if they have a pin that prevents upgrade. Can only be used with the --upgrade-available argument
+  -?,--help                       Shows help about the selected command
+  --wait                          Prompts the user to press any key before exiting
+  --logs,--open-logs              Open the default logs location
+  --verbose,--verbose-logs        Enables verbose logging for winget
+  --nowarn,--ignore-warnings      Suppresses warning outputs
+  --disable-interactivity         Disable interactive prompts
+  --proxy                         Set a proxy to use for this execution
+  --no-proxy                      Disable the use of proxy for this execution
+
+More help can be found at: https://aka.ms/winget-command-list
+
+
+WM_REFRESH_DONE: refresh complete, forcing main window to foreground
+[hyperlink] Created custom tooltip popup
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] invoking ShowSkipConfirm for app=Vulkan SDK 1.4.328.1 avail=1.4.335.0
+[skip_confirm] ShowSkipConfirm entered
+[skip_confirm] Prepared dialog strings, attempting TaskDialogIndirect
+[skip_confirm] Using MessageBox fallback
+[hyperlink] WM_MOUSELEAVE - hiding custom tooltip
+[skip_confirm] MessageBox returned=6
+[hyperlink] ShowSkipConfirm returned=1
+[hyperlink] posting WM_APP+200 to mainWnd=855724 pkgIdx=0
+--- CMD: winget list ---
+Exit: -2
+(TIMEOUT)
+Output:
+   -                                                                                                                         Name                              Id                                Version                            Available Source
+-----------------------------------------------------------------------------------------------------------------------
+7-Zip 25.01 (x64)                 7zip.7zip                         25.01                                        winget
+AutoHotkey                        AutoHotkey.AutoHotkey             2.0.19                                       winget
+Combined Community Codec Pack 64… ARP\Machine\X64\Combined Communi… 2015.10.19.0                                 
+GIMP 3.0.6-1                      GIMP.GIMP.3                       3.0.6.1                                      winget
+Git                               ARP\Machine\X64\Git_is1           2.51.2                                       
+Mozilla Thunderbird (x64 nb-NO)   Mozilla.Thunderbird.nb-NO         146.0                              146.0.1   winget
+Mozilla Maintenance Service       ARP\Machine\X64\MozillaMaintenan… 146.0                                        
+Notepad++ (64-bit x64)            Notepad++.Notepad++               8.8.9                                        winget
+RustDesk                          RustDesk.RustDesk                 1.4.1                                        winget
+SteelSeries GG 101.0.0            SteelSeries.GG                    101.0.0                                      winget
+Total Commander 64-bit (Remove o… Ghisler.TotalCommander            11.56                                        winget
+VLC media player                  VideoLAN.VLC                      3.0.22                                       winget
+Eclipse Temurin JDK with Hotspot… EclipseAdoptium.Temurin.21.JDK    21.0.9.10                                    winget
+MiniTool Partition Wizard Free 1… MiniTool.PartitionWizard.Free     13.5                                         winget
+Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.17.JRE    17.0.17.10                                   winget
+Blender                           BlenderFoundation.Blender         5.0.1                                        winget
+Blender                           BlenderFoundation.Blender         4.4.3                                        winget
+LibreOffice 25.8.4.2              TheDocumentFoundation.LibreOffice 25.8.4.2                                     winget
+IPGui                             ARP\Machine\X64\{4442AFA4-18F8-4… 4.0.5                                        
+Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.11.JRE    11.0.29.7                                    winget
+Eclipse Temurin JDK with Hotspot… EclipseAdoptium.Temurin.8.JDK     8.0.472.8                                    winget
+Eclipse Temurin JDK with Hotspot… EclipseAdoptium.Temurin.8.JDK     8.0.462.8                                    winget
+Microsoft Visual Studio Installer ARP\Machine\X64\{6F320B93-EE3C-4… 4.0.2167.44905                               
+InfoWinApp                        ARP\Machine\X64\{75B92123-BF92-4… 0.9.8                                        
+Google Earth Pro                  Google.EarthPro                   7.3.6.10441                                  winget
+Eclipse Temurin JDK with Hotspot… ARP\Machine\X64\{8D9A718A-EA20-4… 17.0.16.8                                    
+Gadwin PrintScreen (64-Bit)       Gadwin.PrintScreen                6.5.0.0                                      winget
+NVIDIA Grafikkdriver 511.65       ARP\Machine\X64\{B2FE1952-0186-4… 511.65                                       
+Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.8.JRE     8.0.472.8                                    winget
+Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.8.JRE     8.0.462.8                                    winget
+
+
+--- CMD: winget upgrade ---
+Exit: 0
+Output:
+   -                                                                                                                         Name                            Id                        Version   Available Source
+------------------------------------------------------------------------------------
+Mozilla Thunderbird (x64 nb-NO) Mozilla.Thunderbird.nb-NO 146.0     146.0.1   winget
+Vulkan SDK 1.4.328.1            KhronosGroup.VulkanSDK    1.4.328.1 1.4.335.0 winget
+2 upgrades available.
+
+
+--- CMD: winget list --accept-source-agreements --accept-package-agreements --output json ---
+Exit: -1978335230
+Output:
+Windows Package Manager v1.12.350
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+Argument name was not recognized for the current command: '--accept-package-agreements'
+
+The list command displays the packages installed on the system, as well as whether an upgrade is available. Additional options can be provided to filter the output, much like the search command.
+
+usage: winget list [[-q] <query>] [<options>]
+
+The following command aliases are available:
+  ls
+
+The following arguments are available:
+  -q,--query                      The query used to search for a package
+
+The following options are available:
+  --id                            Filter results by id
+  --name                          Filter results by name
+  --moniker                       Filter results by moniker
+  -s,--source                     Find package using the specified source
+  --tag                           Filter results by tag
+  --cmd,--command                 Filter results by command
+  -n,--count                      Show no more than specified number of results (between 1 and 1000)
+  -e,--exact                      Find package using exact match
+  --scope                         Select installed package scope filter (user or machine)
+  --header                        Optional Windows-Package-Manager REST source HTTP header
+  --authentication-mode           Specify authentication window preference (silent, silentPreferred, or interactive)
+  --authentication-account        Specify the account to be used for authentication
+  --accept-source-agreements      Accept all source agreements during source operations
+  --upgrade-available             Lists only packages which have an upgrade available
+  -u,--unknown,--include-unknown  List packages even if their current version cannot be determined. Can only be used with the --upgrade-available argument
+  --pinned,--include-pinned       List packages even if they have a pin that prevents upgrade. Can only be used with the --upgrade-available argument
+  -?,--help                       Shows help about the selected command
+  --wait                          Prompts the user to press any key before exiting
+  --logs,--open-logs              Open the default logs location
+  --verbose,--verbose-logs        Enables verbose logging for winget
+  --nowarn,--ignore-warnings      Suppresses warning outputs
+  --disable-interactivity         Disable interactive prompts
+  --proxy                         Set a proxy to use for this execution
+  --no-proxy                      Disable the use of proxy for this execution
+
+More help can be found at: https://aka.ms/winget-command-list
+
+
+--- CMD: winget upgrade --accept-source-agreements --accept-package-agreements --output json ---
+Exit: -2
+(TIMEOUT)
+Output:
+Windows Package Manager v1.12.350
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+Argument name was not recognized for the current command: '--output'
+
+Upgrades the selected package, either found by searching the installed packages list or directly from a manifest. By default, the query must case-insensitively match the id, name, or moniker of the package. Other fields can be used by passing their appropriate option. When no arguments are given, shows the packages with upgrades available
+
+usage: winget upgrade [[-q] <query>...] [<options>]
+
+The following command aliases are available:
+  update
+
+The following arguments are available:
+  -q,--query                           The query used to search for a package
+
+The following options are available:
+  -m,--manifest                        The path to the manifest of the package
+  --id                                 Filter results by id
+  --name                               Filter results by name
+  --moniker                            Filter results by moniker
+  -v,--version                         Use the specified version; default is the latest version
+  -s,--source                          Find package using the specified source
+  -e,--exact                           Find package using exact match
+  -i,--interactive                     Request interactive installation; user input may be needed
+  -h,--silent                          Request silent installation
+  --purge                              Deletes all files and directories in the package directory (portable)
+  -o,--log                             Log location (if supported)
+  --custom                             Arguments to be passed on to the installer in addition to the defaults
+  --override                           Override arguments to be passed on to the installer
+  -l,--location                        Location to install to (if supported)
+  --scope                              Select installed package scope filter (user or machine)
+  -a,--architecture                    Select the architecture
+  --installer-type                     Select the installer type
+  --locale                             Locale to use (BCP47 format)
+  --ignore-security-hash               Ignore the installer hash check failure
+  --allow-reboot                       Allows a reboot if applicable
+  --skip-dependencies                  Skips processing package dependencies and Windows features
+  --ignore-local-archive-malware-scan  Ignore the malware scan performed as part of installing an archive type package from local manifest
+  --accept-package-agreements          Accept all license agreements for packages
+  --accept-source-agreements           Accept all source agreements during source operations
+  --header                             Optional Windows-Package-Manager REST source HTTP header
+  --authentication-mode                Specify authentication window preference (silent, silentPreferred, or interactive)
+  --authentication-account             Specify the account to be used for authentication
+  -r,--recurse,--all                   Upgrade all installed packages to latest if available
+  -u,--unknown,--include-unknown       Upgrade packages even if their current version cannot be determined
+  --pinned,--include-pinned            Upgrade packages even if they have a non-blocking pin
+  --uninstall-previous                 Uninstall the previous version of the package during upgrade
+  --force                              Direct run the command and continue with non security related issues
+  -?,--help                            Shows help about the selected command
+  --wait                               Prompts the user to press any key before exiting
+  --logs,--open-logs                   Open the default logs location
+  --verbose,--verbose-logs             Enables verbose logging for winget
+  --nowarn,--ignore-warnings           Suppresses warning outputs
+  --disable-interactivity              Disable interactive prompts
+
+
+WM_REFRESH_DONE: refresh complete, forcing main window to foreground
+[hyperlink] Created custom tooltip popup
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] invoking ShowSkipConfirm for app=Vulkan SDK 1.4.328.1 avail=1.4.335.0
+[skip_confirm] ShowSkipConfirm entered
+[skip_confirm] Prepared dialog strings, attempting TaskDialogIndirect
+[skip_confirm] Using MessageBox fallback
+[hyperlink] WM_MOUSELEAVE - hiding custom tooltip
+[skip_confirm] MessageBox returned=6
+[hyperlink] ShowSkipConfirm returned=1
+[hyperlink] posting WM_APP+200 to mainWnd=855718 pkgIdx=0
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] WM_MOUSELEAVE - hiding custom tooltip
+--- CMD: winget upgrade ---
+Exit: 0
+Output:
+   -                                                                                                                         Name                            Id                        Version   Available Source
+------------------------------------------------------------------------------------
+Mozilla Thunderbird (x64 nb-NO) Mozilla.Thunderbird.nb-NO 146.0     146.0.1   winget
+Vulkan SDK 1.4.328.1            KhronosGroup.VulkanSDK    1.4.328.1 1.4.335.0 winget
+2 upgrades available.
+
+
+--- CMD: winget list --accept-source-agreements --accept-package-agreements --output json ---
+Exit: -1978335231
+Output:
+
+
+--- CMD: winget upgrade --accept-source-agreements --accept-package-agreements --output json ---
+Exit: -2
+(TIMEOUT)
+Output:
+Windows Package Manager v1.12.350
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+Argument name was not recognized for the current command: '--output'
+
+Upgrades the selected package, either found by searching the installed packages list or directly from a manifest. By default, the query must case-insensitively match the id, name, or moniker of the package. Other fields can be used by passing their appropriate option. When no arguments are given, shows the packages with upgrades available
+
+usage: winget upgrade [[-q] <query>...] [<options>]
+
+The following command aliases are available:
+  update
+
+The following arguments are available:
+  -q,--query                           The query used to search for a package
+
+The following options are available:
+  -m,--manifest                        The path to the manifest of the package
+  --id                                 Filter results by id
+  --name                               Filter results by name
+  --moniker                            Filter results by moniker
+  -v,--version                         Use the specified version; default is the latest version
+  -s,--source                          Find package using the specified source
+  -e,--exact                           Find package using exact match
+  -i,--interactive                     Request interactive installation; user input may be needed
+  -h,--silent                          Request silent installation
+  --purge                              Deletes all files and directories in the package directory (portable)
+  -o,--log                             Log location (if supported)
+  --custom                             Arguments to be passed on to the installer in addition to the defaults
+  --override                           Override arguments to be passed on to the installer
+  -l,--location                        Location to install to (if supported)
+  --scope                              Select installed package scope filter (user or machine)
+  -a,--architecture                    Select the architecture
+  --installer-type                     Select the installer type
+  --locale                             Locale to use (BCP47 format)
+  --ignore-security-hash               Ignore the installer hash check failure
+  --allow-reboot                       Allows a reboot if applicable
+  --skip-dependencies                  Skips processing package dependencies and Windows features
+  --ignore-local-archive-malware-scan  Ignore the malware scan performed as part of installing an archive type package from local manifest
+  --accept-package-agreements          Accept all license agreements for packages
+  --accept-source-agreements           Accept all source agreements during source operations
+  --header                             Optional Windows-Package-Manager REST source HTTP header
+  --authentication-mode                Specify authentication window preference (silent, silentPreferred, or interactive)
+  --authentication-account             Specify the account to be used for authentication
+  -r,--recurse,--all                   Upgrade all installed packages to latest if available
+  -u,--unknown,--include-unknown       Upgrade packages even if their current version cannot be determined
+  --pinned,--include-pinned            Upgrade packages even if they have a non-blocking pin
+  --uninstall-previous                 Uninstall the previous version of the package during upgrade
+  --force                              Direct run the command and continue with non security related issues
+  -?,--help                            Shows help about the selected command
+  --wait                               Prompts the user to press any key before exiting
+  --logs,--open-logs                   Open the default logs location
+  --verbose,--verbose-logs             Enables verbose logging for winget
+  --nowarn,--ignore-warnings           Suppresses warning outputs
+  --disable-interactivity              Disable interactive prompts
+
+
+--- CMD: winget list --accept-source-agreements --accept-package-agreements --output json ---
+Exit: -1978335230
+Output:
+Windows Package Manager v1.12.350
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+Argument name was not recognized for the current command: '--accept-package-agreements'
+
+The list command displays the packages installed on the system, as well as whether an upgrade is available. Additional options can be provided to filter the output, much like the search command.
+
+usage: winget list [[-q] <query>] [<options>]
+
+The following command aliases are available:
+  ls
+
+The following arguments are available:
+  -q,--query                      The query used to search for a package
+
+The following options are available:
+  --id                            Filter results by id
+  --name                          Filter results by name
+  --moniker                       Filter results by moniker
+  -s,--source                     Find package using the specified source
+  --tag                           Filter results by tag
+  --cmd,--command                 Filter results by command
+  -n,--count                      Show no more than specified number of results (between 1 and 1000)
+  -e,--exact                      Find package using exact match
+  --scope                         Select installed package scope filter (user or machine)
+  --header                        Optional Windows-Package-Manager REST source HTTP header
+  --authentication-mode           Specify authentication window preference (silent, silentPreferred, or interactive)
+  --authentication-account        Specify the account to be used for authentication
+  --accept-source-agreements      Accept all source agreements during source operations
+  --upgrade-available             Lists only packages which have an upgrade available
+  -u,--unknown,--include-unknown  List packages even if their current version cannot be determined. Can only be used with the --upgrade-available argument
+  --pinned,--include-pinned       List packages even if they have a pin that prevents upgrade. Can only be used with the --upgrade-available argument
+  -?,--help                       Shows help about the selected command
+  --wait                          Prompts the user to press any key before exiting
+  --logs,--open-logs              Open the default logs location
+  --verbose,--verbose-logs        Enables verbose logging for winget
+  --nowarn,--ignore-warnings      Suppresses warning outputs
+  --disable-interactivity         Disable interactive prompts
+  --proxy                         Set a proxy to use for this execution
+  --no-proxy                      Disable the use of proxy for this execution
+
+More help can be found at: https://aka.ms/winget-command-list
+
+
+WM_REFRESH_DONE: refresh complete, forcing main window to foreground
+[hyperlink] Created custom tooltip popup
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] invoking ShowSkipConfirm for app=Vulkan SDK 1.4.328.1 avail=1.4.335.0
+[skip_confirm] ShowSkipConfirm entered
+[skip_confirm] Prepared dialog strings, attempting TaskDialogIndirect
+[skip_confirm] Using MessageBox fallback
+[hyperlink] WM_MOUSELEAVE - hiding custom tooltip
+[skip_confirm] MessageBox returned=7
+[hyperlink] ShowSkipConfirm returned=0
+--- CMD: winget list ---
+Exit: -2
+(TIMEOUT)
+Output:
+   -                                                                                                                            - 
+
+--- CMD: winget upgrade ---
+Exit: 0
+Output:
+   -                                                                                                                         Name                            Id                        Version   Available Source
+------------------------------------------------------------------------------------
+Mozilla Thunderbird (x64 nb-NO) Mozilla.Thunderbird.nb-NO 146.0     146.0.1   winget
+Vulkan SDK 1.4.328.1            KhronosGroup.VulkanSDK    1.4.328.1 1.4.335.0 winget
+2 upgrades available.
+
+
+--- CMD: winget list --accept-source-agreements --accept-package-agreements --output json ---
+Exit: -1978335230
+Output:
+Windows Package Manager v1.12.350
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+Argument name was not recognized for the current command: '--accept-package-agreements'
+
+The list command displays the packages installed on the system, as well as whether an upgrade is available. Additional options can be provided to filter the output, much like the search command.
+
+usage: winget list [[-q] <query>] [<options>]
+
+The following command aliases are available:
+  ls
+
+The following arguments are available:
+  -q,--query                      The query used to search for a package
+
+The following options are available:
+  --id                            Filter results by id
+  --name                          Filter results by name
+  --moniker                       Filter results by moniker
+  -s,--source                     Find package using the specified source
+  --tag                           Filter results by tag
+  --cmd,--command                 Filter results by command
+  -n,--count                      Show no more than specified number of results (between 1 and 1000)
+  -e,--exact                      Find package using exact match
+  --scope                         Select installed package scope filter (user or machine)
+  --header                        Optional Windows-Package-Manager REST source HTTP header
+  --authentication-mode           Specify authentication window preference (silent, silentPreferred, or interactive)
+  --authentication-account        Specify the account to be used for authentication
+  --accept-source-agreements      Accept all source agreements during source operations
+  --upgrade-available             Lists only packages which have an upgrade available
+  -u,--unknown,--include-unknown  List packages even if their current version cannot be determined. Can only be used with the --upgrade-available argument
+  --pinned,--include-pinned       List packages even if they have a pin that prevents upgrade. Can only be used with the --upgrade-available argument
+  -?,--help                       Shows help about the selected command
+  --wait                          Prompts the user to press any key before exiting
+  --logs,--open-logs              Open the default logs location
+  --verbose,--verbose-logs        Enables verbose logging for winget
+  --nowarn,--ignore-warnings      Suppresses warning outputs
+  --disable-interactivity         Disable interactive prompts
+  --proxy                         Set a proxy to use for this execution
+  --no-proxy                      Disable the use of proxy for this execution
+
+More help can be found at: https://aka.ms/winget-command-list
+
+
+ for packages
+  --accept-source-agreements           Accept all source agreements during source operations
+  --header                             Optional Windows-Package-Manager REST source HTTP header
+  --authentication-mode                Specify authentication window preference (silent, silentPreferred, or interactive)
+  --authentication-account             Specify the account to be used for authentication
+  -r,--recurse,--all                   Upgrade all installed packages to latest if available
+  -u,--unknown,--include-unknown       Upgrade packages even if their current version cannot be determined
+  --pinned,--include-pinned            Upgrade packages even if they have a non-blocking pin
+  --uninstall-previous                 Uninstall the previous version of the package during upgrade
+  --force                              Direct run the command and continue with non security related issues
+  -?,--help                            Shows help about the selected command
+  --wait                               Prompts the user to press any key before exiting
+  --logs,--open-logs                   Open the default logs location
+  --verbose,--verbose-logs             Enables verbose logging for winget
+  --nowarn,--ignore-warnings           Suppresses warning outputs
+  --disable-interactivity              Disable interactive prompts
+
+
+WM_REFRESH_DONE: refresh complete, forcing main window to foreground
+[hyperlink] Created custom tooltip popup
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] WM_MOUSELEAVE - hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] invoking ShowSkipConfirm for app=Vulkan SDK 1.4.328.1 avail=1.4.335.0
+[skip_confirm] ShowSkipConfirm entered
+[skip_confirm] Prepared dialog strings, attempting TaskDialogIndirect
+[skip_confirm] Using MessageBox fallback
+[hyperlink] WM_MOUSELEAVE - hiding custom tooltip
+[skip_confirm] MessageBox returned=6
+[hyperlink] ShowSkipConfirm returned=1
+[hyperlink] posting WM_APP+200 to mainWnd=1642314 pkgIdx=0
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] WM_MOUSELEAVE - hiding custom tooltip
+--- CMD: winget list ---
+Exit: -2
+(TIMEOUT)
+Output:
+   -                                                                                                                         Name                              Id                                Version                            Available Source
+-----------------------------------------------------------------------------------------------------------------------
+7-Zip 25.01 (x64)                 7zip.7zip                         25.01                                        winget
+AutoHotkey                        AutoHotkey.AutoHotkey             2.0.19                                       winget
+Combined Community Codec Pack 64… ARP\Machine\X64\Combined Communi… 2015.10.19.0                                 
+GIMP 3.0.6-1                      GIMP.GIMP.3                       3.0.6.1                                      winget
+Git                               ARP\Machine\X64\Git_is1           2.51.2                                       
+Mozilla Thunderbird (x64 nb-NO)   Mozilla.Thunderbird.nb-NO         146.0                              146.0.1   winget
+Mozilla Maintenance Service       ARP\Machine\X64\MozillaMaintenan… 146.0                                        
+Notepad++ (64-bit x64)            Notepad++.Notepad++               8.8.9                                        winget
+RustDesk                          RustDesk.RustDesk                 1.4.1                                        winget
+SteelSeries GG 101.0.0            SteelSeries.GG                    101.0.0                                      winget
+Total Commander 64-bit (Remove o… Ghisler.TotalCommander            11.56                                        winget
+VLC media player                  VideoLAN.VLC                      3.0.22                                       winget
+Eclipse Temurin JDK with Hotspot… EclipseAdoptium.Temurin.21.JDK    21.0.9.10                                    winget
+MiniTool Partition Wizard Free 1… MiniTool.PartitionWizard.Free     13.5                                         winget
+Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.17.JRE    17.0.17.10                                   winget
+Blender                           BlenderFoundation.Blender         5.0.1                                        winget
+Blender                           BlenderFoundation.Blender         4.4.3                                        winget
+LibreOffice 25.8.4.2              TheDocumentFoundation.LibreOffice 25.8.4.2                                     winget
+IPGui                             ARP\Machine\X64\{4442AFA4-18F8-4… 4.0.5                                        
+Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.11.JRE    11.0.29.7                                    winget
+Eclipse Temurin JDK with Hotspot… EclipseAdoptium.Temurin.8.JDK     8.0.472.8                                    winget
+Eclipse Temurin JDK with Hotspot… EclipseAdoptium.Temurin.8.JDK     8.0.462.8                                    winget
+Microsoft Visual Studio Installer ARP\Machine\X64\{6F320B93-EE3C-4… 4.0.2167.44905                               
+InfoWinApp                        ARP\Machine\X64\{75B92123-BF92-4… 0.9.8                                        
+Google Earth Pro                  Google.EarthPro                   7.3.6.10441                                  winget
+Eclipse Temurin JDK with Hotspot… ARP\Machine\X64\{8D9A718A-EA20-4… 17.0.16.8                                    
+Gadwin PrintScreen (64-Bit)       Gadwin.PrintScreen                6.5.0.0                                      winget
+NVIDIA Grafikkdriver 511.65       ARP\Machine\X64\{B2FE1952-0186-4… 511.65                                       
+Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.8.JRE     8.0.472.8                                    winget
+Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.8.JRE     8.0.462.8                                    winget
+
+
+--- CMD: winget upgrade ---
+Exit: 0
+Output:
+   -                                                                                                                         Name                            Id                        Version   Available Source
+------------------------------------------------------------------------------------
+Mozilla Thunderbird (x64 nb-NO) Mozilla.Thunderbird.nb-NO 146.0     146.0.1   winget
+Vulkan SDK 1.4.328.1            KhronosGroup.VulkanSDK    1.4.328.1 1.4.335.0 winget
+2 upgrades available.
+
+
+--- CMD: winget upgrade --accept-source-agreements --accept-package-agreements --output json ---
+Exit: -2
+(TIMEOUT)
+Output:
+Windows Package Manager v1.12.350
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+Argument name was not recognized for the current command: '--output'
+
+Upgrades the selected package, either found by searching the installed packages list or directly from a manifest. By default, the query must case-insensitively match the id, name, or moniker of the package. Other fields can be used by passing their appropriate option. When no arguments are given, shows the packages with upgrades available
+
+usage: winget upgrade [[-q] <query>...] [<options>]
+
+The following command aliases are available:
+  update
+
+The following arguments are available:
+  -q,--query                           The query used to search for a package
+
+The following options are available:
+  -m,--manifest                        The path to the manifest of the package
+  --id                                 Filter results by id
+  --name                               Filter results by name
+  --moniker                            Filter results by moniker
+  -v,--version                         Use the specified version; default is the latest version
+  -s,--source                          Find package using the specified source
+  -e,--exact                           Find package using exact match
+  -i,--interactive                     Request interactive installation; user input may be needed
+  -h,--silent                          Request silent installation
+  --purge                              Deletes all files and directories in the package directory (portable)
+  -o,--log                             Log location (if supported)
+  --custom                             Arguments to be passed on to the installer in addition to the defaults
+  --override                           Override arguments to be passed on to the installer
+  -l,--location                        Location to install to (if supported)
+  --scope                              Select installed package scope filter (user or machine)
+  -a,--architecture                    Select the architecture
+  --installer-type                     Select the installer type
+  --locale                             Locale to use (BCP47 format)
+  --ignore-security-hash               Ignore the installer hash check failure
+  --allow-reboot                       Allows a reboot if applicable
+  --skip-dependencies                  Skips processing package dependencies and Windows features
+  --ignore-local-archive-malware-scan  Ignore the malware scan performed as part of installing an archive type package from local manifest
+  --accept-package-agreements          Accept all license agreements for packages
+  --accept-source-agreements           Accept all source agreements during source operations
+  --header                             Optional Windows-Package-Manager REST source HTTP header
+  --authentication-mode                Specify authentication window preference (silent, silentPreferred, or interactive)
+  --authentication-account             Specify the account to be used for authentication
+  -r,--recurse,--all                   Upgrade all installed packages to latest if available
+  -u,--unknown,--include-unknown       Upgrade packages even if their current version cannot be determined
+  --pinned,--include-pinned            Upgrade packages even if they have a non-blocking pin
+  --uninstall-previous                 Uninstall the previous version of the package during upgrade
+  --force                              Direct run the command and continue with non security related issues
+  -?,--help                            Shows help about the selected command
+  --wait                               Prompts the user to press any key before exiting
+  --logs,--open-logs                   Open the default logs location
+  --verbose,--verbose-logs             Enables verbose logging for winget
+  --nowarn,--ignore-warnings           Suppresses warning outputs
+  --disable-interactivity              Disable interactive prompts
+  --proxy                              Set a proxy to use for this execution
+
+
+--- CMD: winget list --accept-source-agreements --accept-package-agreements --output json ---
+Exit: -1978335230
+Output:
+Windows Package Manager v1.12.350
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+Argument name was not recognized for the current command: '--accept-package-agreements'
+
+The list command displays the packages installed on the system, as well as whether an upgrade is available. Additional options can be provided to filter the output, much like the search command.
+
+usage: winget list [[-q] <query>] [<options>]
+
+The following command aliases are available:
+  ls
+
+The following arguments are available:
+  -q,--query                      The query used to search for a package
+
+The following options are available:
+  --id                            Filter results by id
+  --name                          Filter results by name
+  --moniker                       Filter results by moniker
+  -s,--source                     Find package using the specified source
+  --tag                           Filter results by tag
+  --cmd,--command                 Filter results by command
+  -n,--count                      Show no more than specified number of results (between 1 and 1000)
+  -e,--exact                      Find package using exact match
+  --scope                         Select installed package scope filter (user or machine)
+  --header                        Optional Windows-Package-Manager REST source HTTP header
+  --authentication-mode           Specify authentication window preference (silent, silentPreferred, or interactive)
+  --authentication-account        Specify the account to be used for authentication
+  --accept-source-agreements      Accept all source agreements during source operations
+  --upgrade-available             Lists only packages which have an upgrade available
+  -u,--unknown,--include-unknown  List packages even if their current version cannot be determined. Can only be used with the --upgrade-available argument
+  --pinned,--include-pinned       List packages even if they have a pin that prevents upgrade. Can only be used with the --upgrade-available argument
+  -?,--help                       Shows help about the selected command
+  --wait                          Prompts the user to press any key before exiting
+  --logs,--open-logs              Open the default logs location
+  --verbose,--verbose-logs        Enables verbose logging for winget
+  --nowarn,--ignore-warnings      Suppresses warning outputs
+  --disable-interactivity         Disable interactive prompts
+  --proxy                         Set a proxy to use for this execution
+  --no-proxy                      Disable the use of proxy for this execution
+
+More help can be found at: https://aka.ms/winget-command-list
+
+
+WM_REFRESH_DONE: refresh complete, forcing main window to foreground
+[hyperlink] Created custom tooltip popup
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] WM_MOUSELEAVE - hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] WM_MOUSELEAVE - hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] invoking ShowSkipConfirm for app=Vulkan SDK 1.4.328.1 avail=1.4.335.0
+[skip_confirm] ShowSkipConfirm entered
+[skip_confirm] Prepared dialog strings, attempting TaskDialogIndirect
+[skip_confirm] Using MessageBox fallback
+[hyperlink] WM_MOUSELEAVE - hiding custom tooltip
+[skip_confirm] MessageBox returned=6
+[hyperlink] ShowSkipConfirm returned=1
+[hyperlink] posting WM_APP+200 to mainWnd=3018392 pkgIdx=0
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] WM_MOUSELEAVE - hiding custom tooltip
+--- CMD: winget list ---
+Exit: -2
+(TIMEOUT)
+Output:
+   -                                                                                                                         Name                              Id                                Version                            Available Source
+-----------------------------------------------------------------------------------------------------------------------
+7-Zip 25.01 (x64)                 7zip.7zip                         25.01                                        winget
+AutoHotkey                        AutoHotkey.AutoHotkey             2.0.19                                       winget
+Combined Community Codec Pack 64… ARP\Machine\X64\Combined Communi… 2015.10.19.0                                 
+GIMP 3.0.6-1                      GIMP.GIMP.3                       3.0.6.1                                      winget
+Git                               ARP\Machine\X64\Git_is1           2.51.2                                       
+Mozilla Thunderbird (x64 nb-NO)   Mozilla.Thunderbird.nb-NO         146.0                              146.0.1   winget
+Mozilla Maintenance Service       ARP\Machine\X64\MozillaMaintenan… 146.0                                        
+Notepad++ (64-bit x64)            Notepad++.Notepad++               8.8.9                                        winget
+RustDesk                          RustDesk.RustDesk                 1.4.1                                        winget
+SteelSeries GG 101.0.0            SteelSeries.GG                    101.0.0                                      winget
+Total Commander 64-bit (Remove o… Ghisler.TotalCommander            11.56                                        winget
+VLC media player                  VideoLAN.VLC                      3.0.22                                       winget
+Eclipse Temurin JDK with Hotspot… EclipseAdoptium.Temurin.21.JDK    21.0.9.10                                    winget
+MiniTool Partition Wizard Free 1… MiniTool.PartitionWizard.Free     13.5                                         winget
+Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.17.JRE    17.0.17.10                                   winget
+Blender                           BlenderFoundation.Blender         5.0.1                                        winget
+Blender                           BlenderFoundation.Blender         4.4.3                                        winget
+LibreOffice 25.8.4.2              TheDocumentFoundation.LibreOffice 25.8.4.2                                     winget
+IPGui                             ARP\Machine\X64\{4442AFA4-18F8-4… 4.0.5                                        
+Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.11.JRE    11.0.29.7                                    winget
+Eclipse Temurin JDK with Hotspot… EclipseAdoptium.Temurin.8.JDK     8.0.472.8                                    winget
+Eclipse Temurin JDK with Hotspot… EclipseAdoptium.Temurin.8.JDK     8.0.462.8                                    winget
+Microsoft Visual Studio Installer ARP\Machine\X64\{6F320B93-EE3C-4… 4.0.2167.44905                               
+InfoWinApp                        ARP\Machine\X64\{75B92123-BF92-4… 0.9.8                                        
+Google Earth Pro                  Google.EarthPro                   7.3.6.10441                                  winget
+Eclipse Temurin JDK with Hotspot… ARP\Machine\X64\{8D9A718A-EA20-4… 17.0.16.8                                    
+Gadwin PrintScreen (64-Bit)       Gadwin.PrintScreen                6.5.0.0                                      winget
+NVIDIA Grafikkdriver 511.65       ARP\Machine\X64\{B2FE1952-0186-4… 511.65                                       
+Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.8.JRE     8.0.472.8                                    winget
+Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.8.JRE     8.0.462.8                                    winget
+
+
+--- CMD: winget upgrade ---
+Exit: 0
+Output:
+   -                                                                                                                         Name                            Id                        Version   Available Source
+------------------------------------------------------------------------------------
+Mozilla Thunderbird (x64 nb-NO) Mozilla.Thunderbird.nb-NO 146.0     146.0.1   winget
+Vulkan SDK 1.4.328.1            KhronosGroup.VulkanSDK    1.4.328.1 1.4.335.0 winget
+2 upgrades available.
+
+
+--- CMD: winget upgrade --accept-source-agreements --accept-package-agreements --output json ---
+Exit: -2
+(TIMEOUT)
+Output:
+Windows Package Manager v1.12.350
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+Argument name was not recognized for the current command: '--output'
+
+Upgrades the selected package, either found by searching the installed packages list or directly from a manifest. By default, the query must case-insensitively match the id, name, or moniker of the package. Other fields can be used by passing their appropriate option. When no arguments are given, shows the packages with upgrades available
+
+usage: winget upgrade [[-q] <query>...] [<options>]
+
+The following command aliases are available:
+  update
+
+The following arguments are available:
+  -q,--query                           The query used to search for a package
+
+The following options are available:
+  -m,--manifest                        The path to the manifest of the package
+  --id                                 Filter results by id
+  --name                               Filter results by name
+  --moniker                            Filter results by moniker
+  -v,--version                         Use the specified version; default is the latest version
+  -s,--source                          Find package using the specified source
+  -e,--exact                           Find package using exact match
+  -i,--interactive                     Request interactive installation; user input may be needed
+  -h,--silent                          Request silent installation
+  --purge                              Deletes all files and directories in the package directory (portable)
+  -o,--log                             Log location (if supported)
+  --custom                             Arguments to be passed on to the installer in addition to the defaults
+  --override                           Override arguments to be passed on to the installer
+  -l,--location                        Location to install to (if supported)
+  --scope                              Select installed package scope filter (user or machine)
+  -a,--architecture                    Select the architecture
+  --installer-type                     Select the installer type
+  --locale                             Locale to use (BCP47 format)
+  --ignore-security-hash               Ignore the installer hash check failure
+  --allow-reboot                       Allows a reboot if applicable
+  --skip-dependencies                  Skips processing package dependencies and Windows features
+  --ignore-local-archive-malware-scan  Ignore the malware scan performed as part of installing an archive type package from local manifest
+  --accept-package-agreements          Accept all license agreements for packages
+  --accept-source-agreements           Accept all source agreements during source operations
+  --header                             Optional Windows-Package-Manager REST source HTTP header
+  --authentication-mode                Specify authentication window preference (silent, silentPreferred, or interactive)
+  --authentication-account             Specify the account to be used for authentication
+  -r,--recurse,--all                   Upgrade all installed packages to latest if available
+  -u,--unknown,--include-unknown       Upgrade packages even if their current version cannot be determined
+  --pinned,--include-pinned            Upgrade packages even if they have a non-blocking pin
+  --uninstall-previous                 Uninstall the previous version of the package during upgrade
+  --force                              Direct run the command and continue with non security related issues
+  -?,--help                            Shows help about the selected command
+  --wait                               Prompts the user to press any key before exiting
+  --logs,--open-logs                   Open the default logs location
+  --verbose,--verbose-logs             Enables verbose logging for winget
+  --nowarn,--ignore-warnings           Suppresses warning outputs
+  --disable-interactivity              Disable interactive prompts
+  --proxy                              Set a proxy to use for this execution
+
+
+--- CMD: winget list --accept-source-agreements --accept-package-agreements --output json ---
+Exit: -1978335230
+Output:
+Windows Package Manager v1.12.350
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+Argument name was not recognized for the current command: '--accept-package-agreements'
+
+The list command displays the packages installed on the system, as well as whether an upgrade is available. Additional options can be provided to filter the output, much like the search command.
+
+usage: winget list [[-q] <query>] [<options>]
+
+The following command aliases are available:
+  ls
+
+The following arguments are available:
+  -q,--query                      The query used to search for a package
+
+The following options are available:
+  --id                            Filter results by id
+  --name                          Filter results by name
+  --moniker                       Filter results by moniker
+  -s,--source                     Find package using the specified source
+  --tag                           Filter results by tag
+  --cmd,--command                 Filter results by command
+  -n,--count                      Show no more than specified number of results (between 1 and 1000)
+  -e,--exact                      Find package using exact match
+  --scope                         Select installed package scope filter (user or machine)
+  --header                        Optional Windows-Package-Manager REST source HTTP header
+  --authentication-mode           Specify authentication window preference (silent, silentPreferred, or interactive)
+  --authentication-account        Specify the account to be used for authentication
+  --accept-source-agreements      Accept all source agreements during source operations
+  --upgrade-available             Lists only packages which have an upgrade available
+  -u,--unknown,--include-unknown  List packages even if their current version cannot be determined. Can only be used with the --upgrade-available argument
+  --pinned,--include-pinned       List packages even if they have a pin that prevents upgrade. Can only be used with the --upgrade-available argument
+  -?,--help                       Shows help about the selected command
+  --wait                          Prompts the user to press any key before exiting
+  --logs,--open-logs              Open the default logs location
+  --verbose,--verbose-logs        Enables verbose logging for winget
+  --nowarn,--ignore-warnings      Suppresses warning outputs
+  --disable-interactivity         Disable interactive prompts
+  --proxy                         Set a proxy to use for this execution
+  --no-proxy                      Disable the use of proxy for this execution
+
+More help can be found at: https://aka.ms/winget-command-list
+
+
+WM_REFRESH_DONE: refresh complete, forcing main window to foreground
+[hyperlink] Created custom tooltip popup
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] invoking ShowSkipConfirm for app=Vulkan SDK 1.4.328.1 avail=1.4.335.0
+[skip_confirm] ShowSkipConfirm entered
+[skip_confirm] Prepared dialog strings, attempting TaskDialogIndirect
+[skip_confirm] Using MessageBox fallback
+[hyperlink] WM_MOUSELEAVE - hiding custom tooltip
+[skip_confirm] MessageBox returned=6
+[hyperlink] ShowSkipConfirm returned=1
+[hyperlink] posting WM_APP+200 to mainWnd=986788 pkgIdx=0
+--- CMD: winget list ---
+Exit: -2
+(TIMEOUT)
+Output:
+   -    \    | 
+
+--- CMD: winget upgrade ---
+Exit: -2
+(TIMEOUT)
+Output:
+   -    \    |    / 
+
+--- CMD: winget upgrade ---
+Exit: 0
+Output:
+   -    \                                                                                                                            -                                                                                                                         Name                            Id                        Version   Available Source
+------------------------------------------------------------------------------------
+Mozilla Thunderbird (x64 nb-NO) Mozilla.Thunderbird.nb-NO 146.0     146.0.1   winget
+Vulkan SDK 1.4.328.1            KhronosGroup.VulkanSDK    1.4.328.1 1.4.335.0 winget
+2 upgrades available.
+
+
+--- CMD: winget list --accept-source-agreements --accept-package-agreements --output json ---
+Exit: -1978335230
+Output:
+Windows Package Manager v1.12.350
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+Argument name was not recognized for the current command: '--accept-package-agreements'
+
+The list command displays the packages installed on the system, as well as whether an upgrade is available. Additional options can be provided to filter the output, much like the search command.
+
+usage: winget list [[-q] <query>] [<options>]
+
+The following command aliases are available:
+  ls
+
+The following arguments are available:
+  -q,--query                      The query used to search for a package
+
+The following options are available:
+  --id                            Filter results by id
+  --name                          Filter results by name
+  --moniker                       Filter results by moniker
+  -s,--source                     Find package using the specified source
+  --tag                           Filter results by tag
+  --cmd,--command                 Filter results by command
+  -n,--count                      Show no more than specified number of results (between 1 and 1000)
+  -e,--exact                      Find package using exact match
+  --scope                         Select installed package scope filter (user or machine)
+  --header                        Optional Windows-Package-Manager REST source HTTP header
+  --authentication-mode           Specify authentication window preference (silent, silentPreferred, or interactive)
+  --authentication-account        Specify the account to be used for authentication
+  --accept-source-agreements      Accept all source agreements during source operations
+  --upgrade-available             Lists only packages which have an upgrade available
+  -u,--unknown,--include-unknown  List packages even if their current version cannot be determined. Can only be used with the --upgrade-available argument
+  --pinned,--include-pinned       List packages even if they have a pin that prevents upgrade. Can only be used with the --upgrade-available argument
+  -?,--help                       Shows help about the selected command
+  --wait                          Prompts the user to press any key before exiting
+  --logs,--open-logs              Open the default logs location
+  --verbose,--verbose-logs        Enables verbose logging for winget
+  --nowarn,--ignore-warnings      Suppresses warning outputs
+  --disable-interactivity         Disable interactive prompts
+  --proxy                         Set a proxy to use for this execution
+  --no-proxy                      Disable the use of proxy for this execution
+
+More help can be found at: https://aka.ms/winget-command-list
+
+
+--- CMD: winget upgrade --accept-source-agreements --accept-package-agreements --output json ---
+Exit: -2
+(TIMEOUT)
+Output:
+Windows Package Manager v1.12.350
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+Argument name was not recognized for the current command: '--output'
+
+Upgrades the selected package, either found by searching the installed packages list or directly from a manifest. By default, the query must case-insensitively match the id, name, or moniker of the package. Other fields can be used by passing their appropriate option. When no arguments are given, shows the packages with upgrades available
+
+usage: winget upgrade [[-q] <query>...] [<options>]
+
+The following command aliases are available:
+  update
+
+The following arguments are available:
+  -q,--query                           The query used to search for a package
+
+The following options are available:
+  -m,--manifest                        The path to the manifest of the package
+  --id                                 Filter results by id
+  --name                               Filter results by name
+  --moniker                            Filter results by moniker
+  -v,--version                         Use the specified version; default is the latest version
+  -s,--source                          Find package using the specified source
+  -e,--exact                           Find package using exact match
+  -i,--interactive                     Request interactive installation; user input may be needed
+  -h,--silent                          Request silent installation
+  --purge                              Deletes all files and directories in the package directory (portable)
+  -o,--log                             Log location (if supported)
+  --custom                             Arguments to be passed on to the installer in addition to the defaults
+  --override                           Override arguments to be passed on to the installer
+  -l,--location                        Location to install to (if supported)
+  --scope                              Select installed package scope filter (user or machine)
+  -a,--architecture                    Select the architecture
+  --installer-type                     Select the installer type
+  --locale                             Locale to use (BCP47 format)
+  --ignore-security-hash               Ignore the installer hash check failure
+  --allow-reboot                       Allows a reboot if applicable
+  --skip-dependencies                  Skips processing package dependencies and Windows features
+  --ignore-local-archive-malware-scan  Ignore the malware scan performed as part of installing an archive type package from local manifest
+  --accept-package-agreements          Accept all license agreements for packages
+  --accept-source-agreements           Accept all source agreements during source operations
+  --header                             Optional Windows-Package-Manager REST source HTTP header
+  --authentication-mode                Specify authentication window preference (silent, silentPreferred, or interactive)
+  --authentication-account             Specify the account to be used for authentication
+  -r,--recurse,--all                   Upgrade all installed packages to latest if available
+  -u,--unknown,--include-unknown       Upgrade packages even if their current version cannot be determined
+  --pinned,--include-pinned            Upgrade packages even if they have a non-blocking pin
+  --uninstall-previous                 Uninstall the previous version of the package during upgrade
+  --force                              Direct run the command and continue with non security related issues
+  -?,--help                            Shows help about the selected command
+  --wait                               Prompts the user to press any key before exiting
+  --logs,--open-logs                   Open the default logs location
+  --verbose,--verbose-logs             Enables verbose logging for winget
+  --nowarn,--ignore-warnings           Suppresses warning outputs
+  --disable-interactivity              Disable interactive prompts
+
+
+WM_REFRESH_DONE: refresh complete, forcing main window to foreground
+[hyperlink] Created custom tooltip popup
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] invoking ShowSkipConfirm for app=Vulkan SDK 1.4.328.1 avail=1.4.335.0
+[skip_confirm] ShowSkipConfirm entered
+[skip_confirm] Prepared dialog strings, attempting TaskDialogIndirect
+[skip_confirm] Using custom fallback dialog
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] WM_MOUSELEAVE - hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] WM_MOUSELEAVE - hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] WM_MOUSELEAVE - hiding custom tooltip
+[skip_confirm] fallback proc WM_COMMAND id=1001 p=987951520644
+[hyperlink] ShowSkipConfirm returned=1
+[hyperlink] posting WM_APP+200 to mainWnd=1772266 pkgIdx=0
+--- CMD: winget list ---
+Exit: -2
+(TIMEOUT)
+Output:
+   -                                                                                                                            - 
+
+--- CMD: winget upgrade ---
+Exit: 0
+Output:
+   -                                                                                                                         Name                            Id                        Version   Available Source
+------------------------------------------------------------------------------------
+Mozilla Thunderbird (x64 nb-NO) Mozilla.Thunderbird.nb-NO 146.0     146.0.1   winget
+Vulkan SDK 1.4.328.1            KhronosGroup.VulkanSDK    1.4.328.1 1.4.335.0 winget
+2 upgrades available.
+
+
+--- CMD: winget upgrade --accept-source-agreements --accept-package-agreements --output json ---
+Exit: -2
+(TIMEOUT)
+Output:
+Windows Package Manager v1.12.350
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+Argument name was not recognized for the current command: '--output'
+
+Upgrades the selected package, either found by searching the installed packages list or directly from a manifest. By default, the query must case-insensitively match the id, name, or moniker of the package. Other fields can be used by passing their appropriate option. When no arguments are given, shows the packages with upgrades available
+
+usage: winget upgrade [[-q] <query>...] [<options>]
+
+The following command aliases are available:
+  update
+
+The following arguments are available:
+  -q,--query                           The query used to search for a package
+
+The following options are available:
+  -m,--manifest                        The path to the manifest of the package
+  --id                                 Filter results by id
+  --name                               Filter results by name
+  --moniker                            Filter results by moniker
+  -v,--version                         Use the specified version; default is the latest version
+  -s,--source                          Find package using the specified source
+  -e,--exact                           Find package using exact match
+  -i,--interactive                     Request interactive installation; user input may be needed
+  -h,--silent                          Request silent installation
+  --purge                              Deletes all files and directories in the package directory (portable)
+  -o,--log                             Log location (if supported)
+  --custom                             Arguments to be passed on to the installer in addition to the defaults
+  --override                           Override arguments to be passed on to the installer
+  -l,--location                        Location to install to (if supported)
+  --scope                              Select installed package scope filter (user or machine)
+  -a,--architecture                    Select the architecture
+  --installer-type                     Select the installer type
+  --locale                             Locale to use (BCP47 format)
+  --ignore-security-hash               Ignore the installer hash check failure
+  --allow-reboot                       Allows a reboot if applicable
+  --skip-dependencies                  Skips processing package dependencies and Windows features
+  --ignore-local-archive-malware-scan  Ignore the malware scan performed as part of installing an archive type package from local manifest
+  --accept-package-agreements          Accept all license agreements for packages
+  --accept-source-agreements           Accept all source agreements during source operations
+  --header                             Optional Windows-Package-Manager REST source HTTP header
+  --authentication-mode                Specify authentication window preference (silent, silentPreferred, or interactive)
+  --authentication-account             Specify the account to be used for authentication
+  -r,--recurse,--all                   Upgrade all installed packages to latest if available
+  -u,--unknown,--include-unknown       Upgrade packages even if their current version cannot be determined
+  --pinned,--include-pinned            Upgrade packages even if they have a non-blocking pin
+  --uninstall-previous                 Uninstall the previous version of the package during upgrade
+  --force                              Direct run the command and continue with non security related issues
+  -?,--help                            Shows help about the selected command
+  --wait                               Prompts the user to press any key before exiting
+  --logs,--open-logs                   Open the default logs location
+  --verbose,--verbose-logs             Enables verbose logging for winget
+  --nowarn,--ignore-warnings           Suppresses warning outputs
+  --disable-interactivity              Disable interactive prompts
+  --proxy                              Set a proxy to use for this execution
+
+
+WM_REFRESH_DONE: refresh complete, forcing main window to foreground
+[hyperlink] Created custom tooltip popup
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] invoking ShowSkipConfirm for app=Vulkan SDK 1.4.328.1 avail=1.4.335.0
+[skip_confirm] ShowSkipConfirm entered
+[skip_confirm] Prepared dialog strings, attempting TaskDialogIndirect
+[skip_confirm] Using custom fallback dialog
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] WM_MOUSELEAVE - hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] WM_MOUSELEAVE - hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] WM_MOUSELEAVE - hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] WM_MOUSELEAVE - hiding custom tooltip
+[skip_confirm] fallback proc WM_COMMAND id=1001 p=334772558964
+[hyperlink] ShowSkipConfirm returned=1
+[hyperlink] posting WM_APP+200 to mainWnd=9766534 pkgIdx=0
+--- CMD: winget list ---
+Exit: -2
+(TIMEOUT)
+Output:
+   -                                                                                                                         Name                              Id                                Version                            Available Source
+-----------------------------------------------------------------------------------------------------------------------
+7-Zip 25.01 (x64)                 7zip.7zip                         25.01                                        winget
+AutoHotkey                        AutoHotkey.AutoHotkey             2.0.19                                       winget
+Combined Community Codec Pack 64… ARP\Machine\X64\Combined Communi… 2015.10.19.0                                 
+GIMP 3.0.6-1                      GIMP.GIMP.3                       3.0.6.1                                      winget
+Git                               ARP\Machine\X64\Git_is1           2.51.2                                       
+Mozilla Thunderbird (x64 nb-NO)   Mozilla.Thunderbird.nb-NO         146.0                              146.0.1   winget
+Mozilla Maintenance Service       ARP\Machine\X64\MozillaMaintenan… 146.0                                        
+Notepad++ (64-bit x64)            Notepad++.Notepad++               8.8.9                                        winget
+RustDesk                          RustDesk.RustDesk                 1.4.1                                        winget
+SteelSeries GG 101.0.0            SteelSeries.GG                    101.0.0                                      winget
+Total Commander 64-bit (Remove o… Ghisler.TotalCommander            11.56                                        winget
+VLC media player                  VideoLAN.VLC                      3.0.22                                       winget
+Eclipse Temurin JDK with Hotspot… EclipseAdoptium.Temurin.21.JDK    21.0.9.10                                    winget
+MiniTool Partition Wizard Free 1… MiniTool.PartitionWizard.Free     13.5                                         winget
+Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.17.JRE    17.0.17.10                                   winget
+Blender                           BlenderFoundation.Blender         5.0.1                                        winget
+Blender                           BlenderFoundation.Blender         4.4.3                                        winget
+LibreOffice 25.8.4.2              TheDocumentFoundation.LibreOffice 25.8.4.2                                     winget
+IPGui                             ARP\Machine\X64\{4442AFA4-18F8-4… 4.0.5                                        
+Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.11.JRE    11.0.29.7                                    winget
+Eclipse Temurin JDK with Hotspot… EclipseAdoptium.Temurin.8.JDK     8.0.472.8                                    winget
+Eclipse Temurin JDK with Hotspot… EclipseAdoptium.Temurin.8.JDK     8.0.462.8                                    winget
+Microsoft Visual Studio Installer ARP\Machine\X64\{6F320B93-EE3C-4… 4.0.2167.44905                               
+InfoWinApp                        ARP\Machine\X64\{75B92123-BF92-4… 0.9.8                                        
+Google Earth Pro                  Google.EarthPro                   7.3.6.10441                                  winget
+Eclipse Temurin JDK with Hotspot… ARP\Machine\X64\{8D9A718A-EA20-4… 17.0.16.8                                    
+Gadwin PrintScreen (64-Bit)       Gadwin.PrintScreen                6.5.0.0                                      winget
+NVIDIA Grafikkdriver 511.65       ARP\Machine\X64\{B2FE1952-0186-4… 511.65                                       
+Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.8.JRE     8.0.472.8                                    winget
+Eclipse Temurin JRE with Hotspot… EclipseAdoptium.Temurin.8.JRE     8.0.462.8                                    winget
+Eclipse Temurin JDK with Hotspot… EclipseAdoptium.Temurin.11.JDK    11.0.29.7                                    winget
+
+
+--- CMD: winget upgrade ---
+Exit: 0
+Output:
+   -                                                                                                                         Name                            Id                        Version   Available Source
+------------------------------------------------------------------------------------
+Mozilla Thunderbird (x64 nb-NO) Mozilla.Thunderbird.nb-NO 146.0     146.0.1   winget
+Vulkan SDK 1.4.328.1            KhronosGroup.VulkanSDK    1.4.328.1 1.4.335.0 winget
+2 upgrades available.
+
+
+--- CMD: winget upgrade --accept-source-agreements --accept-package-agreements --output json ---
+Exit: -2
+(TIMEOUT)
+Output:
+Windows Package Manager v1.12.350
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+Argument name was not recognized for the current command: '--output'
+
+Upgrades the selected package, either found by searching the installed packages list or directly from a manifest. By default, the query must case-insensitively match the id, name, or moniker of the package. Other fields can be used by passing their appropriate option. When no arguments are given, shows the packages with upgrades available
+
+usage: winget upgrade [[-q] <query>...] [<options>]
+
+The following command aliases are available:
+  update
+
+The following arguments are available:
+  -q,--query                           The query used to search for a package
+
+The following options are available:
+  -m,--manifest                        The path to the manifest of the package
+  --id                                 Filter results by id
+  --name                               Filter results by name
+  --moniker                            Filter results by moniker
+  -v,--version                         Use the specified version; default is the latest version
+  -s,--source                          Find package using the specified source
+  -e,--exact                           Find package using exact match
+  -i,--interactive                     Request interactive installation; user input may be needed
+  -h,--silent                          Request silent installation
+  --purge                              Deletes all files and directories in the package directory (portable)
+  -o,--log                             Log location (if supported)
+  --custom                             Arguments to be passed on to the installer in addition to the defaults
+  --override                           Override arguments to be passed on to the installer
+  -l,--location                        Location to install to (if supported)
+  --scope                              Select installed package scope filter (user or machine)
+  -a,--architecture                    Select the architecture
+  --installer-type                     Select the installer type
+  --locale                             Locale to use (BCP47 format)
+  --ignore-security-hash               Ignore the installer hash check failure
+  --allow-reboot                       Allows a reboot if applicable
+  --skip-dependencies                  Skips processing package dependencies and Windows features
+  --ignore-local-archive-malware-scan  Ignore the malware scan performed as part of installing an archive type package from local manifest
+  --accept-package-agreements          Accept all license agreements for packages
+  --accept-source-agreements           Accept all source agreements during source operations
+  --header                             Optional Windows-Package-Manager REST source HTTP header
+  --authentication-mode                Specify authentication window preference (silent, silentPreferred, or interactive)
+  --authentication-account             Specify the account to be used for authentication
+  -r,--recurse,--all                   Upgrade all installed packages to latest if available
+  -u,--unknown,--include-unknown       Upgrade packages even if their current version cannot be determined
+  --pinned,--include-pinned            Upgrade packages even if they have a non-blocking pin
+  --uninstall-previous                 Uninstall the previous version of the package during upgrade
+  --force                              Direct run the command and continue with non security related issues
+  -?,--help                            Shows help about the selected command
+  --wait                               Prompts the user to press any key before exiting
+  --logs,--open-logs                   Open the default logs location
+  --verbose,--verbose-logs             Enables verbose logging for winget
+  --nowarn,--ignore-warnings           Suppresses warning outputs
+  --disable-interactivity              Disable interactive prompts
+  --proxy                              Set 
+
+--- CMD: winget list --accept-source-agreements --accept-package-agreements --output json ---
+Exit: -1978335231
+Output:
+
+
+--- CMD: winget list --accept-source-agreements --accept-package-agreements --output json ---
+Exit: -1978335230
+Output:
+Windows Package Manager v1.12.350
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+Argument name was not recognized for the current command: '--accept-package-agreements'
+
+The list command displays the packages installed on the system, as well as whether an upgrade is available. Additional options can be provided to filter the output, much like the search command.
+
+usage: winget list [[-q] <query>] [<options>]
+
+The following command aliases are available:
+  ls
+
+The following arguments are available:
+  -q,--query                      The query used to search for a package
+
+The following options are available:
+  --id                            Filter results by id
+  --name                          Filter results by name
+  --moniker                       Filter results by moniker
+  -s,--source                     Find package using the specified source
+  --tag                           Filter results by tag
+  --cmd,--command                 Filter results by command
+  -n,--count                      Show no more than specified number of results (between 1 and 1000)
+  -e,--exact                      Find package using exact match
+  --scope                         Select installed package scope filter (user or machine)
+  --header                        Optional Windows-Package-Manager REST source HTTP header
+  --authentication-mode           Specify authentication window preference (silent, silentPreferred, or interactive)
+  --authentication-account        Specify the account to be used for authentication
+  --accept-source-agreements      Accept all source agreements during source operations
+  --upgrade-available             Lists only packages which have an upgrade available
+  -u,--unknown,--include-unknown  List packages even if their current version cannot be determined. Can only be used with the --upgrade-available argument
+  --pinned,--include-pinned       List packages even if they have a pin that prevents upgrade. Can only be used with the --upgrade-available argument
+  -?,--help                       Shows help about the selected command
+  --wait                          Prompts the user to press any key before exiting
+  --logs,--open-logs              Open the default logs location
+  --verbose,--verbose-logs        Enables verbose logging for winget
+  --nowarn,--ignore-warnings      Suppresses warning outputs
+  --disable-interactivity         Disable interactive prompts
+  --proxy                         Set a proxy to use for this execution
+  --no-proxy                      Disable the use of proxy for this execution
+
+More help can be found at: https://aka.ms/winget-command-list
+
+
+WM_REFRESH_DONE: refresh complete, forcing main window to foreground
+[hyperlink] Created custom tooltip popup
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] invoking ShowSkipConfirm for app=Vulkan SDK 1.4.328.1 avail=1.4.335.0
+[skip_confirm] ShowSkipConfirm entered
+[skip_confirm] Prepared dialog strings, attempting TaskDialogIndirect
+[skip_confirm] Using custom fallback dialog
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] WM_MOUSELEAVE - hiding custom tooltip
+[skip_confirm] fallback proc WM_COMMAND id=1001 p=202865892068
+[hyperlink] ShowSkipConfirm returned=1
+[hyperlink] posting WM_APP+200 to mainWnd=723416 pkgIdx=0
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] WM_MOUSELEAVE - hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Hiding custom tooltip
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] Updating custom tooltip text and showing
+[hyperlink] custom tooltip shown
+[hyperlink] WM_MOUSELEAVE - hiding custom tooltip

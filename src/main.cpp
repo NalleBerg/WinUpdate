@@ -226,51 +226,19 @@ static std::vector<std::pair<std::string,std::string>> ParseRawWingetTextInMemor
 
 // Load/Save per-locale skip config in i18n/<locale>.ini with lines: skip=Id|Version
 static void LoadSkipConfig(const std::string &locale) {
+    // Load skipped entries from the per-user settings INI (APPDATA) via skip_update helpers.
     g_skipped_versions.clear();
     try {
-        std::string fn = std::string("i18n\\") + locale + ".ini";
-        std::ifstream ifs(fn, std::ios::binary);
-        if (!ifs) return;
-        std::string ln;
-        while (std::getline(ifs, ln)) {
-            // trim
-            auto ltrim = [](std::string &s){ while(!s.empty() && isspace((unsigned char)s.front())) s.erase(s.begin()); };
-            auto rtrim = [](std::string &s){ while(!s.empty() && isspace((unsigned char)s.back())) s.pop_back(); };
-            ltrim(ln); rtrim(ln);
-            if (ln.empty() || ln[0]=='#' || ln[0]==';') continue;
-            size_t eq = ln.find('=');
-            if (eq == std::string::npos) continue;
-            std::string key = ln.substr(0, eq);
-            std::string val = ln.substr(eq+1);
-            ltrim(key); rtrim(key); ltrim(val); rtrim(val);
-            if (key == "skip") {
-                size_t p = val.find('|');
-                if (p != std::string::npos) {
-                    std::string id = val.substr(0,p);
-                    std::string ver = val.substr(p+1);
-                    if (!id.empty() && !ver.empty()) g_skipped_versions[id] = ver;
-                }
-            }
-        }
-    } catch(...) {}
-    // Spawn external non-blocking probe so we can observe visibility after populate completes
-    try {
-        SpawnProbeMessageBoxAt(300, 180, L"Probe: after-populate", L"Probe spawned after PopulateListView");
+        auto m = LoadSkippedMap();
+        for (auto &p : m) g_skipped_versions[p.first] = p.second;
     } catch(...) {}
 }
 
 static void SaveSkipConfig(const std::string &locale) {
     try {
-        std::string fn = std::string("i18n\\") + locale + ".ini";
-        std::ofstream ofs(fn + ".tmp", std::ios::binary | std::ios::trunc);
-        if (!ofs) return;
-        for (auto &p : g_skipped_versions) {
-            ofs << "skip=" << p.first << "|" << p.second << "\n";
-        }
-        ofs.close();
-        // replace file
-        std::remove(fn.c_str());
-        std::rename((fn + ".tmp").c_str(), fn.c_str());
+        std::map<std::string,std::string> m;
+        for (auto &p : g_skipped_versions) m[p.first] = p.second;
+        SaveSkippedMap(m);
     } catch(...) {}
 }
 
@@ -1581,6 +1549,24 @@ static void PopulateListView(HWND hList) {
             if (it != g_skipped_versions.end()) skipText = t("skip_col");
         }
         lviSkip.pszText = (LPWSTR)skipText.c_str();
+        // If the item is marked skipped in the per-user INI and the "Show skipped" checkbox
+        // is not checked, then omit the row from the list (so skipped updates aren't shown).
+        bool showSkippedChecked = false;
+        HWND parentWnd = GetAncestor(hList, GA_ROOT);
+        if (parentWnd) {
+            HWND hChk = GetDlgItem(parentWnd, IDC_CHECK_SHOW_SKIPPED);
+            if (hChk) showSkippedChecked = (SendMessageW(hChk, BM_GETCHECK, 0, 0) == BST_CHECKED);
+        }
+        bool isSkippedEntry = false;
+        try {
+            std::string availStr = "";
+            if (ait != avail.end()) availStr = ait->second;
+            isSkippedEntry = IsSkipped(id, availStr);
+        } catch(...) {}
+        if (isSkippedEntry && !showSkippedChecked) {
+            // skip adding this row entirely
+            continue;
+        }
         SendMessageW(hList, LVM_SETITEMW, 0, (LPARAM)&lviSkip);
     }
     // After populating items, reapply header labels/formats now that results are present
@@ -2144,8 +2130,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         hBtnUpgrade = CreateWindowExW(0, L"Button", t("upgrade_now").c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 135, 350, 220, 28, hwnd, (HMENU)IDC_BTN_UPGRADE, NULL, NULL);
         // Show skipped checkbox between Upgrade and Refresh
         HWND hCheckShowSkipped = CreateWindowExW(0, L"Button", t("show_skipped").c_str(), WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, 365, 350, 120, 24, hwnd, (HMENU)IDC_CHECK_SHOW_SKIPPED, NULL, NULL);
-        // Unskip selected (hidden by default)
-        HWND hBtnUnskip = CreateWindowExW(0, L"Button", t("unskip_selected").c_str(), WS_CHILD /*| WS_VISIBLE*/, WS_DISABLED | BS_PUSHBUTTON, 10, 380, 140, 28, hwnd, (HMENU)IDC_BTN_UNSKIP, NULL, NULL);
+        // Unskip selected (hidden by default). Place between Upgrade and Refresh.
+        HWND hBtnUnskip = CreateWindowExW(0, L"Button", t("unskip_selected").c_str(), WS_CHILD | BS_PUSHBUTTON, 365, 350, 100, 28, hwnd, (HMENU)IDC_BTN_UNSKIP, NULL, NULL);
+        if (hBtnUnskip) ShowWindow(hBtnUnskip, SW_HIDE);
         // position Refresh where the Upgrade button used to be (bottom-right)
         hBtnRefresh = CreateWindowExW(0, L"Button", t("refresh").c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 470, 350, 140, 28, hwnd, (HMENU)IDC_BTN_REFRESH, NULL, NULL);
 
@@ -2461,18 +2448,37 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         AppendLog("[main] WM_APP+200 skip request idx=" + std::to_string(idx) + "\n");
         if (idx >= 0 && idx < (int)g_packages.size()) {
             std::string id = g_packages[idx].first;
-            // determine available version
+            // Prefer to use the Available string as shown in the ListView so the exact
+            // version the user sees is what's written to the per-user INI. If we cannot
+            // retrieve it from the list control, fall back to cached probes.
             std::string ver = "";
             try {
-                auto avail = GetAvailableVersionsCached();
-                auto it = avail.find(id);
-                if (it != avail.end()) ver = it->second;
+                HWND hList = GetDlgItem(hwnd, IDC_LISTVIEW);
+                if (hList && IsWindow(hList)) {
+                    wchar_t buf[128] = {0};
+                    LVITEMW lvi{}; lvi.iItem = idx; lvi.iSubItem = 2; lvi.cchTextMax = _countof(buf); lvi.pszText = buf; lvi.mask = LVIF_TEXT;
+                    SendMessageW(hList, LVM_GETITEMW, 0, (LPARAM)&lvi);
+                    if (buf[0] != 0) ver = WideToUtf8(std::wstring(buf));
+                }
             } catch(...) {}
+            if (ver.empty()) {
+                try {
+                    auto avail = GetAvailableVersionsCached();
+                    auto it = avail.find(id);
+                    if (it != avail.end()) ver = it->second;
+                } catch(...) {}
+            }
             if (ver.empty()) {
                 // fallback: try direct map
                 try { auto avail2 = MapAvailableVersions(); auto it2 = avail2.find(id); if (it2!=avail2.end()) ver = it2->second; } catch(...) {}
             }
             bool added = AddSkippedEntry(id, ver);
+            // Inform the user (temporary diagnostic) whether the write succeeded and which values were used.
+            try {
+                std::wstring msg = L"Skip request:\nID: " + Utf8ToWide(id) + L"\nVersion: " + Utf8ToWide(ver) + L"\nWrite: ";
+                msg += (added ? L"OK" : L"FAILED");
+                MessageBoxW(hwnd, msg.c_str(), L"Skip result", MB_OK | MB_ICONINFORMATION);
+            } catch(...) {}
             if (added) {
                 // update in-memory map and per-locale config so UI shows skipped state
                 try { g_skipped_versions[id] = ver; SaveSkipConfig(g_locale); } catch(...) {}
@@ -2482,6 +2488,48 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                 if (!g_refresh_in_progress.load()) PostMessageW(hwnd, WM_REFRESH_ASYNC, 1, 0);
             }
         }
+        break;
+    }
+    case WM_COPYDATA: {
+        PCOPYDATASTRUCT pcds = (PCOPYDATASTRUCT)lParam;
+        if (!pcds || !pcds->lpData) break;
+        try {
+            std::string payload((char*)pcds->lpData, pcds->cbData ? pcds->cbData - 1 : 0);
+            // Expect payload starting with "WUP_SKIP\n<appname>\n<available>\n"
+            if (payload.rfind("WUP_SKIP\n", 0) == 0) {
+                size_t pos = 8; // after prefix
+                size_t e1 = payload.find('\n', pos);
+                if (e1 == std::string::npos) e1 = payload.size();
+                std::string appn = payload.substr(pos, e1 - pos);
+                size_t pos2 = (e1 == payload.size()) ? e1 : e1 + 1;
+                size_t e2 = payload.find('\n', pos2);
+                if (e2 == std::string::npos) e2 = payload.size();
+                std::string avail = (pos2 <= e2) ? payload.substr(pos2, e2 - pos2) : std::string();
+                // find matching package by displayed name (g_packages[][1] == name)
+                int foundIdx = -1;
+                {
+                    std::lock_guard<std::mutex> lk(g_packages_mutex);
+                    for (int i = 0; i < (int)g_packages.size(); ++i) {
+                        if (g_packages[i].second == appn) { foundIdx = i; break; }
+                    }
+                }
+                if (foundIdx >= 0 && foundIdx < (int)g_packages.size()) {
+                    std::string id = g_packages[foundIdx].first;
+                    bool added = AddSkippedEntry(id, avail);
+                    // Temporary diagnostic: popup showing received payload and AddSkippedEntry result
+                    try {
+                        std::wstring msg = L"WM_COPYDATA payload:\nApp: " + Utf8ToWide(appn) + L"\nAvailable: " + Utf8ToWide(avail) + L"\nId: " + Utf8ToWide(id) + L"\nAddSkippedEntry: ";
+                        msg += (added ? L"OK" : L"FAILED");
+                        MessageBoxW(hwnd, msg.c_str(), L"WM_COPYDATA diagnostic", MB_OK | MB_ICONINFORMATION);
+                    } catch(...) {}
+                    if (added) {
+                        try { g_skipped_versions[id] = avail; SaveSkipConfig(g_locale); } catch(...) {}
+                        HWND hUn = GetDlgItem(hwnd, IDC_BTN_UNSKIP); if (hUn) { ShowWindow(hUn, SW_SHOW); EnableWindow(hUn, TRUE); }
+                        if (!g_refresh_in_progress.load()) PostMessageW(hwnd, WM_REFRESH_ASYNC, 1, 0);
+                    }
+                }
+            }
+        } catch(...) {}
         break;
     }
     case WM_DRAWITEM: {

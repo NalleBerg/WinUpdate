@@ -73,4 +73,12 @@ if exist "wup_settings.txt" copy /Y "wup_settings.txt" "%PACKAGE_DIR%\wup_settin
 if exist "README.md" copy /Y "README.md" "%PACKAGE_DIR%\README.md" >nul 2>&1
 if exist "LICENSE.md" copy /Y "LICENSE.md" "%PACKAGE_DIR%\LICENSE.md" >nul 2>&1
 echo Packaged to %PACKAGE_DIR%.
+echo
+echo --- Current per-user settings (%%APPDATA%%\WinUpdate\wup_settings.ini) ---
+if exist "%APPDATA%\WinUpdate\wup_settings.ini" (
+    type "%APPDATA%\WinUpdate\wup_settings.ini"
+) else (
+    echo [no file found]
+)
+echo -----------------------------------------------------------------
 endlocal

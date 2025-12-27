@@ -436,8 +436,22 @@ static LRESULT CALLBACK Hyperlink_ListSubclassProc(HWND hwnd, UINT uMsg, WPARAM 
                     if (!mainWnd) mainWnd = GetAncestor(hwnd, GA_ROOT);
                 }
                 if (mainWnd) {
-                    AppendLog(std::string("[hyperlink] posting WM_APP+200 to mainWnd=") + std::to_string((uintptr_t)mainWnd) + "\n");
-                    PostMessageW(mainWnd, WM_APP + 200, (WPARAM)hitItem, (LPARAM)3);
+                    // Retrieve the item's lParam (which holds the package index into g_packages)
+                    LPARAM pkgIdx = (LPARAM)hitItem; // fallback to visual index
+                    try {
+                        LVITEMW lvi{}; lvi.iItem = hitItem; lvi.mask = LVIF_PARAM; SendMessageW(hwnd, LVM_GETITEMW, 0, (LPARAM)&lvi); pkgIdx = lvi.lParam;
+                    } catch(...) {}
+                    // Diagnostic pop-up to ensure the click produced expected values
+                    try {
+                        std::wstring dbg = L"Skip click captured:\napp=" + std::wstring((wchar_t*)0) + L"\n";
+                        // Build a small diagnostic showing indices and available text
+                        wchar_t bufApp[256] = {0}; LVITEMW lviApp{}; lviApp.iItem = hitItem; lviApp.iSubItem = 0; lviApp.cchTextMax = _countof(bufApp); lviApp.pszText = bufApp; lviApp.mask = LVIF_TEXT; SendMessageW(hwnd, LVM_GETITEMW, 0, (LPARAM)&lviApp);
+                        wchar_t bufAvail[128] = {0}; LVITEMW lviAvail{}; lviAvail.iItem = hitItem; lviAvail.iSubItem = 2; lviAvail.cchTextMax = _countof(bufAvail); lviAvail.pszText = bufAvail; lviAvail.mask = LVIF_TEXT; SendMessageW(hwnd, LVM_GETITEMW, 0, (LPARAM)&lviAvail);
+                        std::wstring sdbg = L"app=" + std::wstring(bufApp) + L"\navail=" + std::wstring(bufAvail) + L"\nhitIndex=" + std::to_wstring(hitItem) + L"\nlParam(pkgIdx)=" + std::to_wstring((long long)pkgIdx);
+                        MessageBoxW(parent, sdbg.c_str(), L"DEBUG: skip click", MB_OK | MB_ICONINFORMATION);
+                    } catch(...) {}
+                    AppendLog(std::string("[hyperlink] posting WM_APP+200 to mainWnd=") + std::to_string((uintptr_t)mainWnd) + " pkgIdx=" + std::to_string((long long)pkgIdx) + "\n");
+                    PostMessageW(mainWnd, WM_APP + 200, (WPARAM)pkgIdx, (LPARAM)3);
                 } else {
                     AppendLog("[hyperlink] failed to find main window to post skip message\n");
                 }

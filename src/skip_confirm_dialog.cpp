@@ -24,6 +24,14 @@ static LRESULT CALLBACK SkipConfirmFallbackProc(HWND hwnd, UINT uMsg, WPARAM wPa
         DestroyWindow(hwnd);
         return 0;
     case WM_DESTROY:
+        // cleanup font property if set
+        {
+            HANDLE hf = GetPropW(hwnd, L"WUP_FONT");
+            if (hf) {
+                DeleteObject((HFONT)hf);
+                RemovePropW(hwnd, L"WUP_FONT");
+            }
+        }
         // do not post quit here — closing the dialog must not terminate the whole app
         return 0;
     }
@@ -126,22 +134,11 @@ bool ShowSkipConfirm(HWND parent, const std::wstring &appname, const std::wstrin
     std::string btn_ok_t = LoadI18nValue(locale, "btn_do_it");
     std::string btn_cancel_t = LoadI18nValue(locale, "btn_cancel");
 
-    if (question_t.empty()) {
-        if (locale.rfind("no",0) == 0) question_t = "Skippe denne poppdateringen av <appname>?";
-        else question_t = "Skip this update of <appname>?";
-    }
-    if (body_t.empty()) {
-        if (locale.rfind("no",0) == 0) body_t = "Versjon <available> vil ikke vises i oppdatringslisten mer.\nVersjonen etter <available> vil imidlertid vise.\nDu hopper bare over den versjonen.";
-        else body_t = "Version <available> will not show in the update list anymore.\nThe version after <available> will show, however.\nYou are skipping only that version.";
-    }
-    if (btn_ok_t.empty()) {
-        if (locale.rfind("no",0) == 0) btn_ok_t = "Gjør det!";
-        else btn_ok_t = "Do it!";
-    }
-    if (btn_cancel_t.empty()) {
-        if (locale.rfind("no",0) == 0) btn_cancel_t = "Avbryt";
-        else btn_cancel_t = "Cancel";
-    }
+    // If i18n files do not provide values, fall back to English defaults.
+    if (question_t.empty()) question_t = "Skip this update of <appname>?";
+    if (body_t.empty()) body_t = "Version <available> will not show in the update list anymore.\nThe version after <available> will show, however.\nYou are skipping only that version.";
+    if (btn_ok_t.empty()) btn_ok_t = "Do it!";
+    if (btn_cancel_t.empty()) btn_cancel_t = "Cancel";
 
     auto replace_all = [](std::string s, const std::string &from, const std::string &to)->std::string {
         if (from.empty()) return s;
@@ -196,21 +193,88 @@ bool ShowSkipConfirm(HWND parent, const std::wstring &appname, const std::wstrin
     AppendLog("[skip_confirm] Prepared dialog strings, attempting TaskDialogIndirect\n");
     // Call TaskDialogIndirect dynamically to avoid issues on platforms where it may be missing
     HMODULE hComctl = LoadLibraryW(L"comctl32.dll");
-    if (hComctl) {
-        typedef HRESULT (WINAPI *PFN_TaskDialogIndirect)(const TASKDIALOGCONFIG*, int*, int*, void*);
-        PFN_TaskDialogIndirect pTask = (PFN_TaskDialogIndirect)GetProcAddress(hComctl, "TaskDialogIndirect");
-        if (pTask) {
-            HRESULT hr = pTask(&cfg, &buttonPressed, NULL, NULL);
-            FreeLibrary(hComctl);
-            AppendLog("[skip_confirm] TaskDialogIndirect returned HR=" + std::to_string(hr) + " button=" + std::to_string(buttonPressed) + "\n");
-            if (SUCCEEDED(hr)) return (buttonPressed == 1001);
-        } else {
-            FreeLibrary(hComctl);
+        // fallback: create a small custom modal dialog so we can control button labels
+        AppendLog("[skip_confirm] Using custom fallback dialog\n");
+        static bool sClassRegistered = false;
+        static const wchar_t *kFallbackClass = L"WUP_SkipFallback";
+        if (!sClassRegistered) {
+            WNDCLASSEXW wc{};
+            wc.cbSize = sizeof(wc);
+            wc.lpfnWndProc = SkipConfirmFallbackProc;
+            wc.hInstance = GetModuleHandleW(NULL);
+            wc.hbrBackground = (HBRUSH)(COLOR_WINDOW+1);
+            wc.lpszClassName = kFallbackClass;
+            RegisterClassExW(&wc);
+            sClassRegistered = true;
         }
-    }
-    // fallback: simple message box as a safer modal dialog alternative
-    AppendLog("[skip_confirm] Using MessageBox fallback\n");
-    int mb = MessageBoxW(parent, wcontent.c_str(), wtitle.c_str(), MB_YESNO | MB_ICONQUESTION | MB_SETFOREGROUND);
-    AppendLog(std::string("[skip_confirm] MessageBox returned=") + std::to_string(mb) + "\n");
-    return (mb == IDYES);
+        int result = 0;
+        // create centered dialog relative to parent (or screen)
+        RECT prc{}; int px=0, py=0, pw=800, ph=220;
+        if (parent && IsWindow(parent)) { GetWindowRect(parent, &prc); pw = 520; ph = 180; px = prc.left + ((prc.right-prc.left)-pw)/2; py = prc.top + ((prc.bottom-prc.top)-ph)/2; }
+        else { RECT wa; SystemParametersInfoW(SPI_GETWORKAREA, 0, &wa, 0); pw = 520; ph = 180; px = (wa.left+wa.right-pw)/2; py = (wa.top+wa.bottom-ph)/2; }
+        HWND hDlg = CreateWindowExW(WS_EX_DLGMODALFRAME, kFallbackClass, wtitle.c_str(), WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU, px, py, pw, ph, parent, NULL, GetModuleHandleW(NULL), NULL);
+        if (!hDlg) {
+            // fallback to system MessageBox if we couldn't create dialog
+            AppendLog("[skip_confirm] failed to create fallback dialog, using MessageBox\n");
+            int mb2 = MessageBoxW(parent, wcontent.c_str(), wtitle.c_str(), MB_YESNO | MB_ICONQUESTION | MB_SETFOREGROUND);
+            bool r2 = (mb2 == IDYES);
+            if (r2 && parent) {
+                std::string payload = "WUP_SKIP\n" + appn_utf8 + "\n" + ver_utf8 + "\n";
+                COPYDATASTRUCT cds{}; cds.dwData = 0x57475053; cds.cbData = (DWORD)(payload.size()+1); cds.lpData = (PVOID)payload.c_str();
+                HWND target = FindWindowW(L"WinUpdateClass", NULL); if (!target) target = (HWND)parent; SendMessageA((HWND)target, WM_COPYDATA, (WPARAM)NULL, (LPARAM)&cds);
+            }
+            return r2;
+        }
+        // set pointer for result storage
+        SetPropW(hDlg, L"WUP_RES", (HANDLE)&result);
+        // determine client area so controls are positioned within visible client rect
+        RECT crect; GetClientRect(hDlg, &crect);
+        int clientW = crect.right - crect.left;
+        int clientH = crect.bottom - crect.top;
+        // buttons (wider and with extra bottom padding)
+        int btnW = 140, btnH = 34; int gap = 16;
+        int paddingLeft = 12;
+        int paddingTop = 12;
+        int paddingBottom = 12; // ensure a few px padding below buttons
+        int bx = clientW - (btnW*2 + gap + paddingLeft);
+        if (bx < paddingLeft) bx = paddingLeft;
+        int by = clientH - btnH - paddingBottom;
+        // create content static above buttons, sized from client area
+        int contentH = by - paddingTop - 8; // leave small gap between content and buttons
+        if (contentH < 20) contentH = 20;
+        HWND hStatic = CreateWindowExW(0, L"STATIC", wcontent.c_str(), WS_CHILD | WS_VISIBLE | SS_LEFTNOWORDWRAP, paddingLeft, paddingTop, clientW - (paddingLeft*2), contentH, hDlg, NULL, GetModuleHandleW(NULL), NULL);
+        HWND hBtnOk = CreateWindowExW(0, L"BUTTON", wok.c_str(), WS_CHILD | WS_VISIBLE | BS_DEFPUSHBUTTON, bx, by, btnW, btnH, hDlg, (HMENU)1001, GetModuleHandleW(NULL), NULL);
+        HWND hBtnCancel = CreateWindowExW(0, L"BUTTON", wcancel.c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, bx + btnW + gap, by, btnW, btnH, hDlg, (HMENU)1002, GetModuleHandleW(NULL), NULL);
+        // create a bold larger font for the dialog text and buttons
+        HDC hdcScreen = GetDC(NULL);
+        int dpiY = GetDeviceCaps(hdcScreen, LOGPIXELSY);
+        ReleaseDC(NULL, hdcScreen);
+        int fontPt = 12; // point size
+        int lfHeight = -MulDiv(fontPt, dpiY, 72);
+        HFONT hFont = CreateFontW(lfHeight, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
+        if (hFont) {
+            SendMessageW(hStatic, WM_SETFONT, (WPARAM)hFont, TRUE);
+            SendMessageW(hBtnOk, WM_SETFONT, (WPARAM)hFont, TRUE);
+            SendMessageW(hBtnCancel, WM_SETFONT, (WPARAM)hFont, TRUE);
+            SetPropW(hDlg, L"WUP_FONT", (HANDLE)hFont);
+        }
+        ShowWindow(hDlg, SW_SHOW);
+        // run modal loop
+        MSG msg;
+        while (IsWindow(hDlg)) {
+            if (GetMessage(&msg, NULL, 0, 0) <= 0) break;
+            if (!IsWindow(hDlg) || !IsDialogMessage(hDlg, &msg)) { TranslateMessage(&msg); DispatchMessage(&msg); }
+        }
+        // read result (set by window proc)
+        bool res = (result == 1);
+        if (res) {
+            // send WM_COPYDATA to main window so main persists the skip
+            try {
+                std::string payload = "WUP_SKIP\n" + appn_utf8 + "\n" + ver_utf8 + "\n";
+                COPYDATASTRUCT cds{}; cds.dwData = 0x57475053; cds.cbData = (DWORD)(payload.size()+1); cds.lpData = (PVOID)payload.c_str();
+                HWND target = FindWindowW(L"WinUpdateClass", NULL); if (!target) target = parent; SendMessageA((HWND)target, WM_COPYDATA, (WPARAM)NULL, (LPARAM)&cds);
+            } catch(...) {}
+        }
+        return res;
+    
 }
