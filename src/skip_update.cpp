@@ -34,11 +34,11 @@ static std::map<std::string,std::string> ParseSkippedSection(const std::string &
         trim(ln);
         if (ln.empty()) continue;
         if (ln[0] == ';' || ln[0] == '#') continue;
-        // expect: ID<whitespace>VERSION
-        size_t p = ln.find_first_of(" \t");
+        // parse right-to-left: last whitespace separates identifier (left) and version (right)
+        size_t p = ln.find_last_of(" \t");
         if (p == std::string::npos) continue;
         std::string id = ln.substr(0, p);
-        std::string ver = ln.substr(p);
+        std::string ver = ln.substr(p+1);
         trim(ver);
         if (!id.empty() && !ver.empty()) out[id] = ver;
     }

@@ -19,6 +19,7 @@
 #include "About.h"
 #include "logging.h"
 #include "hyperlink.h"
+#include "skip_update.h"
 // detect nlohmann/json.hpp if available; fall back to ad-hoc parser otherwise
 #if defined(__has_include)
 #  if __has_include(<nlohmann/json.hpp>)
@@ -53,6 +54,7 @@ const wchar_t CLASS_NAME[] = L"WinUpdateClass";
 #define IDC_BTN_DONE 2003
 #define IDC_CHECK_SKIPSELECTED 2004
 #define IDC_BTN_ABOUT 2005
+#define IDC_BTN_UNSKIP 2007
 // IDC_BTN_PASTE removed: app will auto-scan winget at startup/refresh
 #define IDC_COMBO_LANG 3001
 
@@ -2149,6 +2151,82 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         }
         break;
     }
+    case WM_COPYDATA: {
+        PCOPYDATASTRUCT pcds = (PCOPYDATASTRUCT)lParam;
+        if (!pcds || !pcds->lpData) break;
+        try {
+            std::string payload((char*)pcds->lpData, pcds->cbData ? pcds->cbData - 1 : 0);
+            AppendLog(std::string("WM_COPYDATA: payload='") + payload + "'\n");
+            // Expect payload starting with "WUP_SKIP\n<appname>\n<available>\n"
+            if (payload.rfind("WUP_SKIP\n", 0) == 0) {
+                size_t pos = 8; // after prefix
+                size_t e1 = payload.find('\n', pos);
+                if (e1 == std::string::npos) e1 = payload.size();
+                std::string appn = payload.substr(pos, e1 - pos);
+                size_t pos2 = (e1 == payload.size()) ? e1 : e1 + 1;
+                size_t e2 = payload.find('\n', pos2);
+                if (e2 == std::string::npos) e2 = payload.size();
+                std::string avail = (pos2 <= e2) ? payload.substr(pos2, e2 - pos2) : std::string();
+                // find matching package by displayed name (g_packages[][1] == name)
+                int foundIdx = -1;
+                // If g_packages is empty (UI may not have populated it yet), try to repopulate
+                try {
+                    std::lock_guard<std::mutex> lkchk(g_packages_mutex);
+                    if (g_packages.empty()) {
+                        AppendLog(std::string("WM_COPYDATA: g_packages empty, attempting to repopulate from recent raw winget\n"));
+                        try {
+                            std::string raw = ReadMostRecentRawWinget();
+                            if (!raw.empty()) {
+                                ParseWingetTextForPackages(raw);
+                                AppendLog(std::string("WM_COPYDATA: ParseWingetTextForPackages populated g_packages size=") + std::to_string((int)g_packages.size()) + "\n");
+                            } else {
+                                AppendLog("WM_COPYDATA: ReadMostRecentRawWinget returned empty\n");
+                            }
+                        } catch(...) { AppendLog("WM_COPYDATA: repopulate attempt threw\n"); }
+                    }
+                } catch(...) {}
+                {
+                    std::lock_guard<std::mutex> lk(g_packages_mutex);
+                    for (int i = 0; i < (int)g_packages.size(); ++i) {
+                        if (g_packages[i].second == appn) { foundIdx = i; break; }
+                    }
+                }
+                AppendLog(std::string("WM_COPYDATA: foundIdx=") + std::to_string(foundIdx) + "\n");
+                std::string id;
+                if (foundIdx >= 0) {
+                    try { std::lock_guard<std::mutex> lk(g_packages_mutex); id = g_packages[foundIdx].first; } catch(...) {}
+                } else {
+                    // tolerant match: try to match by prefix/contains
+                    try {
+                        std::lock_guard<std::mutex> lk(g_packages_mutex);
+                        for (int i = 0; i < (int)g_packages.size(); ++i) {
+                            if (!g_packages[i].second.empty() && appn.size() > 0 && g_packages[i].second.find(appn) != std::string::npos) { id = g_packages[i].first; foundIdx = i; break; }
+                        }
+                    } catch(...) {}
+                }
+                std::string ver = avail;
+                if (!ver.empty() && id.empty() && foundIdx >= 0) {
+                    try { std::lock_guard<std::mutex> lk(g_packages_mutex); id = g_packages[foundIdx].first; } catch(...) {}
+                }
+                bool added = false;
+                if (!id.empty()) {
+                    try { added = AddSkippedEntry(id, ver); } catch(...) { added = false; }
+                }
+                AppendLog(std::string("WM_COPYDATA: mapping appname->id='") + id + "' avail='" + ver + "'\n");
+                AppendLog(std::string("WM_COPYDATA: AddSkippedEntry returned ") + (added?"true":"false") + "\n");
+                try {
+                    if (added) {
+                        g_skipped_versions[id] = ver;
+                        HWND hUn = GetDlgItem(hwnd, IDC_BTN_UNSKIP); if (hUn) { ShowWindow(hUn, SW_SHOW); EnableWindow(hUn, TRUE); }
+                    }
+                } catch(...) {}
+                // Regardless of whether we resolved an id, trigger a UI refresh so the list is rescanned
+                try { SaveSkipConfig(g_locale); } catch(...) {}
+                if (!g_refresh_in_progress.load()) SendMessageW(hwnd, WM_REFRESH_ASYNC, 1, 0);
+            }
+        } catch(...) {}
+        break;
+    }
     case WM_CTLCOLORSTATIC: {
         HDC hdcStatic = (HDC)wParam;
         HWND hwndCtl = (HWND)lParam;
@@ -2314,6 +2392,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                                         g_skipped_versions[id] = ver;
                                         SaveSkipConfig(g_locale);
                                         PopulateListView(hListLocal);
+                                        // After the user confirms a Skip, trigger a background rescan
+                                        // so the list will be refreshed for subsequent UI changes.
+                                        if (!g_refresh_in_progress.load()) SendMessageW(hwnd, WM_REFRESH_ASYNC, 1, 0);
                                     }
                                 } else {
                                     MessageBoxW(hwnd, L"Unable to determine version to skip.", t("app_title").c_str(), MB_OK | MB_ICONWARNING);
