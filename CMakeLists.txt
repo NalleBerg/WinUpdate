@@ -5,7 +5,14 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
-set(SOURCES main.cpp)
+## Prefer `src/main.cpp` when present; otherwise use root `main.cpp`.
+if(EXISTS ${CMAKE_SOURCE_DIR}/src/main.cpp)
+  set(MAIN_SRC ${CMAKE_SOURCE_DIR}/src/main.cpp)
+else()
+  set(MAIN_SRC ${CMAKE_SOURCE_DIR}/main.cpp)
+endif()
+
+set(SOURCES ${MAIN_SRC})
 if(EXISTS ${CMAKE_SOURCE_DIR}/src/logging.cpp)
   list(APPEND SOURCES ${CMAKE_SOURCE_DIR}/src/logging.cpp)
 endif()

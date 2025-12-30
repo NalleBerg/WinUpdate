@@ -1,4 +1,6 @@
 #include "parsing.h"
+#include "skip_update.h"
+#include "logging.h"
 #include <string>
 #include <sstream>
 #include <vector>
@@ -47,8 +49,19 @@ void ParseWingetTextForUpdates(const std::string &text) {
             std::string installed = m[3].str();
             std::string available = m[4].str();
             if (CompareVersions(installed, available) < 0) {
-                std::lock_guard<std::mutex> lk(g_packages_mutex);
-                g_packages.emplace_back(id, name);
+                try {
+                    try { AppendLog(std::string("ParseWingetTextForUpdates: candidate id='") + id + "' avail='" + available + "' name='" + name + "'\n"); } catch(...) {}
+                    bool skipped = false;
+                    try { skipped = IsSkipped(id, available); } catch(...) { skipped = false; }
+                    try { AppendLog(std::string("ParseWingetTextForUpdates: IsSkipped returned ") + (skipped?"true":"false") + std::string(" for id='") + id + "'\n"); } catch(...) {}
+                    if (!skipped) {
+                        std::lock_guard<std::mutex> lk(g_packages_mutex);
+                        g_packages.emplace_back(id, name);
+                    }
+                } catch(...) {
+                    std::lock_guard<std::mutex> lk(g_packages_mutex);
+                    g_packages.emplace_back(id, name);
+                }
             }
         }
     }
@@ -109,7 +122,15 @@ void ParseUpgradeFast(const std::string &text, std::set<std::pair<std::string,st
         if (name.empty()) name = toks[idIdx];
 
         id = toks[idIdx];
-        if (CompareVersions(installed, available) < 0) outSet.emplace(id, name);
+        if (CompareVersions(installed, available) < 0) {
+            try {
+                try { AppendLog(std::string("ParseUpgradeFast: candidate id='") + id + "' avail='" + available + "' name='" + name + "'\n"); } catch(...) {}
+                bool skipped = false;
+                try { skipped = IsSkipped(id, available); } catch(...) { skipped = false; }
+                try { AppendLog(std::string("ParseUpgradeFast: IsSkipped returned ") + (skipped?"true":"false") + std::string(" for id='") + id + "'\n"); } catch(...) {}
+                if (!skipped) outSet.emplace(id, name);
+            } catch(...) { outSet.emplace(id, name); }
+        }
     }
 }
 
@@ -125,7 +146,15 @@ void ExtractUpdatesFromText(const std::string &text, std::set<std::pair<std::str
         std::string available = m[4].str();
         auto trim = [](std::string s){ while(!s.empty() && isspace((unsigned char)s.front())) s.erase(s.begin()); while(!s.empty() && isspace((unsigned char)s.back())) s.pop_back(); return s; };
         name = trim(name);
-        if (!id.empty() && CompareVersions(installed, available) < 0) outSet.emplace(id, name);
+        if (!id.empty() && CompareVersions(installed, available) < 0) {
+            try {
+                try { AppendLog(std::string("ExtractUpdatesFromText: candidate id='") + id + "' avail='" + available + "' name='" + name + "'\n"); } catch(...) {}
+                bool skipped = false;
+                try { skipped = IsSkipped(id, available); } catch(...) { skipped = false; }
+                try { AppendLog(std::string("ExtractUpdatesFromText: IsSkipped returned ") + (skipped?"true":"false") + std::string(" for id='") + id + "'\n"); } catch(...) {}
+                if (!skipped) outSet.emplace(id, name);
+            } catch(...) { outSet.emplace(id, name); }
+        }
         it = m.suffix().first;
     }
 }
@@ -158,7 +187,13 @@ void FindUpdatesUsingKnownList(const std::string &listText, const std::string &u
         std::string installed = m[3].str();
         std::string available = m[4].str();
         if (!id.empty() && pkgmap.count(id) && CompareVersions(installed, available) < 0) {
-            outSet.emplace(id, pkgmap[id]);
+            try {
+                try { AppendLog(std::string("FindUpdatesUsingKnownList: candidate id='") + id + "' avail='" + available + "' name='" + pkgmap[id] + "'\n"); } catch(...) {}
+                bool skipped = false;
+                try { skipped = IsSkipped(id, available); } catch(...) { skipped = false; }
+                try { AppendLog(std::string("FindUpdatesUsingKnownList: IsSkipped returned ") + (skipped?"true":"false") + std::string(" for id='") + id + "'\n"); } catch(...) {}
+                if (!skipped) outSet.emplace(id, pkgmap[id]);
+            } catch(...) { outSet.emplace(id, pkgmap[id]); }
         }
         it = m.suffix().first;
     }
@@ -262,7 +297,7 @@ void ParseWingetTextForPackages(const std::string &text) {
             if (toks.size() < 4) continue;
             std::regex verRe2(R"(^[0-9]+(\.[0-9]+)*$)");
             size_t n = toks.size();
-            if (n >= 3 && std::regex_match(toks[n-1], verRe2) && std::regex_match(toks[n-2], verRe2)) {
+                if (n >= 3 && std::regex_match(toks[n-1], verRe2) && std::regex_match(toks[n-2], verRe2)) {
                 std::string available = toks[n-1];
                 std::string installed = toks[n-2];
                 std::string id = toks[n-3];
@@ -272,7 +307,14 @@ void ParseWingetTextForPackages(const std::string &text) {
                     name += toks[j];
                 }
                 if (name.empty()) name = id;
-                if (CompareVersions(installed, available) < 0) g_packages.emplace_back(id, name);
+                if (CompareVersions(installed, available) < 0) {
+                    try {
+                        try { AppendLog(std::string("ParseWingetTextForPackages (fallback cols): candidate id='") + id + "' avail='" + available + "' name='" + name + "'\n"); } catch(...) {}
+                        bool skipped = false; try { skipped = IsSkipped(id, available); } catch(...) { skipped = false; }
+                        try { AppendLog(std::string("ParseWingetTextForPackages (fallback cols): IsSkipped returned ") + (skipped?"true":"false") + std::string(" for id='") + id + "'\n"); } catch(...) {}
+                        if (!skipped) g_packages.emplace_back(id, name);
+                    } catch(...) { g_packages.emplace_back(id, name); }
+                }
             } else {
                 continue;
             }
@@ -322,7 +364,11 @@ void ParseWingetTextForPackages(const std::string &text) {
             continue;
         }
         if (name.empty()) name = id;
-        g_packages.emplace_back(id, name);
+        try {
+            std::string availCol = (ncols > 3) ? fields[3] : std::string();
+            try { AppendLog(std::string("ParseWingetTextForPackages (cols): candidate id='") + id + "' avail='" + availCol + "' name='" + name + "'\n"); } catch(...) {}
+            try { bool skipped = false; try { skipped = IsSkipped(id, availCol); } catch(...) { skipped = false; } try { AppendLog(std::string("ParseWingetTextForPackages (cols): IsSkipped returned ") + (skipped?"true":"false") + std::string(" for id='") + id + "'\n"); } catch(...) {} if (!skipped) g_packages.emplace_back(id, name); } catch(...) { g_packages.emplace_back(id, name); }
+        } catch(...) { g_packages.emplace_back(id, name); }
         lastAdded = (int)g_packages.size()-1;
     }
 
@@ -340,15 +386,19 @@ void ParseWingetTextForPackages(const std::string &text) {
                 if (seenIds.count(id)) break;
                 std::string installed = toks[j+1];
                 std::string available = toks[j+2];
-                if (CompareVersions(installed, available) < 0) {
+                    if (CompareVersions(installed, available) < 0) {
                     std::string name;
                     for (size_t k = 0; k < j; ++k) {
                         if (k) name += " ";
                         name += toks[k];
                     }
                     if (name.empty()) name = id;
-                    g_packages.emplace_back(id, name);
-                    seenIds.insert(id);
+                    try {
+                        try { AppendLog(std::string("ParseWingetTextForPackages (final scan): candidate id='") + id + "' avail='" + available + "' name='" + name + "'\n"); } catch(...) {}
+                        bool skipped = false; try { skipped = IsSkipped(id, available); } catch(...) { skipped = false; }
+                        try { AppendLog(std::string("ParseWingetTextForPackages (final scan): IsSkipped returned ") + (skipped?"true":"false") + std::string(" for id='") + id + "'\n"); } catch(...) {}
+                        if (!skipped) { g_packages.emplace_back(id, name); seenIds.insert(id); }
+                    } catch(...) { g_packages.emplace_back(id, name); seenIds.insert(id); }
                 }
                 break;
             }

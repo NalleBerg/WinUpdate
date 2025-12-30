@@ -968,73 +968,8 @@ static std::string RunWingetElevatedCaptureJson(HWND hwnd) {
 
 // very small JSON-ish extractor for "Id" and "Name" values from winget --output json
 static void ParseWingetJsonForPackages(const std::string &jsonText) {
-    g_packages.clear();
-#if HAVE_NLOHMANN_JSON
-    if (jsonText.empty()) return;
-    try {
-        auto j = nlohmann::json::parse(jsonText);
-        std::set<std::pair<std::string,std::string>> found;
-        std::function<void(const nlohmann::json&)> visit;
-        visit = [&](const nlohmann::json &node) {
-            if (node.is_object()) {
-                if (node.contains("Id") && node.contains("Name") && node["Id"].is_string() && node["Name"].is_string()) {
-                    std::string id = node["Id"].get<std::string>();
-                    std::string name = node["Name"].get<std::string>();
-                    if (!id.empty()) found.emplace(id, name);
-                }
-                for (auto it = node.begin(); it != node.end(); ++it) visit(it.value());
-            } else if (node.is_array()) {
-                for (auto &el : node) visit(el);
-            }
-        };
-        visit(j);
-        for (auto &p : found) g_packages.emplace_back(p.first, p.second);
-    } catch (const std::exception &e) {
-        (void)e;
-    }
-#else
-    // Fallback: simple string-based extractor (original implementation)
-    size_t pos = 0;
-    std::string name, id;
-    while (true) {
-        size_t npos = jsonText.find("\"Name\"", pos);
-        size_t ipos = jsonText.find("\"Id\"", pos);
-        if (npos == std::string::npos && ipos == std::string::npos) break;
-
-        if (ipos != std::string::npos) {
-            size_t colon = jsonText.find(':', ipos);
-            if (colon != std::string::npos) {
-                size_t q1 = jsonText.find('"', colon);
-                if (q1 != std::string::npos) {
-                    size_t q2 = jsonText.find('"', q1 + 1);
-                    if (q2 != std::string::npos) {
-                        id = jsonText.substr(q1 + 1, q2 - q1 - 1);
-                    }
-                }
-            }
-            pos = ipos + 1;
-        }
-
-        if (npos != std::string::npos) {
-            size_t colon = jsonText.find(':', npos);
-            if (colon != std::string::npos) {
-                size_t q1 = jsonText.find('"', colon);
-                if (q1 != std::string::npos) {
-                    size_t q2 = jsonText.find('"', q1 + 1);
-                    if (q2 != std::string::npos) {
-                        name = jsonText.substr(q1 + 1, q2 - q1 - 1);
-                        if (!id.empty()) {
-                            g_packages.emplace_back(id, name);
-                            id.clear();
-                            name.clear();
-                        }
-                    }
-                }
-            }
-            pos = npos + 1;
-        }
-    }
-#endif
+    // Winget JSON is unreliable; treat incoming JSON-like text as raw/table output
+    ParseWingetTextForPackages(jsonText);
 }
 
 // Parse human-readable `winget upgrade` text output.
@@ -1364,7 +1299,9 @@ static void ParseWingetTextForPackages(const std::string &text) {
                         name += toks[j];
                     }
                     if (name.empty()) name = id;
-                    if (CompareVersions(installed, available) < 0) g_packages.emplace_back(id, name);
+                    if (CompareVersions(installed, available) < 0) {
+                        try { if (!IsSkipped(id, available)) g_packages.emplace_back(id, name); } catch(...) { g_packages.emplace_back(id, name); }
+                    }
                 } else {
                     // fallback: if we can't detect versions, skip to avoid false positives
                     continue;
@@ -1420,7 +1357,11 @@ static void ParseWingetTextForPackages(const std::string &text) {
             continue;
         }
         if (name.empty()) name = id;
-        g_packages.emplace_back(id, name);
+        try {
+            std::string availCol = (ncols > 3) ? fields[3] : std::string();
+            if (!IsSkipped(id, availCol)) g_packages.emplace_back(id, name);
+            else { /* skipped */ }
+        } catch(...) { g_packages.emplace_back(id, name); }
         lastAdded = (int)g_packages.size()-1;
     }
 
@@ -1448,8 +1389,10 @@ static void ParseWingetTextForPackages(const std::string &text) {
                         name += toks[k];
                     }
                     if (name.empty()) name = id;
-                    g_packages.emplace_back(id, name);
-                    seenIds.insert(id);
+                    try {
+                        if (!IsSkipped(id, available)) { g_packages.emplace_back(id, name); seenIds.insert(id); }
+                        else { /* skipped */ }
+                    } catch(...) { g_packages.emplace_back(id, name); seenIds.insert(id); }
                 }
                 break;
             }
@@ -1458,6 +1401,32 @@ static void ParseWingetTextForPackages(const std::string &text) {
     }
 
 static void PopulateListView(HWND hList) {
+    // Ensure any parsed-but-skipped packages are removed before inserting into the ListView
+    try {
+        AppendLog(std::string("RemoveSkippedFromPackages: start, count=") + std::to_string(g_packages.size()) + "\n");
+    } catch(...) {}
+    try {
+        std::vector<std::pair<std::string,std::string>> kept;
+        kept.reserve(g_packages.size());
+        for (auto &p : g_packages) {
+            bool skip = false;
+            try {
+                std::string avail;
+                {
+                    std::lock_guard<std::mutex> lk(g_versions_mutex);
+                    auto it = g_last_avail_versions.find(p.first);
+                    if (it != g_last_avail_versions.end()) avail = it->second;
+                }
+                if (IsSkipped(p.first, avail)) {
+                    skip = true;
+                    try { AppendLog(std::string("RemoveSkippedFromPackages: skipping ") + p.first + " avail='" + avail + "' name='" + p.second + "'\n"); } catch(...) {}
+                }
+            } catch(...) {}
+            if (!skip) kept.push_back(p);
+        }
+        g_packages.swap(kept);
+        try { AppendLog(std::string("RemoveSkippedFromPackages: end, kept=") + std::to_string(g_packages.size()) + "\n"); } catch(...) {}
+    } catch(...) {}
     // Preserve current check state per-package (by id) so user selections survive refreshes
     std::unordered_map<std::string, bool> preservedChecks;
     int oldCount = ListView_GetItemCount(hList);

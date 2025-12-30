@@ -92,10 +92,51 @@ std::map<std::string,std::string> LoadSkippedMap() {
         if (key.empty()) key = p.first;
         normalized[key] = p.second;
     }
+    // Apply canonical name->ID replacements (helpful when older INI used display-names)
+    auto versionGreater = [](const std::string &a, const std::string &b)->bool {
+        auto split = [](const std::string &s){ std::vector<std::string> out; std::string cur; for (char c : s) { if (c=='.' || c=='-' || c=='_') { if (!cur.empty()) { out.push_back(cur); cur.clear(); } } else cur.push_back(c); } if (!cur.empty()) out.push_back(cur); return out; };
+        auto A = split(a); auto B = split(b);
+        size_t n = std::max(A.size(), B.size());
+        for (size_t i = 0; i < n; ++i) {
+            long ai = 0, bi = 0;
+            if (i < A.size()) try { ai = std::stol(A[i]); } catch(...) { ai = 0; }
+            if (i < B.size()) try { bi = std::stol(B[i]); } catch(...) { bi = 0; }
+            if (ai > bi) return true;
+            if (ai < bi) return false;
+        }
+        return false;
+    };
+    std::vector<std::pair<std::string,std::string>> canon = {
+        {"vulkan sdk", "KhronosGroup.VulkanSDK"},
+        {"khronos vulkan", "KhronosGroup.VulkanSDK"}
+    };
+    for (auto &c : canon) {
+        for (auto it = normalized.begin(); it != normalized.end(); ) {
+            std::string key_l = it->first; for (auto &ch : key_l) ch = (char)tolower((unsigned char)ch);
+            if (key_l.find(c.first) != std::string::npos) {
+                std::string existingVer = it->second;
+                // promote to canonical id
+                if (normalized.count(c.second) == 0) normalized[c.second] = existingVer;
+                else {
+                    // keep the higher version
+                    if (versionGreater(existingVer, normalized[c.second])) normalized[c.second] = existingVer;
+                }
+                it = normalized.erase(it);
+                changed = true;
+                AppendLog(std::string("LoadSkippedMap: canonicalized '") + c.first + " -> " + c.second + "\n");
+            } else ++it;
+        }
+    }
     if (changed) {
-        AppendLog(std::string("LoadSkippedMap: normalized skipped keys, rewriting ini: ") + ini + "\n");
+        AppendLog(std::string("LoadSkippedMap: normalized/skipped keys rewritten, rewriting ini: ") + ini + "\n");
         SaveSkippedMap(normalized);
     }
+    // Log full normalized skipped map for diagnostics
+    try {
+        for (auto &kv : normalized) {
+            AppendLog(std::string("LoadSkippedMap: entry '") + kv.first + "' -> '" + kv.second + "'\n");
+        }
+    } catch(...) {}
     return normalized;
 }
 
@@ -179,19 +220,41 @@ bool RemoveSkippedEntry(const std::string &id) {
 }
 
 bool IsSkipped(const std::string &id, const std::string &availableVersion) {
-    auto m = LoadSkippedMap();
-    auto it = m.find(id);
-    if (it == m.end()) return false;
-    std::string stored = it->second;
-    if (stored == availableVersion) return true;
-    if (VersionGreater(availableVersion, stored)) {
-        // new version supersedes skip; remove entry
-        m.erase(it);
-        SaveSkippedMap(m);
+    try {
+        auto m = LoadSkippedMap();
+        // sanitize helper: remove all whitespace/control characters
+        auto sanitize = [](const std::string &s)->std::string {
+            std::string out; out.reserve(s.size());
+            for (unsigned char c : s) if (!isspace(c) && c >= 32) out.push_back((char)c);
+            return out;
+        };
+        std::string sid = sanitize(id);
+        std::string savail = sanitize(availableVersion);
+        try { AppendLog(std::string("IsSkipped: checking id='") + sid + "' avail='" + savail + "' map_size=" + std::to_string((int)m.size()) + "\n"); } catch(...) {}
+        // find matching entry in map by sanitizing keys
+        for (auto &kv : m) {
+            std::string key_s = sanitize(kv.first);
+            std::string stored = kv.second;
+            std::string stored_s = sanitize(stored);
+            if (key_s != sid) continue;
+            try { AppendLog(std::string("IsSkipped: found stored='") + stored_s + "' for id='" + key_s + "'\n"); } catch(...) {}
+            if (stored_s == savail) {
+                try { AppendLog(std::string("IsSkipped: match -> skipping id='") + key_s + "'\n"); } catch(...) {}
+                return true;
+            }
+            if (VersionGreater(savail, stored_s)) {
+                try { AppendLog(std::string("IsSkipped: available>") + stored_s + " -> unskipping id='" + key_s + "'\n"); } catch(...) {}
+                // remove original key from map and persist
+                m.erase(kv.first);
+                SaveSkippedMap(m);
+                return false;
+            }
+            try { AppendLog(std::string("IsSkipped: available<stored -> still skip id='") + key_s + "'\n"); } catch(...) {}
+            return true;
+        }
+        try { AppendLog(std::string("IsSkipped: id not found in skipped map: '") + sid + "'\n"); } catch(...) {}
         return false;
-    }
-    // availableVersion < stored => still skip
-    return true;
+    } catch(...) { return false; }
 }
 
 void PurgeObsoleteSkips(const std::map<std::string,std::string> &currentAvail) {

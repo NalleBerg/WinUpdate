@@ -78,154 +78,38 @@ static void ForceApplyHeaderTexts(HWND hList) {
         else if (ci == 1) hi.fmt = HDF_LEFT; // Installed header text left
         else if (ci == 2) hi.fmt = HDF_RIGHT; // Available header text right
         else hi.fmt = HDF_CENTER;
-        // Ensure text is treated as a string by the header control
-        hi.fmt |= HDF_STRING;
-        hi.pszText = (LPWSTR)g_colHeaders[ci].c_str();
-        SendMessageW(hHeader, HDM_SETITEMW, ci, (LPARAM)&hi);
+        // Use centralized parsing implementations in src/parsing.cpp
+    std::string ident_l = toLower(ident);
+    // canonical map quick checks
+    const std::vector<std::pair<std::string,std::string>> canon = { {"vulkan sdk","KhronosGroup.VulkanSDK"}, {"khronos vulkan","KhronosGroup.VulkanSDK"} };
+    for (auto &c : canon) if (ident_l.find(c.first) != std::string::npos) return c.second;
+    // tokenize for fuzzy matching
+    auto tokenize = [](const std::string &x){ std::vector<std::string> out; std::string cur; for (char c : x) { if (isalnum((unsigned char)c)) cur.push_back((char)tolower((unsigned char)c)); else { if (!cur.empty()) { out.push_back(cur); cur.clear(); } } } if (!cur.empty()) out.push_back(cur); return out; };
+    auto tokens = tokenize(ident_l);
+    std::lock_guard<std::mutex> lk(g_packages_mutex);
+    // 1) exact name match
+    for (auto &p : g_packages) if (p.second == ident) return p.first;
+    // 2) case-insensitive exact or substring match on name
+    for (auto &p : g_packages) { std::string nm_l = toLower(p.second); if (nm_l == ident_l || nm_l.find(ident_l) != std::string::npos || ident_l.find(nm_l) != std::string::npos) return p.first; }
+    // 3) token-subset match against name
+    if (!tokens.empty()) {
+        for (auto &p : g_packages) {
+            std::string nm_l = toLower(p.second);
+            bool all = true;
+            for (auto &t : tokens) if (nm_l.find(t) == std::string::npos) { all = false; break; }
+            if (all) return p.first;
+        }
     }
-    InvalidateRect(hHeader, NULL, TRUE);
-    // Force immediate redraw of header and listview
-    RedrawWindow(hHeader, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW);
-    RedrawWindow(hList, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW | RDW_FRAME);
-    UpdateWindow(hHeader);
-    UpdateWindow(hList);
-}
-
-static struct WUPEarlyCleaner {
-    WUPEarlyCleaner() {
-        try { CleanupStaleInstallFiles(); } catch(...) {}
+    // 4) token-subset match against id
+    if (!tokens.empty()) {
+        for (auto &p : g_packages) {
+            std::string idl = toLower(p.first);
+            bool all = true;
+            for (auto &t : tokens) if (idl.find(t) == std::string::npos) { all = false; break; }
+            if (all) return p.first;
+        }
     }
-} g_wup_early_cleaner;
-
-const wchar_t CLASS_NAME[] = L"WinUpdateClass";
-
-// control IDs
-#define IDC_RADIO_SHOW 1001
-#define IDC_RADIO_ALL  1002
-#define IDC_BTN_REFRESH 1003
-#define IDC_LISTVIEW 1004
-#define IDC_CHECK_SELECTALL 2001
-#define IDC_BTN_UPGRADE 2002
-#define IDC_BTN_DONE 2003
-#define IDC_CHECK_SKIPSELECTED 2004
-#define IDC_BTN_ABOUT 2005
-#define IDC_CHECK_SHOW_SKIPPED 2006
-#define IDC_BTN_UNSKIP 2007
-// IDC_BTN_PASTE removed: app will auto-scan winget at startup/refresh
-#define IDC_COMBO_LANG 3001
-
-#define WM_REFRESH_ASYNC (WM_APP + 1)
-#define WM_REFRESH_DONE  (WM_APP + 2)
-#define WM_INSTALL_DONE  (WM_APP + 5)
-// message to reapply header/text/format after window is shown and layout settled
-#define WM_REAPPLY_HEADERS (WM_APP + 10)
-// Timer used to defer reapplying header texts (helps avoid race with header creation)
-#define REAPPLY_HEADERS_TIMER_ID 0xC0FF
-
-// Forward declarations for functions defined later
-static std::pair<int,std::string> RunProcessCaptureExitCode(const std::wstring &cmd, int timeoutMs);
-static void ParseWingetTextForPackages(const std::string &text);
-static std::vector<std::pair<std::string,std::string>> ExtractIdsFromNameIdText(const std::string &text);
-static void ParseUpgradeFast(const std::string &text, std::set<std::pair<std::string,std::string>> &outSet);
-static void ExtractUpdatesFromText(const std::string &text, std::set<std::pair<std::string,std::string>> &outSet);
-static void ParseWingetUpgradeTableForUpdates(const std::string &text, std::set<std::pair<std::string,std::string>> &outSet);
-static std::unordered_map<std::string,std::string> MapAvailableVersions();
-static std::unordered_map<std::string,std::string> MapInstalledVersions();
-static std::vector<std::pair<std::string,std::string>> ParseRawWingetTextInMemory(const std::string &text);
-
-static std::unordered_map<std::string,std::string> MapInstalledVersions();
-
-
-// Globals
-std::vector<std::pair<std::string,std::string>> g_packages;
-std::mutex g_packages_mutex;
-static std::set<std::string> g_not_applicable_ids;
-// per-locale skipped versions: id -> version
-static std::unordered_map<std::string,std::string> g_skipped_versions;
-static HFONT g_hListFont = NULL;
-static std::vector<std::wstring> g_colHeaders;
-static std::unordered_map<std::string,std::string> g_last_avail_versions;
-static std::unordered_map<std::string,std::string> g_last_inst_versions;
-static std::mutex g_versions_mutex;
-// Startup snapshot maps (preserve the first successful scan results)
-static std::unordered_map<std::string,std::string> g_startup_avail_versions;
-static std::unordered_map<std::string,std::string> g_startup_inst_versions;
-static std::mutex g_startup_versions_mutex;
-static std::atomic<bool> g_refresh_in_progress{false};
-static std::wstring g_last_install_outfile;
-static HWND g_hTitle = NULL;
-static bool g_reapply_msg_shown = false;
-static HWND g_hLastUpdated = NULL;
-static HFONT g_hTitleFont = NULL;
-static HFONT g_hLastUpdatedFont = NULL;
-static HWND g_hLoadingPopup = NULL;
-static HWND g_hLoadingIcon = NULL;
-static HWND g_hLoadingText = NULL;
-static HWND g_hLoadingDesc = NULL;
-static HWND g_hLoadingDots = NULL;
-static HFONT g_hDotsFont = NULL;
-static HWND g_hMainWindow = NULL;
-static HWND g_hInstallAnim = NULL;
-static HWND g_hInstallPanel = NULL;
-static int g_install_anim_state = 0;
-static int g_loading_anim_state = 0;
-static const UINT LOADING_TIMER_ID = 0xC0DE;
-static bool g_popupClassRegistered = false;
-static bool g_header_subclassed = false;
-
-// Simple i18n: UTF-8 key=value loader. Keys are ASCII.
-static std::unordered_map<std::string,std::string> g_i18n_default;
-static std::unordered_map<std::string,std::string> g_i18n;
-static std::string g_locale = "en";
-
-// forward declare helper functions used by i18n loader (defined later)
-static std::string ReadFileUtf8(const std::wstring &path);
-static std::wstring Utf8ToWide(const std::string &s);
-static std::string WideToUtf8(const std::wstring &w);
-
-// Return cached available versions if present, otherwise probe and cache result.
-static std::unordered_map<std::string,std::string> GetAvailableVersionsCached() {
-    {
-        std::lock_guard<std::mutex> lk(g_versions_mutex);
-        if (!g_last_avail_versions.empty()) return g_last_avail_versions;
-    }
-    auto m = MapAvailableVersions();
-    {
-        std::lock_guard<std::mutex> lk(g_versions_mutex);
-        g_last_avail_versions = m;
-    }
-    // (startup capture intentionally handled by the async scan code path)
-    return m;
-}
-
-static std::unordered_map<std::string,std::string> GetInstalledVersionsCached() {
-    {
-        std::lock_guard<std::mutex> lk(g_versions_mutex);
-        if (!g_last_inst_versions.empty()) return g_last_inst_versions;
-    }
-    auto m = MapInstalledVersions();
-    {
-        std::lock_guard<std::mutex> lk(g_versions_mutex);
-        g_last_inst_versions = m;
-    }
-    // (startup capture intentionally handled by the async scan code path)
-    return m;
-}
-
-// Parse raw winget output in memory by trying multiple parsers (fast -> tolerant -> table)
-static std::vector<std::pair<std::string,std::string>> ParseRawWingetTextInMemory(const std::string &text) {
-    std::set<std::pair<std::string,std::string>> found;
-    if (text.empty()) return {};
-    ParseUpgradeFast(text, found);
-    if (found.empty()) ExtractUpdatesFromText(text, found);
-    if (found.empty()) {
-        std::set<std::pair<std::string,std::string>> tmp;
-        ParseWingetUpgradeTableForUpdates(text, tmp);
-        for (auto &p : tmp) found.insert(p);
-    }
-    std::vector<std::pair<std::string,std::string>> out;
-    for (auto &p : found) out.emplace_back(p.first, p.second);
-    return out;
+    return std::string();
 }
 
 // Load/Save per-locale skip config in i18n/<locale>.ini with lines: skip=Id|Version
@@ -326,7 +210,23 @@ static std::unordered_map<std::string,std::string> MapAvailableVersions() {
                 else id = toks.front();
             }
             std::string available = toks.back();
-            if (!id.empty()) out[id] = available;
+            if (!id.empty()) {
+                try {
+                    // Direct skip check
+                    if (IsSkipped(id, available)) continue;
+                } catch(...) {}
+                // Fallback: try resolving the id/name to a canonical id and check again
+                try {
+                    std::string resolved = ResolveIdForName(id);
+                    if (resolved.empty()) resolved = ResolveIdForName(toks.front());
+                    if (!resolved.empty()) {
+                        try { if (IsSkipped(resolved, available)) continue; } catch(...) {}
+                        // prefer resolved id as the map key so later lookups match g_packages
+                        out[resolved] = available; continue;
+                    }
+                } catch(...) {}
+                out[id] = available;
+            }
         }
     } catch(...) {}
     return out;
@@ -999,74 +899,39 @@ static std::string RunWingetElevatedCaptureJson(HWND hwnd) {
 }
 
 // very small JSON-ish extractor for "Id" and "Name" values from winget --output json
+// Winget's JSON is unreliable; treat incoming JSON-like text as raw/table output
 static void ParseWingetJsonForPackages(const std::string &jsonText) {
-    g_packages.clear();
-#if HAVE_NLOHMANN_JSON
-    if (jsonText.empty()) return;
+    // Forward to the robust raw/text parser so we only work from table/raw output
+    ParseWingetTextForPackages(jsonText);
+}
+
+// Remove any entries in g_packages that are skipped according to the configured map.
+static void RemoveSkippedFromPackages() {
     try {
-        auto j = nlohmann::json::parse(jsonText);
-        std::set<std::pair<std::string,std::string>> found;
-        std::function<void(const nlohmann::json&)> visit;
-        visit = [&](const nlohmann::json &node) {
-            if (node.is_object()) {
-                if (node.contains("Id") && node.contains("Name") && node["Id"].is_string() && node["Name"].is_string()) {
-                    std::string id = node["Id"].get<std::string>();
-                    std::string name = node["Name"].get<std::string>();
-                    if (!id.empty()) found.emplace(id, name);
-                }
-                for (auto it = node.begin(); it != node.end(); ++it) visit(it.value());
-            } else if (node.is_array()) {
-                for (auto &el : node) visit(el);
+        AppendLog(std::string("RemoveSkippedFromPackages: start, count=") + std::to_string(g_packages.size()) + "\n");
+    } catch(...) {}
+    std::vector<std::pair<std::string,std::string>> kept;
+    kept.reserve(g_packages.size());
+    for (auto &p : g_packages) {
+        bool skip = false;
+        try {
+            // try to find available version from last known map
+            std::string avail;
+            {
+                std::lock_guard<std::mutex> lk(g_versions_mutex);
+                auto it = g_last_avail_versions.find(p.first);
+                if (it != g_last_avail_versions.end()) avail = it->second;
             }
-        };
-        visit(j);
-        for (auto &p : found) g_packages.emplace_back(p.first, p.second);
-    } catch (const std::exception &e) {
-        (void)e;
+            if (IsSkipped(p.first, avail)) {
+                skip = true;
+                try { AppendLog(std::string("RemoveSkippedFromPackages: skipping ") + p.first + " avail='" + avail + "' name='" + p.second + "'\n"); } catch(...) {}
+            }
+        } catch(...) { /* on error, do not skip */ }
+        if (!skip) kept.push_back(p);
     }
-#else
-    // Fallback: simple string-based extractor (original implementation)
-    size_t pos = 0;
-    std::string name, id;
-    while (true) {
-        size_t npos = jsonText.find("\"Name\"", pos);
-        size_t ipos = jsonText.find("\"Id\"", pos);
-        if (npos == std::string::npos && ipos == std::string::npos) break;
-
-        if (ipos != std::string::npos) {
-            size_t colon = jsonText.find(':', ipos);
-            if (colon != std::string::npos) {
-                size_t q1 = jsonText.find('"', colon);
-                if (q1 != std::string::npos) {
-                    size_t q2 = jsonText.find('"', q1 + 1);
-                    if (q2 != std::string::npos) {
-                        id = jsonText.substr(q1 + 1, q2 - q1 - 1);
-                    }
-                }
-            }
-            pos = ipos + 1;
-        }
-
-        if (npos != std::string::npos) {
-            size_t colon = jsonText.find(':', npos);
-            if (colon != std::string::npos) {
-                size_t q1 = jsonText.find('"', colon);
-                if (q1 != std::string::npos) {
-                    size_t q2 = jsonText.find('"', q1 + 1);
-                    if (q2 != std::string::npos) {
-                        name = jsonText.substr(q1 + 1, q2 - q1 - 1);
-                        if (!id.empty()) {
-                            g_packages.emplace_back(id, name);
-                            id.clear();
-                            name.clear();
-                        }
-                    }
-                }
-            }
-            pos = npos + 1;
-        }
-    }
-#endif
+    g_packages.swap(kept);
+    try { AppendLog(std::string("RemoveSkippedFromPackages: end, kept=") + std::to_string(g_packages.size()) + "\n"); } catch(...) {}
+}
 }
 
 // Parse human-readable `winget upgrade` text output.
@@ -1091,148 +956,7 @@ static int CompareVersions(const std::string &a, const std::string &b) {
     return 0;
 }
 
-// Parse text output and pick only entries where an available version is greater
-static void ParseWingetTextForUpdates(const std::string &text) {
-    g_packages.clear();
-    std::istringstream iss(text);
-    std::string line;
-    // match lines that end with: <installed-version> <available-version>
-    std::regex lineRe("^\\s*(.+?)\\s+([^\\s]+)\\s+(\\d+(?:\\.\\d+)*)\\s+(\\d+(?:\\.\\d+)*)\\s*$");
-    std::smatch m;
-    while (std::getline(iss, line)) {
-        while (!line.empty() && (line.back()=='\r' || line.back()=='\n')) line.pop_back();
-        if (line.empty()) continue;
-        if (std::regex_match(line, m, lineRe)) {
-            // m[1]=name, m[2]=id, m[3]=installed, m[4]=available
-            std::string name = m[1].str();
-            std::string id = m[2].str();
-            std::string installed = m[3].str();
-            std::string available = m[4].str();
-            if (CompareVersions(installed, available) < 0) {
-                g_packages.emplace_back(id, name);
-            }
-        }
-    }
-}
-
-// Very fast upgrade output parser: split each non-header line into tokens,
-// take the last tokens as id/installed/available and compare versions.
-static void ParseUpgradeFast(const std::string &text, std::set<std::pair<std::string,std::string>> &outSet) {
-    auto trim = [](std::string s){ while(!s.empty() && isspace((unsigned char)s.front())) s.erase(s.begin()); while(!s.empty() && isspace((unsigned char)s.back())) s.pop_back(); return s; };
-    std::istringstream iss(text);
-    std::string line;
-    bool seenHeader = false;
-    std::regex verRe(R"(^[0-9]+(\.[0-9]+)*$)");
-    while (std::getline(iss, line)) {
-        while (!line.empty() && (line.back()=='\r' || line.back()=='\n')) line.pop_back();
-        std::string t = trim(line);
-        if (t.empty()) continue;
-        if (!seenHeader) {
-            if (t.find("Name") != std::string::npos && t.find("Id") != std::string::npos) { seenHeader = true; continue; }
-            continue;
-        }
-        if (t.find("----") != std::string::npos) continue;
-        if (t.find("upgrades available") != std::string::npos) break;
-
-        std::istringstream ls(t);
-        std::vector<std::string> toks;
-        std::string tok;
-        while (ls >> tok) toks.push_back(tok);
-        if (toks.size() < 3) continue;
-
-        int n = (int)toks.size();
-        int verIdx2 = -1, verIdx1 = -1;
-        for (int i = n - 1; i >= 1; --i) {
-            if (std::regex_match(toks[i], verRe) && std::regex_match(toks[i-1], verRe)) { verIdx2 = i; verIdx1 = i-1; break; }
-        }
-        if (verIdx1 < 0) continue;
-        int idIdx = verIdx1 - 1;
-        if (idIdx < 0) continue;
-
-        std::string available = toks[verIdx2];
-        std::string installed = toks[verIdx1];
-
-        auto looks_like_id = [&](const std::string &s)->bool {
-            if (s.find('.') != std::string::npos) return true;
-            if (s.size() >= 4) return true;
-            for (char c : s) if (isupper((unsigned char)c)) return true;
-            return false;
-        };
-
-        std::string id = toks[idIdx];
-        if (!looks_like_id(id)) {
-            int better = -1;
-            for (int k = idIdx - 1; k >= 0; --k) { if (looks_like_id(toks[k])) { better = k; break; } }
-            if (better >= 0) idIdx = better;
-        }
-
-        std::string name;
-        for (int i = 0; i < idIdx; ++i) { if (i) name += " "; name += toks[i]; }
-        if (name.empty()) name = toks[idIdx];
-
-        id = toks[idIdx];
-        if (CompareVersions(installed, available) < 0) outSet.emplace(id, name);
-    }
-}
-
-// More tolerant extractor: find any occurrences of lines or fragments that contain
-// <name> <id> <installed-version> <available-version> and add when available>installed
-static void ExtractUpdatesFromText(const std::string &text, std::set<std::pair<std::string,std::string>> &outSet) {
-    // regex: capture name (greedy), id token (no spaces), installed(ver), available(ver)
-    std::regex anyRe("([\\S ]+?)\\s+([^\\s]+)\\s+(\\d+(?:\\.\\d+)*)\\s+(\\d+(?:\\.\\d+)*)");
-    std::smatch m;
-    std::string::const_iterator it = text.begin();
-    while (std::regex_search(it, text.cend(), m, anyRe)) {
-        std::string name = m[1].str();
-        std::string id = m[2].str();
-        std::string installed = m[3].str();
-        std::string available = m[4].str();
-        // trim name
-        auto trim = [](std::string s){ while(!s.empty() && isspace((unsigned char)s.front())) s.erase(s.begin()); while(!s.empty() && isspace((unsigned char)s.back())) s.pop_back(); return s; };
-        name = trim(name);
-        if (!id.empty() && CompareVersions(installed, available) < 0) outSet.emplace(id, name);
-        it = m.suffix().first;
-    }
-}
-
-// Build a map of Id->Name from a full winget listing (Name/Id table)
-// then scan the upgrade output for <name> <id> <installed> <available>
-// and add entries where available > installed and id exists in the map.
-static void FindUpdatesUsingKnownList(const std::string &listText, const std::string &upgradeText, std::set<std::pair<std::string,std::string>> &outSet) {
-    // populate g_packages from the listText
-    {
-        std::lock_guard<std::mutex> lk(g_packages_mutex);
-        ParseWingetTextForPackages(listText);
-        // copy into local map
-    }
-    std::unordered_map<std::string,std::string> pkgmap;
-    for (auto &p : g_packages) pkgmap[p.first] = p.second;
-    // if we didn't get a useful map from the provided list, try extracting Id/Name pairs from the upgrade text
-    if (pkgmap.empty() && !upgradeText.empty()) {
-        auto extra = ExtractIdsFromNameIdText(upgradeText);
-        for (auto &p : extra) pkgmap[p.first] = p.second;
-    }
-    // clear global helper list to avoid side-effects
-    {
-        std::lock_guard<std::mutex> lk(g_packages_mutex);
-        g_packages.clear();
-    }
-    if (pkgmap.empty()) return;
-
-    // regex to find fragments like: <name> <id> <installed> <available>
-    std::regex anyRe(R"(([\S ]+?)\s+([^\s]+)\s+(\d+(?:\.[0-9]+)*)\s+(\d+(?:\.[0-9]+)*))");
-    std::smatch m;
-    std::string::const_iterator it = upgradeText.begin();
-    while (std::regex_search(it, upgradeText.cend(), m, anyRe)) {
-        std::string id = m[2].str();
-        std::string installed = m[3].str();
-        std::string available = m[4].str();
-        if (!id.empty() && pkgmap.count(id) && CompareVersions(installed, available) < 0) {
-            outSet.emplace(id, pkgmap[id]);
-        }
-        it = m.suffix().first;
-    }
-}
+// Parsing implementations are centralized in src/parsing.cpp; use those.
 
 static std::vector<std::pair<std::string,std::string>> ExtractIdsFromNameIdText(const std::string &text) {
     std::vector<std::pair<std::string,std::string>> ids;
@@ -1452,7 +1176,13 @@ static void ParseWingetTextForPackages(const std::string &text) {
             continue;
         }
         if (name.empty()) name = id;
-        g_packages.emplace_back(id, name);
+        // If available column present, use it to filter skipped entries immediately
+        try {
+            std::string availCol = (ncols > 3) ? fields[3] : std::string();
+            if (!IsSkipped(id, availCol)) g_packages.emplace_back(id, name);
+        } catch(...) {
+            g_packages.emplace_back(id, name);
+        }
         lastAdded = (int)g_packages.size()-1;
     }
 
@@ -1480,8 +1210,9 @@ static void ParseWingetTextForPackages(const std::string &text) {
                         name += toks[k];
                     }
                     if (name.empty()) name = id;
-                    g_packages.emplace_back(id, name);
-                    seenIds.insert(id);
+                    try {
+                        if (!IsSkipped(id, available)) { g_packages.emplace_back(id, name); seenIds.insert(id); }
+                    } catch(...) { g_packages.emplace_back(id, name); seenIds.insert(id); }
                 }
                 break;
             }
@@ -1493,6 +1224,33 @@ static void PopulateListView(HWND hList) {
     // Log that PopulateListView started (do not create workspace files)
     try { AppendLog(std::string("PopulateListView: PID=") + std::to_string(GetCurrentProcessId()) + " TID=" + std::to_string(GetCurrentThreadId()) + "\n"); } catch(...) {}
 
+    // Diagnostic dump: log current skipped map, available versions, and package summary
+    try {
+        AppendLog("PopulateListView: diagnostic dump start\n");
+        try {
+            AppendLog(std::string("PopulateListView: g_packages size=") + std::to_string((int)g_packages.size()) + "\n");
+        } catch(...) {}
+        try {
+            auto m = GetAvailableVersionsCached();
+            AppendLog(std::string("PopulateListView: avail_map size=") + std::to_string((int)m.size()) + "\n");
+            for (auto &p : m) { AppendLog(std::string("avail: '") + p.first + "' -> '" + p.second + "'\n"); }
+        } catch(...) { AppendLog("PopulateListView: failed to get avail map\n"); }
+        try {
+            std::map<std::string,std::string> copy;
+            // build copy of in-memory skipped map
+            {
+                std::lock_guard<std::mutex> lk(g_packages_mutex);
+                for (auto &kv : g_skipped_versions) copy[kv.first] = kv.second;
+            }
+            AppendLog(std::string("PopulateListView: in-memory skipped size=") + std::to_string((int)copy.size()) + "\n");
+            for (auto &kv : copy) AppendLog(std::string("skipped: '") + kv.first + "' -> '" + kv.second + "'\n");
+        } catch(...) { AppendLog("PopulateListView: failed to dump skipped map\n"); }
+        AppendLog("PopulateListView: diagnostic dump end\n");
+    } catch(...) {}
+
+    // Ensure any parsed-but-skipped packages are removed before inserting into the ListView
+    try { RemoveSkippedFromPackages(); } catch(...) {}
+
     ListView_DeleteAllItems(hList);
     LVITEMW lvi{};
     lvi.mask = LVIF_TEXT | LVIF_PARAM;
@@ -1502,6 +1260,45 @@ static void PopulateListView(HWND hList) {
     for (int i = 0; i < (int)g_packages.size(); ++i) {
         std::string name = g_packages[i].second;
         std::string id = g_packages[i].first;
+        // If this package is explicitly skipped (id + available version), do not add to the list.
+        try {
+            auto avail_map = GetAvailableVersionsCached();
+            std::string availStr;
+            auto ait = avail_map.find(id);
+            std::string checkId = id;
+            if (ait != avail_map.end()) availStr = ait->second;
+            else {
+                // try resolving display name to canonical id
+                std::string resolved = ResolveIdForName(id);
+                if (!resolved.empty()) {
+                    checkId = resolved;
+                    auto ait2 = avail_map.find(resolved);
+                    if (ait2 != avail_map.end()) availStr = ait2->second;
+                }
+            }
+            if (!availStr.empty()) {
+                try {
+                    AppendLog(std::string("PopulateListView: checking skip for id='") + checkId + "' avail='" + availStr + "' (orig='" + id + "')\n");
+                    bool skipped = false;
+                    try { skipped = IsSkipped(checkId, availStr); } catch(...) { skipped = false; }
+                    AppendLog(std::string("PopulateListView: IsSkipped returned ") + (skipped?"true":"false") + std::string(" for id='") + checkId + "' avail='" + availStr + "'\n");
+                    if (skipped) continue;
+                } catch(...) {}
+            } else {
+                // fallback: check last-known available map as a further defensive check
+                try {
+                    auto fallback = GetAvailableVersionsCached();
+                    auto fit = fallback.find(id);
+                    if (fit != fallback.end()) {
+                        AppendLog(std::string("PopulateListView: fallback check for id='") + id + "' avail='" + fit->second + "'\n");
+                        bool skipped = false;
+                        try { skipped = IsSkipped(id, fit->second); } catch(...) { skipped = false; }
+                        AppendLog(std::string("PopulateListView: fallback IsSkipped returned ") + (skipped?"true":"false") + std::string(" for id='") + id + "' avail='" + fit->second + "'\n");
+                        if (skipped) continue;
+                    }
+                } catch(...) {}
+            }
+        } catch(...) {}
         std::wstring wname = Utf8ToWide(name);
         std::wstring wid = Utf8ToWide(id);
         lvi.iItem = i;
@@ -1530,6 +1327,16 @@ static void PopulateListView(HWND hList) {
             std::lock_guard<std::mutex> lk(g_packages_mutex);
             auto it = g_skipped_versions.find(id);
             if (it != g_skipped_versions.end()) skipText = t("skip_col");
+            else {
+                // try resolving id/display-name to canonical id and check skipped map
+                try {
+                    std::string resolved = ResolveIdForName(id);
+                    if (!resolved.empty()) {
+                        auto it2 = g_skipped_versions.find(resolved);
+                        if (it2 != g_skipped_versions.end()) skipText = t("skip_col");
+                    }
+                } catch(...) {}
+            }
         }
         lviSkip.pszText = (LPWSTR)skipText.c_str();
         // If the item is marked skipped in the per-user INI and the "Show skipped" checkbox
@@ -1544,7 +1351,13 @@ static void PopulateListView(HWND hList) {
         try {
             std::string availStr = "";
             if (ait != avail.end()) availStr = ait->second;
-            isSkippedEntry = IsSkipped(id, availStr);
+            // first try direct id
+            if (IsSkipped(id, availStr)) isSkippedEntry = true;
+            else {
+                // fallback: resolve id/display-name to canonical id and check
+                std::string resolved = ResolveIdForName(id);
+                if (!resolved.empty() && IsSkipped(resolved, availStr)) isSkippedEntry = true;
+            }
         } catch(...) {}
         if (isSkippedEntry && !showSkippedChecked) {
             // skip adding this row entirely
@@ -2274,7 +2087,14 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             }
             delete pv;
             // After updating g_packages, attempt to migrate any skipped entries that used display names
-            try { MigrateSkippedEntries(); } catch(...) {}
+            try {
+                bool migrated = MigrateSkippedEntries();
+                if (migrated) {
+                    // reload in-memory skipped map and refresh UI so migrated id-entries take effect immediately
+                    try { LoadSkipConfig(g_locale); } catch(...) {}
+                    if (hList) { PopulateListView(hList); AdjustListColumns(hList); }
+                }
+            } catch(...) {}
             if (hList) PopulateListView(hList);
             if (hList) AdjustListColumns(hList);
                 // Ensure header texts and formats are reapplied after list population/resizing
