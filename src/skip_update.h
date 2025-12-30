@@ -27,3 +27,6 @@ void PurgeObsoleteSkips(const std::map<std::string,std::string> &currentAvail);
 // This writes a line in the format: identifier<tab>version
 // Returns true on success.
 bool AppendSkippedRaw(const std::string &identifier, const std::string &version);
+// Attempt to migrate any skipped entries that use display-names into ID-based entries.
+// Returns true if any entries were migrated and saved.
+bool MigrateSkippedEntries();

@@ -69,7 +69,7 @@ bool ScanAndPopulateMaps(std::unordered_map<std::string,std::string> &avail, std
                 try { if (logcmds) logcmds << "CMD: " << WideToUtf8_local(c) << " EXIT=" << r.first << " OUTLEN=" << r.second.size() << "\n"; } catch(...) {}
                 if (!r.second.empty()) {
                     rawout = r.second;
-                    try { std::ofstream rawf("logs\\wup_winget_raw.txt", std::ios::binary | std::ios::trunc); if (rawf) rawf << rawout; } catch(...) {}
+                    AppendLog(std::string("ScanAndPopulateMaps: captured winget output length=") + std::to_string((int)rawout.size()) + "\n");
                     break;
                 }
             }
@@ -91,9 +91,8 @@ bool ScanAndPopulateMaps(std::unordered_map<std::string,std::string> &avail, std
             size_t verPos = header.find("Version");
             size_t availPos = header.find("Available");
             if (namePos != std::string::npos && verPos != std::string::npos && availPos != std::string::npos) {
-                // open a debug log to inspect parsing offsets and extracted fields
-                std::ofstream dbg; try { dbg.open("logs\\parse_debug.txt", std::ios::binary | std::ios::trunc); } catch(...) {}
-                if (dbg) dbg << "HEADER='" << header << "'\nNAME_POS=" << namePos << " VER_POS=" << verPos << " AVAIL_POS=" << availPos << "\n";
+                // Do not write debug files to workspace; log header info instead
+                AppendLog(std::string("ScanAndPopulateMaps: header='") + header + " NAME_POS=" + std::to_string((int)namePos) + " VER_POS=" + std::to_string((int)verPos) + " AVAIL_POS=" + std::to_string((int)availPos) + "\n");
                 for (int i = sepIdx + 1; i < (int)lines.size(); ++i) {
                     std::string s = lines[i];
                     if (s.empty()) continue;
@@ -102,7 +101,7 @@ bool ScanAndPopulateMaps(std::unordered_map<std::string,std::string> &avail, std
                     std::string name = safeSub(namePos, verPos);
                     std::string version = safeSub(verPos, availPos);
                     std::string available = safeSub(availPos, s.size());
-                    if (dbg) dbg << "LINE='" << s << "'\n  name='" << name << "' ver='" << version << "' avail='" << available << "'\n";
+                    // skip writing per-line debug output to workspace
                     if (name.empty()) {
                         // fallback: tokenize the line and attempt to reconstruct fields
                         std::istringstream ls2(s);
@@ -129,7 +128,7 @@ bool ScanAndPopulateMaps(std::unordered_map<std::string,std::string> &avail, std
                             avail[name] = available;
                         }
                     }
-                    if (dbg) dbg << "---\n";
+                    // ---
                 }
                 if (dbg) dbg.close();
             }
@@ -155,8 +154,8 @@ bool ScanAndPopulateMaps(std::unordered_map<std::string,std::string> &avail, std
             } catch(...) {}
         }
         // Diagnostic dumps into logs/
-        try { std::ofstream ofsA("logs\\wup_winget_avail_map.txt", std::ios::binary | std::ios::trunc); for (auto &p : avail) ofsA << p.first << "\t" << p.second << "\n"; } catch(...){ }
-        try { std::ofstream ofsI("logs\\wup_winget_inst_map.txt", std::ios::binary | std::ios::trunc); for (auto &p : inst) ofsI << p.first << "\t" << p.second << "\n"; } catch(...){ }
+            // Do not write diagnostic files to workspace; log summary instead
+            try { AppendLog(std::string("ScanAndPopulateMaps: avail count=") + std::to_string((int)avail.size()) + " inst count=" + std::to_string((int)inst.size()) + "\n"); } catch(...) {}
         return true;
     } catch(...) { return false; }
 }
@@ -277,8 +276,7 @@ bool RunFullScan(std::vector<std::pair<std::string,std::string>> &outResults,
             // try to match by case-insensitive name equivalence as fallback
             for (auto &pa : avail) {
                 std::string a = pa.first; std::transform(a.begin(), a.end(), a.begin(), ::tolower);
-                for (auto &pi : inst) {
-                    std::string b = pi.first; std::transform(b.begin(), b.end(), b.begin(), ::tolower);
+        AppendLog(std::string("RunFullScan: avail count=") + std::to_string((int)avail.size()) + " inst count=" + std::to_string((int)inst.size()) + "\n");
                     if (a == b) { common = true; break; }
                 }
                 if (common) break;

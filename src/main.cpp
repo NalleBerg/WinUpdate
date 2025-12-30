@@ -1490,29 +1490,8 @@ static void ParseWingetTextForPackages(const std::string &text) {
     }
 
 static void PopulateListView(HWND hList) {
-    // Diagnostic: write a small entry right at function start to confirm this path runs
-    try {
-        wchar_t cwdBuf[MAX_PATH] = {0};
-        GetCurrentDirectoryW((DWORD)std::size(cwdBuf), cwdBuf);
-        std::wstring cwd(cwdBuf);
-        std::wstring outfn = cwd + L"\\logs\\populate_entry.txt";
-        HANDLE hf = CreateFileW(outfn.c_str(), GENERIC_WRITE, FILE_SHARE_READ, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-        if (hf != INVALID_HANDLE_VALUE) {
-            SetFilePointer(hf, 0, NULL, FILE_END);
-            std::string ent = "PID=" + std::to_string(GetCurrentProcessId()) + " TID=" + std::to_string(GetCurrentThreadId()) + " PopulateListView entered\r\n";
-            DWORD w = 0; WriteFile(hf, ent.data(), (DWORD)ent.size(), &w, NULL);
-            CloseHandle(hf);
-        }
-    } catch(...) {}
-
-    // Also append a short marker to the main verbose log so it's visible in the workspace
-    try {
-        std::ofstream vdbg("logs/wup_ui_setitems_verbose.txt", std::ios::binary | std::ios::app);
-        if (vdbg) {
-            vdbg << "POPULATE_ENTER PID=" << GetCurrentProcessId() << " TID=" << GetCurrentThreadId() << " TS=" << WideToUtf8(GetTimestampNow()) << "\n";
-            vdbg.close();
-        }
-    } catch(...) {}
+    // Log that PopulateListView started (do not create workspace files)
+    try { AppendLog(std::string("PopulateListView: PID=") + std::to_string(GetCurrentProcessId()) + " TID=" + std::to_string(GetCurrentThreadId()) + "\n"); } catch(...) {}
 
     ListView_DeleteAllItems(hList);
     LVITEMW lvi{};
@@ -1618,14 +1597,8 @@ static void PopulateListView(HWND hList) {
                         DWORD written = 0;
                         WriteFile(hf, s.data(), (DWORD)s.size(), &written, NULL);
                         CloseHandle(hf);
-                        // Also write to the known absolute workspace path for quick access
-                        try {
-                            std::wstring known = L"C:\\Users\\NalleBerg\\Documents\\C++\\Workspace\\WinUpdate\\logs\\header_create.txt";
-                            HANDLE hf2 = CreateFileW(known.c_str(), GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-                            if (hf2 != INVALID_HANDLE_VALUE) {
-                                DWORD w2 = 0; WriteFile(hf2, s.data(), (DWORD)s.size(), &w2, NULL); CloseHandle(hf2);
-                            }
-                        } catch(...) {}
+                        // Do not write header_create file into workspace; record to app log instead
+                        try { AppendLog(std::string("PopulateListView: header_create info written (not persisted to workspace)\n")); } catch(...) {}
                     }
                 }
             } catch(...) {}
@@ -2300,6 +2273,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                 g_packages = *pv;
             }
             delete pv;
+            // After updating g_packages, attempt to migrate any skipped entries that used display names
+            try { MigrateSkippedEntries(); } catch(...) {}
             if (hList) PopulateListView(hList);
             if (hList) AdjustListColumns(hList);
                 // Ensure header texts and formats are reapplied after list population/resizing
