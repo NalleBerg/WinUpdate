@@ -174,20 +174,41 @@ bool SaveSkippedMap(const std::map<std::string,std::string> &m) {
     ofs << "\n";
     if (!post.empty()) ofs << post;
     ofs.close();
-    // atomic replace
-    BOOL del = DeleteFileA(ini.c_str());
-    if (!del) {
-        DWORD err = GetLastError();
-        AppendLog(std::string("SaveSkippedMap: DeleteFileA returned error ") + std::to_string(err) + "\n");
-    }
-    BOOL mv = MoveFileA(tmp.c_str(), ini.c_str());
-    if (!mv) {
-        DWORD err = GetLastError();
-        AppendLog(std::string("SaveSkippedMap: MoveFileA failed err=") + std::to_string(err) + "\n");
+    // Try to atomically replace the target file. Prefer MoveFileEx with REPLACE_EXISTING
+    BOOL moved = FALSE;
+    DWORD lastErr = 0;
+    // First attempt: MoveFileEx with replace flag
+    moved = MoveFileExA(tmp.c_str(), ini.c_str(), MOVEFILE_REPLACE_EXISTING);
+    if (!moved) {
+        lastErr = GetLastError();
+        AppendLog(std::string("SaveSkippedMap: MoveFileEx(MOVEFILE_REPLACE_EXISTING) failed err=") + std::to_string(lastErr) + "\n");
+        // Fallback: try Delete + Move
+        BOOL del = DeleteFileA(ini.c_str());
+        if (!del) {
+            DWORD derr = GetLastError();
+            AppendLog(std::string("SaveSkippedMap: DeleteFileA returned error ") + std::to_string(derr) + "\n");
+        }
+        BOOL mv = MoveFileA(tmp.c_str(), ini.c_str());
+        if (!mv) {
+            DWORD merr = GetLastError();
+            AppendLog(std::string("SaveSkippedMap: MoveFileA failed err=") + std::to_string(merr) + "\n");
+            // Last-resort fallback: try CopyFile over the destination
+            BOOL cp = CopyFileA(tmp.c_str(), ini.c_str(), FALSE);
+            if (!cp) {
+                DWORD cerr = GetLastError();
+                AppendLog(std::string("SaveSkippedMap: CopyFileA fallback failed err=") + std::to_string(cerr) + "\n");
+            } else {
+                AppendLog(std::string("SaveSkippedMap: CopyFileA fallback succeeded\n"));
+                moved = TRUE;
+            }
+        } else {
+            AppendLog(std::string("SaveSkippedMap: MoveFileA succeeded after Delete: ") + ini + "\n");
+            moved = TRUE;
+        }
     } else {
-        AppendLog(std::string("SaveSkippedMap: wrote ini successfully: ") + ini + "\n");
+        AppendLog(std::string("SaveSkippedMap: MoveFileEx succeeded: ") + ini + "\n");
     }
-    return mv != 0;
+    return moved != 0;
 }
 
 static bool VersionGreater(const std::string &a, const std::string &b) {

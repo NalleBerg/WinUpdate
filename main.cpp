@@ -1886,9 +1886,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         LVCOLUMNW colSkip{}; colSkip.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_FMT; colSkip.cx = 80; colSkip.fmt = LVCFMT_CENTER; colSkip.pszText = (LPWSTR)g_colHeaders[3].c_str(); ListView_InsertColumn(hList, 3, &colSkip);
 
         hCheckAll = CreateWindowExW(0, L"Button", t("select_all").c_str(), WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, 10, 350, 120, 24, hwnd, (HMENU)IDC_CHECK_SELECTALL, NULL, NULL);
-        HWND hCheckSkip = CreateWindowExW(0, L"Button", t("skip_col").c_str(), WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, 140, 350, 140, 24, hwnd, (HMENU)IDC_CHECK_SKIPSELECTED, NULL, NULL);
-        // Temporarily disable the Skip control until feature is stable
-        if (hCheckSkip) EnableWindow(hCheckSkip, FALSE);
         // place Upgrade button 5px to the right of Select all
         hBtnUpgrade = CreateWindowExW(0, L"Button", t("upgrade_now").c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 135, 350, 220, 28, hwnd, (HMENU)IDC_BTN_UPGRADE, NULL, NULL);
         // Unskip selected (hidden by default). Place between Upgrade and Refresh.
@@ -2263,23 +2260,25 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 
         // Bottom controls: left-aligned checkboxes, center upgrade button, right-aligned unskip/refresh
         HWND hCheckAll = GetDlgItem(hwnd, IDC_CHECK_SELECTALL);
-        HWND hCheckSkip = GetDlgItem(hwnd, IDC_CHECK_SKIPSELECTED);
         HWND hBtnUpgrade = GetDlgItem(hwnd, IDC_BTN_UPGRADE);
         HWND hBtnUnskip = GetDlgItem(hwnd, IDC_BTN_UNSKIP);
         HWND hBtnRefresh = GetDlgItem(hwnd, IDC_BTN_REFRESH);
         int btnH = 28;
         int checkW = 120;
         if (hCheckAll && IsWindow(hCheckAll)) SetWindowPos(hCheckAll, NULL, padding, ch - 44, checkW, 24, SWP_NOZORDER | SWP_NOACTIVATE);
-        if (hCheckSkip && IsWindow(hCheckSkip)) SetWindowPos(hCheckSkip, NULL, padding + checkW + 10, ch - 44, 140, 24, SWP_NOZORDER | SWP_NOACTIVATE);
 
         int refreshW = 140;
         int aboutW = 120;
         int unskipW = 100;
         int upgradeW = 220;
-        int refreshX = std::max(padding + upgradeW + unskipW + 40, cw - padding - refreshW);
-        if (hBtnRefresh && IsWindow(hBtnRefresh)) SetWindowPos(hBtnRefresh, NULL, cw - padding - refreshW, ch - 44, refreshW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
-        if (hBtnUnskip && IsWindow(hBtnUnskip)) SetWindowPos(hBtnUnskip, NULL, cw - padding - refreshW - 10 - unskipW, ch - 44, unskipW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
-        if (hBtnUpgrade && IsWindow(hBtnUpgrade)) SetWindowPos(hBtnUpgrade, NULL, padding + checkW + 20, ch - 46, upgradeW, btnH+2, SWP_NOZORDER | SWP_NOACTIVATE);
+        int upgradeX = padding + checkW + 20;
+        int refreshX = cw - padding - refreshW;
+        // center Unskip between Upgrade (right edge) and Refresh (left edge)
+        int upgradeRight = upgradeX + upgradeW;
+        int unskipX = (upgradeRight + refreshX) / 2 - (unskipW / 2);
+        if (hBtnUpgrade && IsWindow(hBtnUpgrade)) SetWindowPos(hBtnUpgrade, NULL, upgradeX, ch - 46, upgradeW, btnH+2, SWP_NOZORDER | SWP_NOACTIVATE);
+        if (hBtnUnskip && IsWindow(hBtnUnskip)) SetWindowPos(hBtnUnskip, NULL, unskipX, ch - 44, unskipW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
+        if (hBtnRefresh && IsWindow(hBtnRefresh)) SetWindowPos(hBtnRefresh, NULL, refreshX, ch - 44, refreshW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
 
         // About button top-right
         HWND hBtnAbout = GetDlgItem(hwnd, IDC_BTN_ABOUT);
@@ -2599,9 +2598,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             HWND hChk = GetDlgItem(hwnd, IDC_CHECK_SELECTALL);
             BOOL ch = (SendMessageW(hChk, BM_GETCHECK, 0, 0) == BST_CHECKED);
             CheckAllItems(hList, ch);
-        } else if (id == IDC_CHECK_SKIPSELECTED) {
-            // Skip feature is temporarily disabled to avoid accidental skips during testing
-            MessageBoxW(hwnd, t("skip_disabled").c_str(), t("app_title").c_str(), MB_OK | MB_ICONINFORMATION);
         } else if (id == IDC_BTN_UPGRADE) {
             // Collect checked items (or all if Select all checked)
             std::vector<std::string> toInstall;

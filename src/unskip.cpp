@@ -69,6 +69,8 @@ static LRESULT CALLBACK UnskipWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM
         int id = LOWORD(wParam);
         if (!ctx) return DefWindowProcW(hWnd, msg, wParam, lParam);
         if (id == 1002) { // Cancel
+            // Bring main window to front and close the dialog
+            if (ctx && ctx->parent && IsWindow(ctx->parent)) PostMessageW(ctx->parent, (WM_APP+7), 0, 0);
             DestroyWindow(hWnd);
             return 0;
         }
@@ -79,10 +81,53 @@ static LRESULT CALLBACK UnskipWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM
                 return 0;
             }
             try {
-                bool ok = RemoveSkippedEntry(ctx->entries[sel].id);
-                AppendLog(std::string("Unskip: removed id=") + ctx->entries[sel].id + "\n");
+                AppendLog(std::string("Unskip: attempting to remove id=") + ctx->entries[sel].id + " name='" + ctx->entries[sel].name + "'\n");
+                bool ok = false;
+                try {
+                    auto m = LoadSkippedMap();
+                    if (m.empty()) {
+                        AppendLog("Unskip: LoadSkippedMap returned empty map\n");
+                    } else {
+                        // sanitize helper (keep same logic as skip_update::IsSkipped)
+                        auto sanitize = [](const std::string &s)->std::string {
+                            std::string out; out.reserve(s.size());
+                            for (unsigned char c : s) if (!isspace(c) && c >= 32) out.push_back((char)c);
+                            return out;
+                        };
+                        std::string targetId = sanitize(ctx->entries[sel].id);
+                        std::string targetName = sanitize(ctx->entries[sel].name);
+                        std::string foundKey;
+                        for (auto &kv : m) {
+                            std::string key_s = sanitize(kv.first);
+                            // exact match by id or by display name
+                            if (key_s == targetId || key_s == targetName) { foundKey = kv.first; break; }
+                            // case-insensitive compare
+                            auto toLower = [](std::string s){ for (auto &c : s) c = (char)tolower((unsigned char)c); return s; };
+                            if (toLower(key_s) == toLower(targetId) || toLower(key_s) == toLower(targetName)) { foundKey = kv.first; break; }
+                            // strip trailing version-like tokens from key and compare
+                            auto stripTrailingVersionTokens = [](std::string s){ auto trim_inplace = [](std::string &x){ size_t a = x.find_first_not_of(" \t\r\n"); if (a==std::string::npos) { x.clear(); return; } size_t b = x.find_last_not_of(" \t\r\n"); x = x.substr(a, b-a+1); }; trim_inplace(s); auto isVersionToken = [](const std::string &t){ if (t.empty()) return false; for (char c : t) { if (!(isdigit((unsigned char)c) || c=='.' || c=='-' || c=='_')) return false; } return true; }; while (true) { size_t p = s.find_last_of(" \t"); if (p==std::string::npos) break; std::string last = s.substr(p+1); if (isVersionToken(last)) { s = s.substr(0, p); trim_inplace(s); continue; } break; } return s; };
+                            std::string key_stripped = stripTrailingVersionTokens(kv.first);
+                            std::string ks_s = sanitize(key_stripped);
+                            if (ks_s == targetId || ks_s == targetName) { foundKey = kv.first; break; }
+                        }
+                        if (!foundKey.empty()) {
+                            AppendLog(std::string("Unskip: resolved entry to remove key='") + foundKey + "\n");
+                            m.erase(foundKey);
+                            ok = SaveSkippedMap(m);
+                            AppendLog(std::string("Unskip: SaveSkippedMap returned ") + (ok?"true":"false") + "\n");
+                        } else {
+                            AppendLog(std::string("Unskip: could not resolve key for id='") + ctx->entries[sel].id + " name='" + ctx->entries[sel].name + "'\n");
+                        }
+                    }
+                } catch(...) { ok = false; }
+                AppendLog(std::string("Unskip: final removal result = ") + (ok?"true":"false") + "\n");
                 if (ok) {
-                    PostMessageW(ctx->parent, (WM_APP + 1), 1, 0);
+                    // trigger a refresh on the main window so UI reflects change
+                    if (ctx->parent && IsWindow(ctx->parent)) {
+                        PostMessageW(ctx->parent, (WM_APP + 1), 1, 0);
+                        // also request the main window be brought forward
+                        PostMessageW(ctx->parent, (WM_APP + 7), 0, 0);
+                    }
                     ctx->didAny = true;
                     DestroyWindow(hWnd);
                     return 0;
@@ -174,8 +219,8 @@ static LRESULT CALLBACK Unskip_ListSubclassProc(HWND hwnd, UINT uMsg, WPARAM wPa
     switch (uMsg) {
     case WM_MOUSEMOVE: {
         POINT pt; pt.x = GET_X_LPARAM(lParam); pt.y = GET_Y_LPARAM(lParam);
-        // ensure we get WM_MOUSELEAVE
-        TRACKMOUSEEVENT tme{}; tme.cbSize = sizeof(tme); tme.dwFlags = TME_LEAVE; tme.hwndTrack = hwnd; TrackMouseEvent(&tme);
+        // ensure we get WM_MOUSELEAVE and WM_MOUSEHOVER
+        TRACKMOUSEEVENT tme{}; tme.cbSize = sizeof(tme); tme.dwFlags = TME_LEAVE | TME_HOVER; tme.hwndTrack = hwnd; TrackMouseEvent(&tme);
         // try fast compute using item height and top index
         int idx = -1;
         LRESULT count = SendMessageW(hwnd, LB_GETCOUNT, 0, 0);
@@ -222,6 +267,11 @@ static LRESULT CALLBACK Unskip_ListSubclassProc(HWND hwnd, UINT uMsg, WPARAM wPa
         if (tipY < wa.top) tipY = br.y + 8;
         SetWindowPos(tip, HWND_TOP, tipX, tipY, w, h, SWP_NOACTIVATE | SWP_SHOWWINDOW);
         InvalidateRect(tip, NULL, TRUE);
+        break;
+    }
+    case WM_MOUSEHOVER: {
+        // Treat hover like mouse move so the tooltip appears when the mouse lingers
+        SendMessageW(hwnd, WM_MOUSEMOVE, wParam, lParam);
         break;
     }
     case WM_MOUSELEAVE: {
