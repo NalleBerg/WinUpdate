@@ -20,6 +20,7 @@
 #include "logging.h"
 #include "hyperlink.h"
 #include "skip_update.h"
+#include "unskip.h"
 // detect nlohmann/json.hpp if available; fall back to ad-hoc parser otherwise
 #if defined(__has_include)
 #  if __has_include(<nlohmann/json.hpp>)
@@ -1875,6 +1876,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         if (hCheckSkip) EnableWindow(hCheckSkip, FALSE);
         // place Upgrade button 5px to the right of Select all
         hBtnUpgrade = CreateWindowExW(0, L"Button", t("upgrade_now").c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 135, 350, 220, 28, hwnd, (HMENU)IDC_BTN_UPGRADE, NULL, NULL);
+        // Unskip selected (hidden by default). Place between Upgrade and Refresh.
+        HWND hBtnUnskip = CreateWindowExW(0, L"Button", L"Unskip", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 365, 350, 100, 28, hwnd, (HMENU)IDC_BTN_UNSKIP, NULL, NULL);
+        if (hBtnUnskip) {
+            if (!g_skipped_versions.empty()) { ShowWindow(hBtnUnskip, SW_SHOW); EnableWindow(hBtnUnskip, TRUE); }
+            else { ShowWindow(hBtnUnskip, SW_HIDE); }
+        }
         // Paste button removed — app scans `winget` at startup and on Refresh
         // position Refresh where the Upgrade button used to be (bottom-right)
         hBtnRefresh = CreateWindowExW(0, L"Button", t("refresh").c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 470, 350, 140, 28, hwnd, (HMENU)IDC_BTN_REFRESH, NULL, NULL);
@@ -2206,7 +2213,61 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         break;
     }
     case WM_SIZE: {
-        if (hList) AdjustListColumns(hList);
+        RECT rcClient; GetClientRect(hwnd, &rcClient);
+        int cw = rcClient.right - rcClient.left;
+        int ch = rcClient.bottom - rcClient.top;
+        int padding = 10;
+
+        // Top controls
+        HWND hCombo = GetDlgItem(hwnd, IDC_COMBO_LANG);
+        if (hCombo && IsWindow(hCombo)) {
+            SetWindowPos(hCombo, NULL, padding, 10, 150, 24, SWP_NOZORDER | SWP_NOACTIVATE);
+        }
+        if (g_hTitle && IsWindow(g_hTitle)) {
+            int titleH = 28;
+            int titleW = std::max(240, cw - 260);
+            int titleX = (cw - titleW) / 2;
+            SetWindowPos(g_hTitle, NULL, titleX, 10, titleW, titleH, SWP_NOZORDER | SWP_NOACTIVATE);
+        }
+        if (g_hLastUpdated && IsWindow(g_hLastUpdated)) {
+            SetWindowPos(g_hLastUpdated, NULL, padding, 40, cw - 2*padding, 16, SWP_NOZORDER | SWP_NOACTIVATE);
+        }
+
+        // Listview: fill available area between header and bottom controls
+        if (hList && IsWindow(hList)) {
+            int listX = padding;
+            int listY = 60;
+            int bottomAreaH = 52; // space for checkboxes and buttons
+            int listW = std::max(200, cw - 2*padding);
+            int listH = std::max(80, ch - listY - bottomAreaH - padding);
+            SetWindowPos(hList, NULL, listX, listY, listW, listH, SWP_NOZORDER | SWP_NOACTIVATE);
+            AdjustListColumns(hList);
+        }
+
+        // Bottom controls: left-aligned checkboxes, center upgrade button, right-aligned unskip/refresh
+        HWND hCheckAll = GetDlgItem(hwnd, IDC_CHECK_SELECTALL);
+        HWND hCheckSkip = GetDlgItem(hwnd, IDC_CHECK_SKIPSELECTED);
+        HWND hBtnUpgrade = GetDlgItem(hwnd, IDC_BTN_UPGRADE);
+        HWND hBtnUnskip = GetDlgItem(hwnd, IDC_BTN_UNSKIP);
+        HWND hBtnRefresh = GetDlgItem(hwnd, IDC_BTN_REFRESH);
+        int btnH = 28;
+        int checkW = 120;
+        if (hCheckAll && IsWindow(hCheckAll)) SetWindowPos(hCheckAll, NULL, padding, ch - 44, checkW, 24, SWP_NOZORDER | SWP_NOACTIVATE);
+        if (hCheckSkip && IsWindow(hCheckSkip)) SetWindowPos(hCheckSkip, NULL, padding + checkW + 10, ch - 44, 140, 24, SWP_NOZORDER | SWP_NOACTIVATE);
+
+        int refreshW = 140;
+        int aboutW = 120;
+        int unskipW = 100;
+        int upgradeW = 220;
+        int refreshX = std::max(padding + upgradeW + unskipW + 40, cw - padding - refreshW);
+        if (hBtnRefresh && IsWindow(hBtnRefresh)) SetWindowPos(hBtnRefresh, NULL, cw - padding - refreshW, ch - 44, refreshW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
+        if (hBtnUnskip && IsWindow(hBtnUnskip)) SetWindowPos(hBtnUnskip, NULL, cw - padding - refreshW - 10 - unskipW, ch - 44, unskipW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
+        if (hBtnUpgrade && IsWindow(hBtnUpgrade)) SetWindowPos(hBtnUpgrade, NULL, padding + checkW + 20, ch - 46, upgradeW, btnH+2, SWP_NOZORDER | SWP_NOACTIVATE);
+
+        // About button top-right
+        HWND hBtnAbout = GetDlgItem(hwnd, IDC_BTN_ABOUT);
+        if (hBtnAbout && IsWindow(hBtnAbout)) SetWindowPos(hBtnAbout, NULL, cw - padding - aboutW, 10, aboutW, 28, SWP_NOZORDER | SWP_NOACTIVATE);
+
         break;
     }
     case WM_APP+4: {
@@ -2341,6 +2402,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                                 g_skipped_versions.erase(it);
                                 SaveSkipConfig(g_locale);
                                 PopulateListView(hListLocal);
+                                HWND hUn = GetDlgItem(hwnd, IDC_BTN_UNSKIP); if (hUn && g_skipped_versions.empty()) ShowWindow(hUn, SW_HIDE);
                             }
                         } else {
                             // determine available version for this id and add to skip config, confirm
@@ -2454,6 +2516,17 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             break;
         } else if (id == IDC_BTN_ABOUT) {
             ShowAboutDialog(hwnd);
+            break;
+        } else if (id == IDC_BTN_UNSKIP) {
+            // Open Unskip dialog to allow removing skipped entries
+            try {
+                bool changed = ShowUnskipDialog(hwnd);
+                if (changed) {
+                    // refresh skip config in-memory and persist
+                    try { SaveSkipConfig(g_locale); } catch(...) {}
+                    if (!g_refresh_in_progress.load()) PostMessageW(hwnd, WM_REFRESH_ASYNC, 1, 0);
+                }
+            } catch(...) {}
             break;
         } else if (id == IDC_BTN_DONE) {
             // Protect against programmatic or accidental WM_COMMAND posts: only accept real button clicks
@@ -2886,7 +2959,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow) {
 
     std::wstring winTitle = std::wstring(L"WinUpdate - ") + t("app_window_suffix");
     HWND hwnd = CreateWindowExW(0, CLASS_NAME, winTitle.c_str(), WS_OVERLAPPEDWINDOW,
-        CW_USEDEFAULT, CW_USEDEFAULT, 640, 430, NULL, NULL, hInstance, NULL);
+        CW_USEDEFAULT, CW_USEDEFAULT, 736, 430, NULL, NULL, hInstance, NULL);
     if (!hwnd) return 0;
     // load and set application icons (embedded in resources)
     HICON hIconBig = (HICON)LoadImageW(hInstance, MAKEINTRESOURCEW(IDI_APP_ICON), IMAGE_ICON, 48, 48, LR_DEFAULTCOLOR);
