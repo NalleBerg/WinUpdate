@@ -172,7 +172,7 @@ static std::vector<std::pair<std::string,std::string>> ParseRawWingetTextInMemor
 static void LoadSkipConfig(const std::string &locale) {
     g_skipped_versions.clear();
     try {
-        std::string fn = std::string("i18n\\") + locale + ".ini";
+        std::string fn = std::string("i18n/") + locale + ".ini";
         std::ifstream ifs(fn, std::ios::binary);
         if (!ifs) return;
         std::string ln;
@@ -1561,6 +1561,21 @@ static void AdjustListColumns(HWND hList) {
     // For simplicity, leave font as-is; could implement dynamic font sizing here.
 }
 
+// Show or hide the Unskip button based on whether any skipped entries exist
+static void UpdateUnskipButton(HWND hwnd) {
+    HWND hUn = GetDlgItem(hwnd, IDC_BTN_UNSKIP);
+    if (!hUn || !IsWindow(hUn)) return;
+    try {
+        if (g_skipped_versions.empty()) {
+            ShowWindow(hUn, SW_HIDE);
+            EnableWindow(hUn, FALSE);
+        } else {
+            ShowWindow(hUn, SW_SHOW);
+            EnableWindow(hUn, TRUE);
+        }
+    } catch(...) {}
+}
+
 // Helper used by custom draw / notifications: check if item index corresponds to NotApplicable id
 static bool IsItemNotApplicable(int index) {
     if (index < 0 || index >= (int)g_packages.size()) return false;
@@ -1879,8 +1894,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         // Unskip selected (hidden by default). Place between Upgrade and Refresh.
         HWND hBtnUnskip = CreateWindowExW(0, L"Button", L"Unskip", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 365, 350, 100, 28, hwnd, (HMENU)IDC_BTN_UNSKIP, NULL, NULL);
         if (hBtnUnskip) {
-            if (!g_skipped_versions.empty()) { ShowWindow(hBtnUnskip, SW_SHOW); EnableWindow(hBtnUnskip, TRUE); }
-            else { ShowWindow(hBtnUnskip, SW_HIDE); }
+            UpdateUnskipButton(hwnd);
         }
         // Paste button removed — app scans `winget` at startup and on Refresh
         // position Refresh where the Upgrade button used to be (bottom-right)
@@ -2104,6 +2118,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                 auto m = LoadSkippedMap();
                 g_skipped_versions.clear();
                 for (auto &p : m) g_skipped_versions[p.first] = p.second;
+            
+                // Update Unskip button visibility now that we've reloaded per-user skips
+                UpdateUnskipButton(hwnd);
             } catch(...) {}
             if (hList) PopulateListView(hList);
         } catch(...) {}
@@ -2184,9 +2201,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                 AppendLog(std::string("WM_COPYDATA: mapping appname->id='") + id + "' avail='" + ver + "'\n");
                 AppendLog(std::string("WM_COPYDATA: AddSkippedEntry returned ") + (added?"true":"false") + "\n");
                 try {
-                    if (added) {
+                        if (added) {
                         g_skipped_versions[id] = ver;
-                        HWND hUn = GetDlgItem(hwnd, IDC_BTN_UNSKIP); if (hUn) { ShowWindow(hUn, SW_SHOW); EnableWindow(hUn, TRUE); }
+                        UpdateUnskipButton(hwnd);
                     }
                 } catch(...) {}
                 // Regardless of whether we resolved an id, trigger a UI refresh so the list is rescanned
@@ -2402,7 +2419,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                                 g_skipped_versions.erase(it);
                                 SaveSkipConfig(g_locale);
                                 PopulateListView(hListLocal);
-                                HWND hUn = GetDlgItem(hwnd, IDC_BTN_UNSKIP); if (hUn && g_skipped_versions.empty()) ShowWindow(hUn, SW_HIDE);
+                                UpdateUnskipButton(hwnd);
                             }
                         } else {
                             // determine available version for this id and add to skip config, confirm

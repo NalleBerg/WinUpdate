@@ -1,8 +1,11 @@
 #include "unskip.h"
 #include <windows.h>
+#include <commctrl.h>
+#include <windowsx.h>
 #include <string>
 #include <vector>
 #include <map>
+#include <unordered_map>
 #include <sstream>
 #include <fstream>
 #include "skip_update.h"
@@ -46,6 +49,198 @@ static std::wstring Utf8ToWide(const std::string &s) {
 }
 
 // Modal dialog implemented with a simple window and listbox
+
+// Entry type used by the dialog
+struct UnskipEntry { std::string id; std::string name; std::string ver; };
+
+// Context stored for each dialog instance
+struct DialogContext {
+    HWND parent;
+    HWND hList;
+    std::vector<UnskipEntry> entries;
+    bool didAny = false;
+};
+
+// Window proc for the unskip dialog. Handles button clicks directly so
+// WM_COMMAND sent via SendMessage is received here and the Cancel button works.
+static LRESULT CALLBACK UnskipWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    DialogContext *ctx = (DialogContext*)GetWindowLongPtrW(hWnd, GWLP_USERDATA);
+    if (msg == WM_COMMAND) {
+        int id = LOWORD(wParam);
+        if (!ctx) return DefWindowProcW(hWnd, msg, wParam, lParam);
+        if (id == 1002) { // Cancel
+            DestroyWindow(hWnd);
+            return 0;
+        }
+        if (id == 1001) { // Unskip
+            int sel = (int)SendMessageW(ctx->hList, LB_GETCURSEL, 0, 0);
+            if (sel < 0 || sel >= (int)ctx->entries.size()) {
+                MessageBoxA(hWnd, "Select an entry first.", "WinUpdate", MB_OK | MB_ICONINFORMATION);
+                return 0;
+            }
+            try {
+                bool ok = RemoveSkippedEntry(ctx->entries[sel].id);
+                AppendLog(std::string("Unskip: removed id=") + ctx->entries[sel].id + "\n");
+                if (ok) {
+                    PostMessageW(ctx->parent, (WM_APP + 1), 1, 0);
+                    ctx->didAny = true;
+                    DestroyWindow(hWnd);
+                    return 0;
+                } else {
+                    MessageBoxA(hWnd, "Failed to remove skip entry.", "WinUpdate", MB_OK | MB_ICONERROR);
+                }
+            } catch(...) { MessageBoxA(hWnd, "Failed to remove skip entry.", "WinUpdate", MB_OK | MB_ICONERROR); }
+            return 0;
+        }
+    }
+    if (msg == WM_DESTROY) {
+        // leave context alive until ShowUnskipDialog cleans it up
+        return 0;
+    }
+    return DefWindowProcW(hWnd, msg, wParam, lParam);
+}
+
+// --- custom tooltip implementation for Unskip dialog (file-scope) ---
+static bool g_unskip_tip_class_registered = false;
+static const wchar_t *kUnskipTipClass = L"WUP_UnskipCustomTip";
+static const int kUnskipTipPadX = 30;
+static const int kUnskipTipPadY = 12;
+
+static void EnsureUnskipTipClassRegistered() {
+    if (g_unskip_tip_class_registered) return;
+    WNDCLASSEXW wc{};
+    wc.cbSize = sizeof(wc);
+    wc.style = CS_HREDRAW | CS_NOCLOSE;
+    wc.lpfnWndProc = [](HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)->LRESULT {
+        switch (uMsg) {
+        case WM_PAINT: {
+            PAINTSTRUCT ps; HDC hdc = BeginPaint(hwnd, &ps);
+            RECT rc; GetClientRect(hwnd, &rc);
+            HBRUSH hbr = CreateSolidBrush(GetSysColor(COLOR_INFOBK));
+            FillRect(hdc, &rc, hbr);
+            DeleteObject(hbr);
+            FrameRect(hdc, &rc, GetSysColorBrush(COLOR_WINDOWFRAME));
+            int len = GetWindowTextLengthW(hwnd);
+            std::vector<wchar_t> buf(len + 1);
+            if (len > 0) GetWindowTextW(hwnd, buf.data(), len + 1);
+            else buf[0] = 0;
+            SetTextColor(hdc, GetSysColor(COLOR_INFOTEXT));
+            SetBkMode(hdc, TRANSPARENT);
+            HFONT hf = (HFONT)SendMessageW(hwnd, WM_GETFONT, 0, 0);
+            HGDIOBJ oldf = NULL;
+            if (hf) oldf = SelectObject(hdc, hf);
+            RECT inner = rc; inner.left += kUnskipTipPadX; inner.right -= kUnskipTipPadX; inner.top += kUnskipTipPadY; inner.bottom -= kUnskipTipPadY;
+            DrawTextW(hdc, buf.data(), -1, &inner, DT_LEFT | DT_SINGLELINE | DT_NOPREFIX | DT_VCENTER);
+            if (oldf) SelectObject(hdc, oldf);
+            EndPaint(hwnd, &ps);
+            return 0;
+        }
+        case WM_SETCURSOR:
+            SetCursor(LoadCursor(NULL, IDC_ARROW));
+            return TRUE;
+        }
+        return DefWindowProcW(hwnd, uMsg, wParam, lParam);
+    };
+    wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+    wc.hInstance = GetModuleHandleW(NULL);
+    wc.hbrBackground = (HBRUSH)(COLOR_INFOBK + 1);
+    wc.lpszClassName = kUnskipTipClass;
+    RegisterClassExW(&wc);
+    g_unskip_tip_class_registered = true;
+}
+
+static std::unordered_map<HWND, HWND> g_unskip_tooltips;
+static std::unordered_map<HWND, std::wstring> g_unskip_texts;
+
+static HWND EnsureUnskipTooltipForList(HWND hList) {
+    auto it = g_unskip_tooltips.find(hList);
+    if (it != g_unskip_tooltips.end() && IsWindow(it->second)) return it->second;
+    EnsureUnskipTipClassRegistered();
+    HWND owner = GetAncestor(hList, GA_ROOT);
+    if (!owner) owner = GetParent(hList);
+    HWND tip = CreateWindowExW(WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE, kUnskipTipClass, L"", WS_POPUP, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, owner, NULL, GetModuleHandleW(NULL), NULL);
+    if (!tip) return NULL;
+    SetWindowPos(tip, HWND_TOP, 0,0,0,0, SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE);
+    g_unskip_tooltips[hList] = tip;
+    g_unskip_texts[hList] = L"";
+    HFONT lf = (HFONT)SendMessageW(hList, WM_GETFONT, 0, 0);
+    if (lf) SendMessageW(tip, WM_SETFONT, (WPARAM)lf, TRUE);
+    return tip;
+}
+
+static LRESULT CALLBACK Unskip_ListSubclassProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam,
+    UINT_PTR uIdSubclass, DWORD_PTR dwRefData) {
+    static std::unordered_map<HWND, int> lastIndex;
+    switch (uMsg) {
+    case WM_MOUSEMOVE: {
+        POINT pt; pt.x = GET_X_LPARAM(lParam); pt.y = GET_Y_LPARAM(lParam);
+        // ensure we get WM_MOUSELEAVE
+        TRACKMOUSEEVENT tme{}; tme.cbSize = sizeof(tme); tme.dwFlags = TME_LEAVE; tme.hwndTrack = hwnd; TrackMouseEvent(&tme);
+        // try fast compute using item height and top index
+        int idx = -1;
+        LRESULT count = SendMessageW(hwnd, LB_GETCOUNT, 0, 0);
+        LRESULT itemH = SendMessageW(hwnd, LB_GETITEMHEIGHT, 0, 0);
+        LRESULT top = SendMessageW(hwnd, LB_GETTOPINDEX, 0, 0);
+        if (itemH > 0) {
+            int rel = pt.y;
+            int calc = (int)top + (rel / (int)itemH);
+            if (calc >= 0 && calc < (int)count) idx = calc;
+        }
+        if (idx == -1) {
+            LPARAM lp = MAKELPARAM(pt.x, pt.y);
+            LRESULT res = SendMessageW(hwnd, LB_ITEMFROMPOINT, 0, lp);
+            idx = LOWORD(res);
+        }
+            if (idx < 0) {
+            auto it = g_unskip_tooltips.find(hwnd);
+            if (it != g_unskip_tooltips.end() && IsWindow(it->second)) ShowWindow(it->second, SW_HIDE);
+            lastIndex[hwnd] = -1;
+            break;
+        }
+        if (lastIndex[hwnd] == idx) break;
+        lastIndex[hwnd] = idx;
+        HWND tip = EnsureUnskipTooltipForList(hwnd);
+        if (!tip) break;
+        std::wstring text = g_unskip_texts[hwnd];
+        if (text.empty()) break;
+        SetWindowTextW(tip, text.c_str());
+        const int padX = kUnskipTipPadX, padY = kUnskipTipPadY;
+        HDC hdc = GetDC(tip);
+        HFONT hf = (HFONT)SendMessageW(tip, WM_GETFONT, 0, 0);
+        HGDIOBJ oldf = NULL; if (hf) oldf = SelectObject(hdc, hf);
+        RECT rcCalc = {0,0,0,0}; DrawTextW(hdc, text.c_str(), -1, &rcCalc, DT_LEFT | DT_SINGLELINE | DT_CALCRECT | DT_NOPREFIX);
+        int naturalW = rcCalc.right - rcCalc.left; int naturalH = rcCalc.bottom - rcCalc.top;
+        if (oldf) SelectObject(hdc, oldf);
+        ReleaseDC(tip, hdc);
+        int w = naturalW + (padX * 2); int h = naturalH + (padY * 2);
+        RECT itemRect; SendMessageW(hwnd, LB_GETITEMRECT, idx, (LPARAM)&itemRect);
+        POINT tl = { itemRect.left, itemRect.top }; POINT br = { itemRect.right, itemRect.bottom };
+        ClientToScreen(hwnd, &tl); ClientToScreen(hwnd, &br);
+        int tipX = (tl.x + br.x) / 2 - w/2; int tipY = tl.y - h - 8;
+        RECT wa; SystemParametersInfoW(SPI_GETWORKAREA, 0, &wa, 0);
+        if (tipX < wa.left) tipX = wa.left + 4; if (tipX + w > wa.right) tipX = wa.right - w - 4;
+        if (tipY < wa.top) tipY = br.y + 8;
+        SetWindowPos(tip, HWND_TOP, tipX, tipY, w, h, SWP_NOACTIVATE | SWP_SHOWWINDOW);
+        InvalidateRect(tip, NULL, TRUE);
+        break;
+    }
+    case WM_MOUSELEAVE: {
+        auto it = g_unskip_tooltips.find(hwnd);
+        if (it != g_unskip_tooltips.end() && IsWindow(it->second)) ShowWindow(it->second, SW_HIDE);
+        lastIndex[hwnd] = -1;
+        break;
+    }
+    case WM_KILLFOCUS:
+    case WM_CAPTURECHANGED: {
+        auto it = g_unskip_tooltips.find(hwnd);
+        if (it != g_unskip_tooltips.end() && IsWindow(it->second)) ShowWindow(it->second, SW_HIDE);
+        lastIndex[hwnd] = -1;
+        break;
+    }
+    }
+    return DefSubclassProc(hwnd, uMsg, wParam, lParam);
+}
+
 bool ShowUnskipDialog(HWND parent) {
     std::string locale = "en";
     // try to read locale from settings file similar to other code
@@ -100,11 +295,35 @@ bool ShowUnskipDialog(HWND parent) {
         } catch(...) {}
     }
 
+    // Helper to prettify an id into a readable name if no display name found
+    auto PrettyNameFromId = [](const std::string &id)->std::string{
+        if (id.empty()) return id;
+        // if id contains dots, take last token
+        size_t p = id.find_last_of('.');
+        std::string base = (p==std::string::npos) ? id : id.substr(p+1);
+        // split on camelCase or capitals
+        std::string out;
+        for (size_t i = 0; i < base.size(); ++i) {
+            char c = base[i];
+            if (i>0 && isupper((unsigned char)c) && (islower((unsigned char)base[i-1]) || (i+1<base.size() && islower((unsigned char)base[i+1])))) out.push_back(' ');
+            if (c == '_' || c == '-') out.push_back(' ');
+            else out.push_back(c);
+        }
+        // capitalize first letter
+        if (!out.empty()) out[0] = (char)toupper((unsigned char)out[0]);
+        return out;
+    };
+
+    // If still unknown display names, prettify from id
+    for (auto &e : entries) {
+        if (e.name == e.id) e.name = PrettyNameFromId(e.id);
+    }
+
     // create simple modal dialog
     static const wchar_t *kClass = L"WUP_UnskipDlg";
     static bool reg = false;
     if (!reg) {
-        WNDCLASSEXW wc{}; wc.cbSize = sizeof(wc); wc.lpfnWndProc = DefWindowProcW; wc.hInstance = GetModuleHandleW(NULL); wc.lpszClassName = kClass; wc.hbrBackground = (HBRUSH)(COLOR_WINDOW+1);
+        WNDCLASSEXW wc{}; wc.cbSize = sizeof(wc); wc.lpfnWndProc = UnskipWndProc; wc.hInstance = GetModuleHandleW(NULL); wc.lpszClassName = kClass; wc.hbrBackground = (HBRUSH)(COLOR_WINDOW+1);
         RegisterClassExW(&wc); reg = true;
     }
     int W = 520, H = 360;
@@ -112,16 +331,34 @@ bool ShowUnskipDialog(HWND parent) {
     if (parent && IsWindow(parent)) { GetWindowRect(parent, &prc); px = prc.left + 40; py = prc.top + 40; }
     HWND hDlg = CreateWindowExW(WS_EX_DLGMODALFRAME, kClass, Utf8ToWide(LoadI18nValue(locale, "unskip_dialog_title")).c_str(), WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU, px, py, W, H, parent, NULL, GetModuleHandleW(NULL), NULL);
     if (!hDlg) return false;
+    // allocate context for this dialog and copy entries
+    DialogContext *ctx = new DialogContext();
+    ctx->parent = parent;
+    ctx->entries.reserve(entries.size());
+    for (auto &e : entries) ctx->entries.push_back({ e.id, e.name, e.ver });
     // create listbox
-    HWND hList = CreateWindowExW(0, L"LISTBOX", NULL, WS_CHILD | WS_VISIBLE | LBS_STANDARD | LBS_NOTIFY | WS_VSCROLL | WS_BORDER, 12, 12, W-24, H-120, hDlg, NULL, GetModuleHandleW(NULL), NULL);
-    // fill listbox and keep mapping
+    // adjust dialog height to fit entries (but clamp to reasonable sizes)
+    int itemH = 20;
+    int listH = std::max(80, std::min((int)entries.size() * (itemH + 2) + 8, 360));
+    int dlgH = 40 + listH + 80; // top padding + list + buttons area
+    if (dlgH > 600) dlgH = 600;
+    H = dlgH;
+    // Resize the dialog window so it matches the calculated height
+    if (hDlg && IsWindow(hDlg)) {
+        SetWindowPos(hDlg, NULL, 0, 0, W, H, SWP_NOMOVE | SWP_NOZORDER);
+    }
+    HWND hList = CreateWindowExW(0, L"LISTBOX", NULL, WS_CHILD | WS_VISIBLE | LBS_STANDARD | LBS_NOTIFY | WS_VSCROLL | WS_BORDER, 12, 12, W-24, listH, hDlg, NULL, GetModuleHandleW(NULL), NULL);
+    // fill listbox and keep mapping: show package display name first, then version (no id)
     for (size_t i = 0; i < entries.size(); ++i) {
-        std::string line = entries[i].name + "  -  " + entries[i].ver + "  [" + entries[i].id + "]";
+        std::string line = entries[i].name + "  -  " + entries[i].ver;
         std::wstring wl;
         int needed = MultiByteToWideChar(CP_UTF8, 0, line.c_str(), -1, NULL, 0);
         if (needed>0) { std::vector<wchar_t> buf(needed); MultiByteToWideChar(CP_UTF8,0,line.c_str(),-1,buf.data(),needed); wl = buf.data(); }
         SendMessageW(hList, LB_ADDSTRING, 0, (LPARAM)wl.c_str());
     }
+    // store list HWND in context and associate context with dialog
+    ctx->hList = hList;
+    SetWindowLongPtrW(hDlg, GWLP_USERDATA, (LONG_PTR)ctx);
     // buttons: Unskip and Cancel
     std::string txtUn = LoadI18nValue(locale, "unskip"); if (txtUn.empty()) txtUn = "Unskip";
     std::string txtCancel = LoadI18nValue(locale, "btn_cancel"); if (txtCancel.empty()) txtCancel = "Cancel";
@@ -130,46 +367,34 @@ bool ShowUnskipDialog(HWND parent) {
     HWND hBtnUn = CreateWindowExW(0, L"BUTTON", wun.c_str(), WS_CHILD | WS_VISIBLE | BS_DEFPUSHBUTTON, W-220, H-88, 100, 30, hDlg, (HMENU)1001, GetModuleHandleW(NULL), NULL);
     HWND hBtnCancel = CreateWindowExW(0, L"BUTTON", wcancel.c_str(), WS_CHILD | WS_VISIBLE, W-108, H-88, 96, 30, hDlg, (HMENU)1002, GetModuleHandleW(NULL), NULL);
 
+    // ensure common controls used by subclassing
+    INITCOMMONCONTROLSEX icce{ sizeof(icce), ICC_WIN95_CLASSES };
+    InitCommonControlsEx(&icce);
+    // set the tooltip text into the map for this list
+    std::string tipText = LoadI18nValue(locale, "unskip_tooltip"); if (tipText.empty()) tipText = "Click the row and press Unskip to execute the unskip";
+    std::wstring wtip = Utf8ToWide(tipText);
+    HWND preTip = EnsureUnskipTooltipForList(hList);
+    g_unskip_texts[hList] = wtip;
+    // subclass the list to show the custom tooltip on hover
+    SetWindowSubclass(hList, Unskip_ListSubclassProc, 0xBEEFDEAD, 0);
+
     ShowWindow(hDlg, SW_SHOW);
     // modal message loop for this dialog
     bool didAny = false;
     MSG msg;
     while (IsWindow(hDlg) && GetMessage(&msg, NULL, 0, 0)) {
-        if (msg.message == WM_COMMAND && msg.hwnd == hDlg) {
-            int id = LOWORD(msg.wParam);
-            if (id == 1002) { DestroyWindow(hDlg); break; }
-            if (id == 1001) {
-                int sel = (int)SendMessageW(hList, LB_GETCURSEL, 0, 0);
-                if (sel < 0 || sel >= (int)entries.size()) {
-                    std::string selmsg = LoadI18nValue(locale, "select_entry"); if (selmsg.empty()) selmsg = "Select an entry first.";
-                    MessageBoxA(hDlg, selmsg.c_str(), "WinUpdate", MB_OK | MB_ICONINFORMATION);
-                } else {
-                    // confirm
-                    std::string q = LoadI18nValue(locale, "confirm_unskip"); if (q.empty()) q = "Yes, unskip it!";
-                    std::wstring qw = Utf8ToWide(q);
-                    int mb = MessageBoxW(hDlg, qw.c_str(), Utf8ToWide(LoadI18nValue(locale, "app_title")).c_str(), MB_YESNO | MB_ICONQUESTION);
-                    if (mb == IDYES) {
-                        // perform unskip
-                        try {
-                            bool ok = RemoveSkippedEntry(entries[sel].id);
-                            AppendLog(std::string("Unskip: removed id=") + entries[sel].id + "\n");
-                            if (ok) {
-                                // request refresh of main UI
-                                PostMessageW(parent, (WM_APP + 1), 1, 0);
-                                // remove from listbox and vector
-                                SendMessageW(hList, LB_DELETESTRING, sel, 0);
-                                entries.erase(entries.begin() + sel);
-                                didAny = true;
-                            } else {
-                                MessageBoxA(hDlg, "Failed to remove skip entry.", "WinUpdate", MB_OK | MB_ICONERROR);
-                            }
-                        } catch(...) { MessageBoxA(hDlg, "Failed to remove skip entry.", "WinUpdate", MB_OK | MB_ICONERROR); }
-                    }
-                }
-            }
-        }
+        // let dialog manager process dialog-specific keys first
+        if (IsDialogMessage(hDlg, &msg)) continue;
+        // WM_COMMANDs are handled in the dialog window procedure (UnskipWndProc)
         if (!IsWindow(hDlg)) break;
-        if (!IsDialogMessage(hDlg, &msg)) { TranslateMessage(&msg); DispatchMessage(&msg); }
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+    // retrieve didAny from context and cleanup
+    if (ctx) {
+        didAny = ctx->didAny;
+        delete ctx;
+        ctx = nullptr;
     }
     return didAny;
 }
