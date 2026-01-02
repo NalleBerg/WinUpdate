@@ -7,11 +7,12 @@
 #include <sstream>
 
 // Set the published timestamp here. Update before publishing releases on the website.
-const wchar_t ABOUT_PUBLISHED[] = L"2025-12-20 13:33:21";
+const wchar_t ABOUT_PUBLISHED[] = L"2026-01-02";
 
 static std::wstring BuildAboutText()
 {
     std::wstring eng = L"WinUpdate\r\n";
+    eng += L"(Win as in Victory!)\r\n";
     eng += L"Published: "; eng += ABOUT_PUBLISHED; eng += L"\r\n\r\n";
     eng += L"A lightweight Win32 GUI wrapper for Microsoft\'s winget.\r\n";
     eng += L"Select upgrades, run installs under a single elevation, and review detailed output.\r\n\r\n";
@@ -24,6 +25,7 @@ static std::wstring BuildAboutText()
     eng += L"If you mention a newer version or fork, please attribute the author as requested.\r\n\r\n";
 
     std::wstring no = L"\r\nOm WinUpdate\r\n";
+    no += L"(Win som i seier!)\r\n";
     no += L"Publisert: "; no += ABOUT_PUBLISHED; no += L"\r\n\r\n";
     no += L"Et lettvint Win32-grensesnitt for Microsoft\'s winget.\r\n";
     no += L"Velg oppdateringer, installer med én forhøyelse, og se detaljert logg.\r\n\r\n";

@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WinUpdate - Changelog</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 0 20px;
+            line-height: 1.6;
+            color: #333;
+        }
+        h1 {
+            color: #0078d4;
+            border-bottom: 3px solid #0078d4;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #005a9e;
+            margin-top: 30px;
+            border-bottom: 2px solid #ccc;
+            padding-bottom: 5px;
+        }
+        h3 {
+            color: #333;
+            margin-top: 20px;
+        }
+        .version {
+            background: #f0f0f0;
+            padding: 15px;
+            border-left: 4px solid #0078d4;
+            margin: 20px 0;
+        }
+        .date {
+            color: #666;
+            font-style: italic;
+        }
+        ul {
+            margin: 10px 0;
+        }
+        li {
+            margin: 5px 0;
+        }
+        .feature { color: #107c10; font-weight: bold; }
+        .fix { color: #d13438; font-weight: bold; }
+        .improvement { color: #0078d4; font-weight: bold; }
+        code {
+            background: #f4f4f4;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+        .overview {
+            background: #e8f4f8;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>WinUpdate - Changelog</h1>
+    
+    <div class="overview">
+        <h2>About WinUpdate</h2>
+        <p><strong>WinUpdate</strong> is a lightweight Windows native GUI wrapper for Microsoft's <code>winget</code> package manager. It provides a clean, user-friendly interface for managing software updates on Windows systems without requiring complex command-line operations.</p>
+        
+        <h3>Key Features</h3>
+        <ul>
+            <li><strong>Automatic Update Scanning:</strong> Scans for available package updates using winget</li>
+            <li><strong>Interactive Update Management:</strong> Skip specific updates you don't want to install</li>
+            <li><strong>Version-Specific Skip:</strong> Skip particular versions while allowing future updates</li>
+            <li><strong>Unskip Functionality:</strong> Review and remove previously skipped updates</li>
+            <li><strong>Persistent Settings:</strong> Remembers your skipped packages between sessions</li>
+            <li><strong>Multi-Language Support:</strong> English and Norwegian localization</li>
+            <li><strong>Visual Feedback:</strong> Real-time progress indicators and hyperlinks for actions</li>
+        </ul>
+        
+        <h3>How It Works</h3>
+        <p>WinUpdate runs <code>winget list</code> in the background to detect installed packages and available updates. It parses the output, displays the results in a ListView, and allows you to:</p>
+        <ul>
+            <li>Click hyperlinks to skip specific updates</li>
+            <li>Open the Unskip dialog to manage previously skipped packages</li>
+            <li>Store skip preferences in <code>%APPDATA%\WinUpdate\wup_settings.ini</code></li>
+            <li>Use full display names for clarity (e.g., "VLC media player" instead of just "VLC")</li>
+        </ul>
+    </div>
+
+    <h2>Version History</h2>
+
+    <div class="version">
+        <h3>Version 2026-01-02</h3>
+        <p class="date">Released: January 2, 2026</p>
+        
+        <h4><span class="fix">Bug Fixes</span></h4>
+        <ul>
+            <li><strong>Fixed Application Freeze After Skip Confirmation:</strong> Changed synchronous <code>SendMessageW</code> calls to asynchronous <code>PostMessageW</code> to prevent deadlock when refreshing the UI from modal dialog loops</li>
+            <li><strong>Fixed Unskip Dialog Freeze:</strong> Removed slow <code>winget list</code> call (30-second timeout) and replaced with in-memory parsing of cached winget output</li>
+            <li><strong>Fixed Display Name Truncation:</strong> Resolved issue where skip dialog and unskip list showed abbreviated names like "VLC" instead of full names like "VLC media player"</li>
+            <li><strong>Fixed INI Key Matching:</strong> Added whitespace trimming for INI keys to correctly match parsed package IDs that had trailing spaces</li>
+        </ul>
+        
+        <h4><span class="improvement">Improvements</span></h4>
+        <ul>
+            <li><strong>In-Memory Display Name Cache:</strong> Introduced <code>g_id_to_displayname</code> map with mutex protection to store full package names in memory</li>
+            <li><strong>Optimized Unskip Dialog Performance:</strong> Now opens instantly by parsing in-memory data instead of spawning external processes</li>
+            <li><strong>Enhanced Display Name Resolution:</strong> Cascading lookup strategy: memory cache → in-memory winget output → g_packages → prettified fallback</li>
+            <li><strong>Right-to-Left Parsing:</strong> Implemented robust parsing algorithm that extracts Source, Available, Version, and Id from right to left, treating the remainder as the display name</li>
+            <li><strong>Async Message Handling:</strong> All cross-dialog communication now uses non-blocking <code>PostMessageW</code> instead of synchronous <code>SendMessageW</code></li>
+        </ul>
+        
+        <h4><span class="feature">Technical Changes</span></h4>
+        <ul>
+            <li><code>main.cpp</code>: Modified WM_COPYDATA handler to retrieve full display name from <code>g_packages</code> before adding skip entry (lines 2156, 2385)</li>
+            <li><code>skip_confirm_dialog.cpp</code>: Removed WM_COPYDATA sending from modal message loop (lines 262-273)</li>
+            <li><code>hyperlink.cpp</code>: Removed synchronous WM_COPYDATA, added display name lookup from <code>g_packages</code> (lines 500-505)</li>
+            <li><code>skip_update.cpp</code>: Added <code>g_id_to_displayname</code> map and <code>GetDisplayNameForId()</code> function (lines 15-17, 175-196)</li>
+            <li><code>skip_update.h</code>: Updated <code>AddSkippedEntry()</code> signature to accept optional <code>displayName</code> parameter</li>
+            <li><code>unskip.cpp</code>: Implemented in-memory parsing of <code>g_last_winget_raw</code> and ID trimming for lookup (lines 346-407)</li>
+        </ul>
+    </div>
+
+    <div class="version">
+        <h3>Version 2025-12-20</h3>
+        <p class="date">Released: December 20, 2025</p>
+        
+        <h4><span class="feature">Initial Features</span></h4>
+        <ul>
+            <li><strong>Core Functionality:</strong> Initial release with basic winget wrapper capabilities</li>
+            <li><strong>Skip Package Updates:</strong> Ability to skip specific package versions</li>
+            <li><strong>ListView Display:</strong> Shows available updates in a sortable list</li>
+            <li><strong>Settings Persistence:</strong> Saves skipped packages to INI file in <code>%APPDATA%\WinUpdate</code></li>
+            <li><strong>Multi-Language Support:</strong> English and Norwegian translations via INI files</li>
+            <li><strong>About Dialog:</strong> Displays version information and license details</li>
+            <li><strong>Hyperlink Controls:</strong> Custom ListView subclassing for clickable skip links</li>
+            <li><strong>Resource Management:</strong> Icon and resource file integration</li>
+        </ul>
+        
+        <h4><span class="feature">Architecture</span></h4>
+        <ul>
+            <li>Built with C++ and Win32 API (native Windows application)</li>
+            <li>CMake build system with MinGW GCC 15.2.0</li>
+            <li>Modular code structure: separate files for parsing, logging, hyperlinks, dialogs</li>
+            <li>Mutex-protected global state for thread-safe operations</li>
+            <li>Async process execution for running winget commands</li>
+        </ul>
+    </div>
+
+    <h2>Known Issues</h2>
+    <ul>
+        <li>i18n implementation needs improvement (planned for future release)</li>
+        <li>Some edge cases in winget output parsing may need additional handling</li>
+    </ul>
+
+    <h2>Future Plans</h2>
+    <ul>
+        <li>Enhanced internationalization (i18n) system</li>
+        <li>Additional language support</li>
+        <li>Improved error handling and user feedback</li>
+        <li>Configuration options for winget command parameters</li>
+    </ul>
+
+    <h2>Technical Details</h2>
+    <h3>System Requirements</h3>
+    <ul>
+        <li>Windows 10/11 with winget installed</li>
+        <li>Microsoft App Installer (for winget functionality)</li>
+    </ul>
+    
+    <h3>Build Requirements</h3>
+    <ul>
+        <li>CMake 3.x or higher</li>
+        <li>MinGW GCC 15.2.0 or compatible C++ compiler</li>
+        <li>Windows SDK</li>
+    </ul>
+    
+    <h3>File Locations</h3>
+    <ul>
+        <li><strong>Settings:</strong> <code>%APPDATA%\WinUpdate\wup_settings.ini</code></li>
+        <li><strong>Logs:</strong> <code>%APPDATA%\WinUpdate\logs\wup_run_log.txt</code></li>
+        <li><strong>Localization:</strong> <code>locale\en.txt</code>, <code>locale\no.txt</code></li>
+    </ul>
+
+    <h2>Credits</h2>
+    <p>Developed by NalleBerg</p>
+    <p>Licensed under MIT License</p>
+    
+    <hr style="margin-top: 40px;">
+    <p style="text-align: center; color: #999; font-size: 0.9em;">
+        Generated: January 2, 2026<br>
+        WinUpdate - Making Windows package management accessible
+    </p>
+</body>
+</html>
