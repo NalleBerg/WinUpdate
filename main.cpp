@@ -22,6 +22,7 @@
 #include "hyperlink.h"
 #include "skip_update.h"
 #include "unskip.h"
+#include "hidden_scan.h"
 // detect nlohmann/json.hpp if available; fall back to ad-hoc parser otherwise
 #if defined(__has_include)
 #  if __has_include(<nlohmann/json.hpp>)
@@ -2603,7 +2604,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             // ShowAboutDialog(hwnd);
             break;
         } else if (id == IDC_BTN_CONFIG) {
-            ShowConfigDialog(hwnd);
+            ShowConfigDialog(hwnd, g_locale);
             break;
         } else if (id == IDC_BTN_UNSKIP) {
             // Open Unskip dialog to allow removing skipped entries
@@ -2998,7 +2999,27 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     return DefWindowProcW(hwnd, uMsg, wParam, lParam);
 }
 
-int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow) {
+int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR pCmdLine, int nCmdShow) {
+    // Check for --hidden command-line parameter
+    std::wstring cmdLine(pCmdLine ? pCmdLine : L"");
+    if (cmdLine.find(L"--hidden") != std::wstring::npos) {
+        // Run hidden scan - only show UI if updates found
+        // Initialize translations first
+        InitDefaultTranslations();
+        std::string saved = LoadLocaleSetting();
+        if (!saved.empty()) {
+            g_locale = saved;
+        }
+        LoadLocaleFromFile(g_locale);
+        LoadSkipConfig(g_locale);
+        
+        // Perform hidden scan
+        PerformHiddenScan();
+        
+        // Exit after scan (if UI shown, it will be a separate process)
+        return 0;
+    }
+    
     WNDCLASSW wc = { };
     wc.lpfnWndProc = WndProc;
     wc.hInstance = hInstance;

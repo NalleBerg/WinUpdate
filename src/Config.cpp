@@ -1,4 +1,5 @@
 #include "Config.h"
+#include "startup_manager.h"
 #include <windows.h>
 #include <commctrl.h>
 #include <string>
@@ -7,21 +8,29 @@
 #include <unordered_map>
 
 // Dialog control IDs
-#define IDC_CHK_SYSTRAY 3001
-#define IDC_COMBO_POLLING 3002
-#define IDC_LBL_STATUS 3003
-#define IDC_BTN_APPLY 3004
-#define IDC_BTN_OK 3005
-#define IDC_BTN_CANCEL 3006
+#define IDC_RADIO_MANUAL 3001
+#define IDC_RADIO_STARTUP 3002
+#define IDC_RADIO_SYSTRAY 3003
+#define IDC_COMBO_POLLING 3004
+#define IDC_LBL_STATUS 3005
+#define IDC_BTN_APPLY 3006
+#define IDC_BTN_OK 3007
+#define IDC_BTN_CANCEL 3008
 
 // Polling interval options (prime numbers in hours)
 static const int POLLING_INTERVALS[] = {0, 2, 3, 5, 7, 11, 13, 17, 19, 23};
 static const int POLLING_COUNT = 10;
 
 // Settings structure
+enum class StartupMode {
+    Manual = 0,     // Only run manually
+    Startup = 1,    // Scan at Windows startup
+    SysTray = 2     // Add to system tray
+};
+
 struct ConfigSettings {
-    bool enableSysTray = false;
-    int pollingInterval = 0;  // 0 = scan only at startup
+    StartupMode mode = StartupMode::Manual;
+    int pollingInterval = 0;  // 0 = scan only at startup (for SysTray mode)
 };
 
 static std::wstring Utf8ToWide(const std::string &s) {
@@ -52,35 +61,8 @@ static std::string GetSettingsPath() {
 }
 
 // Load i18n translations
-static std::unordered_map<std::string, std::wstring> LoadTranslations() {
+static std::unordered_map<std::string, std::wstring> LoadTranslations(const std::string &locale) {
     std::unordered_map<std::string, std::wstring> trans;
-    
-    // Load current locale from settings
-    std::string locale = "en_GB";
-    std::string settingsPath = GetSettingsPath();
-    std::ifstream ifs(settingsPath);
-    if (ifs) {
-        std::string line;
-        bool inLang = false;
-        while (std::getline(ifs, line)) {
-            size_t start = line.find_first_not_of(" \t\r\n");
-            if (start == std::string::npos) continue;
-            line = line.substr(start);
-            if (line.empty() || line[0] == '#' || line[0] == ';') continue;
-            if (line == "[language]") {
-                inLang = true;
-                continue;
-            } else if (line[0] == '[') {
-                inLang = false;
-                continue;
-            }
-            if (inLang && !line.empty()) {
-                locale = line;
-                break;
-            }
-        }
-        ifs.close();
-    }
     
     // Load translations from i18n file in executable directory
     wchar_t exePath[MAX_PATH];
@@ -156,8 +138,11 @@ static ConfigSettings LoadSettings() {
                 size_t ve = val.find_last_not_of(" \t");
                 if (vs != std::string::npos) val = val.substr(vs, ve - vs + 1);
                 
-                if (key == "enabled") {
-                    settings.enableSysTray = (val == "1" || val == "true");
+                if (key == "mode") {
+                    int modeVal = std::stoi(val);
+                    if (modeVal >= 0 && modeVal <= 2) {
+                        settings.mode = static_cast<StartupMode>(modeVal);
+                    }
                 } else if (key == "polling_interval") {
                     settings.pollingInterval = std::stoi(val);
                 }
@@ -183,7 +168,7 @@ static void SaveSettings(const ConfigSettings &settings) {
                 inSysTray = true;
                 sysTrayWritten = true;
                 content << "[systemtraystatus]\n";
-                content << "enabled=" << (settings.enableSysTray ? "1" : "0") << "\n";
+                content << "mode=" << static_cast<int>(settings.mode) << "\n";
                 content << "polling_interval=" << settings.pollingInterval << "\n";
                 continue;
             } else if (!line.empty() && line[0] == '[') {
@@ -200,7 +185,7 @@ static void SaveSettings(const ConfigSettings &settings) {
     // If [systemtraystatus] section didn't exist, add it
     if (!sysTrayWritten) {
         content << "\n[systemtraystatus]\n";
-        content << "enabled=" << (settings.enableSysTray ? "1" : "0") << "\n";
+        content << "mode=" << static_cast<int>(settings.mode) << "\n";
         content << "polling_interval=" << settings.pollingInterval << "\n";
     }
     
@@ -213,90 +198,25 @@ static void SaveSettings(const ConfigSettings &settings) {
 
 static void UpdateStatusLabel(HWND hDlg, HWND hStatus, const ConfigSettings &settings, const std::unordered_map<std::string, std::wstring> &trans) {
     std::wstring status;
-    if (!settings.enableSysTray) {
-        status = t(trans, "config_status_disabled");
-    } else if (settings.pollingInterval == 0) {
-        status = t(trans, "config_status_startup");
-    } else {
-        wchar_t buf[256];
-        swprintf(buf, 256, t(trans, "config_status_polling").c_str(), settings.pollingInterval);
-        status = buf;
+    if (settings.mode == StartupMode::Manual) {
+        status = t(trans, "config_status_manual");
+    } else if (settings.mode == StartupMode::Startup) {
+        status = t(trans, "config_status_startup_only");
+    } else if (settings.mode == StartupMode::SysTray) {
+        if (settings.pollingInterval == 0) {
+            status = t(trans, "config_status_systray_startup");
+        } else {
+            wchar_t buf[256];
+            swprintf(buf, 256, t(trans, "config_status_systray_polling").c_str(), settings.pollingInterval);
+            status = buf;
+        }
     }
     SetWindowTextW(hStatus, status.c_str());
 }
 
-static INT_PTR CALLBACK ConfigDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
-    static ConfigSettings* pSettings = nullptr;
-    
-    switch (message) {
-    case WM_INITDIALOG: {
-        pSettings = (ConfigSettings*)lParam;
-        
-        // Set checkbox state
-        CheckDlgButton(hDlg, IDC_CHK_SYSTRAY, pSettings->enableSysTray ? BST_CHECKED : BST_UNCHECKED);
-        
-        // Populate combo box
-        HWND hCombo = GetDlgItem(hDlg, IDC_COMBO_POLLING);
-        SendMessageW(hCombo, CB_ADDSTRING, 0, (LPARAM)L"Scan only at Windows startup");
-        for (int i = 1; i < POLLING_COUNT; i++) {
-            std::wstring text = L"Scan at Windows startup and every " + 
-                                std::to_wstring(POLLING_INTERVALS[i]) + L" hours";
-            SendMessageW(hCombo, CB_ADDSTRING, 0, (LPARAM)text.c_str());
-        }
-        
-        // Select current interval
-        int selIdx = 0;
-        for (int i = 0; i < POLLING_COUNT; i++) {
-            if (POLLING_INTERVALS[i] == pSettings->pollingInterval) {
-                selIdx = i;
-                break;
-            }
-        }
-        SendMessageW(hCombo, CB_SETCURSEL, selIdx, 0);
-        
-        // Enable/disable combo based on checkbox
-        EnableWindow(hCombo, pSettings->enableSysTray);
-        
-        return TRUE;
-    }
-    
-    case WM_COMMAND: {
-        int id = LOWORD(wParam);
-        int code = HIWORD(wParam);
-        
-        if (id == IDC_CHK_SYSTRAY && code == BN_CLICKED) {
-            BOOL checked = IsDlgButtonChecked(hDlg, IDC_CHK_SYSTRAY) == BST_CHECKED;
-            EnableWindow(GetDlgItem(hDlg, IDC_COMBO_POLLING), checked);
-        } else if (id == IDC_BTN_OK) {
-            // Save settings
-            pSettings->enableSysTray = IsDlgButtonChecked(hDlg, IDC_CHK_SYSTRAY) == BST_CHECKED;
-            
-            HWND hCombo = GetDlgItem(hDlg, IDC_COMBO_POLLING);
-            int selIdx = (int)SendMessageW(hCombo, CB_GETCURSEL, 0, 0);
-            if (selIdx >= 0 && selIdx < POLLING_COUNT) {
-                pSettings->pollingInterval = POLLING_INTERVALS[selIdx];
-            }
-            
-            EndDialog(hDlg, IDOK);
-            return TRUE;
-        } else if (id == IDC_BTN_CANCEL || id == IDCANCEL) {
-            EndDialog(hDlg, IDCANCEL);
-            return TRUE;
-        }
-        break;
-    }
-    
-    case WM_CLOSE:
-        EndDialog(hDlg, IDCANCEL);
-        return TRUE;
-    }
-    
-    return FALSE;
-}
-
-bool ShowConfigDialog(HWND parent) {
+bool ShowConfigDialog(HWND parent, const std::string &currentLocale) {
     // Load translations
-    auto trans = LoadTranslations();
+    auto trans = LoadTranslations(currentLocale);
     
     // Load current settings
     ConfigSettings settings = LoadSettings();
@@ -349,19 +269,43 @@ bool ShowConfigDialog(HWND parent) {
     // Create controls
     HFONT hFont = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
     
-    // Checkbox
-    HWND hCheck = CreateWindowExW(0, L"Button", 
-        t(trans, "config_systray_chk").c_str(),
-        WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX | WS_TABSTOP,
+    // Radio button 1: Only run manually
+    HWND hRadioManual = CreateWindowExW(0, L"Button", 
+        t(trans, "config_mode_manual").c_str(),
+        WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON | WS_TABSTOP | WS_GROUP,
         20, 20, 420, 24,
-        hDlg, (HMENU)IDC_CHK_SYSTRAY, NULL, NULL);
-    SendMessageW(hCheck, WM_SETFONT, (WPARAM)hFont, TRUE);
-    CheckDlgButton(hDlg, IDC_CHK_SYSTRAY, settings.enableSysTray ? BST_CHECKED : BST_UNCHECKED);
+        hDlg, (HMENU)IDC_RADIO_MANUAL, NULL, NULL);
+    SendMessageW(hRadioManual, WM_SETFONT, (WPARAM)hFont, TRUE);
     
-    // Combo box
+    // Radio button 2: Scan at Windows startup
+    HWND hRadioStartup = CreateWindowExW(0, L"Button", 
+        t(trans, "config_mode_startup").c_str(),
+        WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON | WS_TABSTOP,
+        20, 50, 420, 24,
+        hDlg, (HMENU)IDC_RADIO_STARTUP, NULL, NULL);
+    SendMessageW(hRadioStartup, WM_SETFONT, (WPARAM)hFont, TRUE);
+    
+    // Radio button 3: Add to system tray
+    HWND hRadioSysTray = CreateWindowExW(0, L"Button", 
+        t(trans, "config_mode_systray").c_str(),
+        WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON | WS_TABSTOP,
+        20, 80, 420, 24,
+        hDlg, (HMENU)IDC_RADIO_SYSTRAY, NULL, NULL);
+    SendMessageW(hRadioSysTray, WM_SETFONT, (WPARAM)hFont, TRUE);
+    
+    // Set initial radio button state based on mode
+    if (settings.mode == StartupMode::Manual) {
+        CheckDlgButton(hDlg, IDC_RADIO_MANUAL, BST_CHECKED);
+    } else if (settings.mode == StartupMode::Startup) {
+        CheckDlgButton(hDlg, IDC_RADIO_STARTUP, BST_CHECKED);
+    } else {
+        CheckDlgButton(hDlg, IDC_RADIO_SYSTRAY, BST_CHECKED);
+    }
+    
+    // Combo box (indented, below systray radio button)
     HWND hCombo = CreateWindowExW(0, L"ComboBox", L"",
         WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP,
-        20, 55, 420, 200,
+        40, 115, 400, 200,
         hDlg, (HMENU)IDC_COMBO_POLLING, NULL, NULL);
     SendMessageW(hCombo, WM_SETFONT, (WPARAM)hFont, TRUE);
     
@@ -383,14 +327,14 @@ bool ShowConfigDialog(HWND parent) {
     }
     SendMessageW(hCombo, CB_SETCURSEL, selIdx, 0);
     
-    // Enable/disable combo based on checkbox state - must be after CheckDlgButton
-    BOOL shouldEnable = settings.enableSysTray ? TRUE : FALSE;
+    // Enable/disable combo based on radio button state - only enabled for SysTray mode
+    BOOL shouldEnable = (settings.mode == StartupMode::SysTray) ? TRUE : FALSE;
     EnableWindow(hCombo, shouldEnable);
     
     // Status label (centered between dropdown and buttons)
     HWND hStatus = CreateWindowExW(0, L"Static", L"",
         WS_CHILD | WS_VISIBLE | SS_CENTER,
-        20, 95, 420, 20,
+        20, 155, 420, 20,
         hDlg, (HMENU)IDC_LBL_STATUS, NULL, NULL);
     SendMessageW(hStatus, WM_SETFONT, (WPARAM)hFont, TRUE);
     UpdateStatusLabel(hDlg, hStatus, settings, trans);
@@ -443,10 +387,18 @@ bool ShowConfigDialog(HWND parent) {
             int id = LOWORD(wp);
             int code = HIWORD(wp);
             
-            if (id == IDC_CHK_SYSTRAY && code == BN_CLICKED) {
-                BOOL checked = (IsDlgButtonChecked(hwnd, IDC_CHK_SYSTRAY) == BST_CHECKED);
-                EnableWindow(pData->hCombo, checked);
-                pData->settings->enableSysTray = (checked == TRUE);
+            if ((id == IDC_RADIO_MANUAL || id == IDC_RADIO_STARTUP || id == IDC_RADIO_SYSTRAY) && code == BN_CLICKED) {
+                // Update mode based on which radio button was clicked
+                if (IsDlgButtonChecked(hwnd, IDC_RADIO_MANUAL) == BST_CHECKED) {
+                    pData->settings->mode = StartupMode::Manual;
+                    EnableWindow(pData->hCombo, FALSE);
+                } else if (IsDlgButtonChecked(hwnd, IDC_RADIO_STARTUP) == BST_CHECKED) {
+                    pData->settings->mode = StartupMode::Startup;
+                    EnableWindow(pData->hCombo, FALSE);
+                } else if (IsDlgButtonChecked(hwnd, IDC_RADIO_SYSTRAY) == BST_CHECKED) {
+                    pData->settings->mode = StartupMode::SysTray;
+                    EnableWindow(pData->hCombo, TRUE);
+                }
                 return 0;
             } else if (id == IDC_COMBO_POLLING && code == CBN_SELCHANGE) {
                 int sel = (int)SendMessageW(pData->hCombo, CB_GETCURSEL, 0, 0);
@@ -455,24 +407,58 @@ bool ShowConfigDialog(HWND parent) {
                 }
                 return 0;
             } else if (id == IDC_BTN_APPLY) {
-                pData->settings->enableSysTray = IsDlgButtonChecked(hwnd, IDC_CHK_SYSTRAY) == BST_CHECKED;
+                // Read current radio button state
+                if (IsDlgButtonChecked(hwnd, IDC_RADIO_MANUAL) == BST_CHECKED) {
+                    pData->settings->mode = StartupMode::Manual;
+                } else if (IsDlgButtonChecked(hwnd, IDC_RADIO_STARTUP) == BST_CHECKED) {
+                    pData->settings->mode = StartupMode::Startup;
+                } else if (IsDlgButtonChecked(hwnd, IDC_RADIO_SYSTRAY) == BST_CHECKED) {
+                    pData->settings->mode = StartupMode::SysTray;
+                }
                 int sel = (int)SendMessageW(pData->hCombo, CB_GETCURSEL, 0, 0);
                 if (sel >= 0 && sel < POLLING_COUNT) {
                     pData->settings->pollingInterval = POLLING_INTERVALS[sel];
                 }
                 SaveSettings(*pData->settings);
+                
+                // Handle startup shortcut based on mode
+                if (pData->settings->mode == StartupMode::Startup) {
+                    // Mode 1: Create shortcut with --hidden
+                    CreateStartupShortcut();
+                } else {
+                    // Mode 0 or 2: Delete shortcut if it exists
+                    DeleteStartupShortcut();
+                }
+                
                 // Reload settings from .ini to ensure status reflects saved state
                 ConfigSettings savedSettings = LoadSettings();
                 UpdateStatusLabel(hwnd, pData->hStatus, savedSettings, *pData->trans);
                 *pData->dialogResult = true;
                 return 0;
             } else if (id == IDC_BTN_OK) {
-                pData->settings->enableSysTray = IsDlgButtonChecked(hwnd, IDC_CHK_SYSTRAY) == BST_CHECKED;
+                // Read current radio button state
+                if (IsDlgButtonChecked(hwnd, IDC_RADIO_MANUAL) == BST_CHECKED) {
+                    pData->settings->mode = StartupMode::Manual;
+                } else if (IsDlgButtonChecked(hwnd, IDC_RADIO_STARTUP) == BST_CHECKED) {
+                    pData->settings->mode = StartupMode::Startup;
+                } else if (IsDlgButtonChecked(hwnd, IDC_RADIO_SYSTRAY) == BST_CHECKED) {
+                    pData->settings->mode = StartupMode::SysTray;
+                }
                 int sel = (int)SendMessageW(pData->hCombo, CB_GETCURSEL, 0, 0);
                 if (sel >= 0 && sel < POLLING_COUNT) {
                     pData->settings->pollingInterval = POLLING_INTERVALS[sel];
                 }
                 SaveSettings(*pData->settings);
+                
+                // Handle startup shortcut based on mode
+                if (pData->settings->mode == StartupMode::Startup) {
+                    // Mode 1: Create shortcut with --hidden
+                    CreateStartupShortcut();
+                } else {
+                    // Mode 0 or 2: Delete shortcut if it exists
+                    DeleteStartupShortcut();
+                }
+                
                 *pData->dialogResult = true;
                 *pData->dialogDone = true;
                 PostMessageW(hwnd, WM_CLOSE, 0, 0);
@@ -493,7 +479,7 @@ bool ShowConfigDialog(HWND parent) {
     
     SetWindowSubclass(hDlg, DlgProc, 0, (DWORD_PTR)&dlgData);
     
-    SetFocus(hCheck);
+    SetFocus(hRadioManual);
     
     // Message loop
     MSG msg;
@@ -508,6 +494,6 @@ bool ShowConfigDialog(HWND parent) {
     DestroyWindow(hDlg);
     
     // Return true if settings changed
-    return dialogResult && (settings.enableSysTray != originalSettings.enableSysTray || 
+    return dialogResult && (settings.mode != originalSettings.mode || 
                             settings.pollingInterval != originalSettings.pollingInterval);
 }

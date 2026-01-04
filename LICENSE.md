@@ -1,24 +1,25 @@
-![Logo](data:image/png;base64,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)
-+
-+# MIT License
-+
-+Copyright (c) 2025 Nalle Berg
-+
-+Permission is hereby granted, free of charge, to any person obtaining a copy
-+of this software and associated documentation files (the "Software"), to deal
-+in the Software without restriction, including without limitation the rights
-+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-+copies of the Software, and to permit persons to whom the Software is
-+furnished to do so, subject to the following conditions:
-+
-+The above copyright notice and this permission notice shall be included in
-+all copies or substantial portions of the Software.
-+
-+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-+THE SOFTWARE.
+# GNU General Public License v2.0
+
+**WinUpdate** - Windows Update Manager
+
+Copyright (C) 2025-2026 Nalle Berg
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along
+with this program; if not, write to the Free Software Foundation, Inc.,
+51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+---
+
+For the full license text, see [LICENSE.txt](LICENSE.txt) or visit:
+https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 +
