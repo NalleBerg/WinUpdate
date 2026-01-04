@@ -1,240 +1,63 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WinUpdate - Changelog</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            max-width: 900px;
-            margin: 40px auto;
-            padding: 0 20px;
-            line-height: 1.6;
-            color: #333;
-        }
-        h1 {
-            color: #0078d4;
-            border-bottom: 3px solid #0078d4;
-            padding-bottom: 10px;
-        }
-        h2 {
-            color: #005a9e;
-            margin-top: 30px;
-            border-bottom: 2px solid #ccc;
-            padding-bottom: 5px;
-        }
-        h3 {
-            color: #333;
-            margin-top: 20px;
-        }
-        .version {
-            background: #f0f0f0;
-            padding: 15px;
-            border-left: 4px solid #0078d4;
-            margin: 20px 0;
-        }
-        .date {
-            color: #666;
-            font-style: italic;
-        }
-        ul {
-            margin: 10px 0;
-        }
-        li {
-            margin: 5px 0;
-        }
-        .feature { color: #107c10; font-weight: bold; }
-        .fix { color: #d13438; font-weight: bold; }
-        .improvement { color: #0078d4; font-weight: bold; }
-        code {
-            background: #f4f4f4;
-            padding: 2px 5px;
-            border-radius: 3px;
-            font-family: 'Courier New', monospace;
-        }
-        .overview {
-            background: #e8f4f8;
-            padding: 20px;
-            border-radius: 5px;
-            margin: 20px 0;
-        }
-    </style>
-</head>
-<body>
-    <h1>WinUpdate - Changelog</h1>
-    
-    <div class="overview">
-        <h2>About WinUpdate</h2>
-        <p><strong>WinUpdate</strong> is a lightweight Windows native GUI wrapper for Microsoft's <code>winget</code> package manager. It provides a clean, user-friendly interface for managing software updates on Windows systems without requiring complex command-line operations.</p>
-        
-        <h3>Key Features</h3>
-        <ul>
-            <li><strong>Automatic Update Scanning:</strong> Scans for available package updates using winget</li>
-            <li><strong>Interactive Update Management:</strong> Skip specific updates you don't want to install</li>
-            <li><strong>Version-Specific Skip:</strong> Skip particular versions while allowing future updates</li>
-            <li><strong>Unskip Functionality:</strong> Review and remove previously skipped updates</li>
-            <li><strong>Persistent Settings:</strong> Remembers your skipped packages between sessions</li>
-            <li><strong>Multi-Language Support:</strong> English and Norwegian localization</li>
-            <li><strong>Visual Feedback:</strong> Real-time progress indicators and hyperlinks for actions</li>
-        </ul>
-        
-        <h3>How It Works</h3>
-        <p>WinUpdate runs <code>winget list</code> in the background to detect installed packages and available updates. It parses the output, displays the results in a ListView, and allows you to:</p>
-        <ul>
-            <li>Click hyperlinks to skip specific updates</li>
-            <li>Open the Unskip dialog to manage previously skipped packages</li>
-            <li>Store skip preferences in <code>%APPDATA%\WinUpdate\wup_settings.ini</code></li>
-            <li>Use full display names for clarity (e.g., "VLC media player" instead of just "VLC")</li>
-        </ul>
-    </div>
+<h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">Version 2026.01.04</span></h3>
+<p><strong>New in this version (04 January 2026, 18:30 GMT+1):</strong></p>
+<ul>
+<li><strong>System Tray Mode 2 Implementation:</strong> Complete system tray functionality with configurable automatic scanning</li>
+<li><strong>Three Configuration Modes:</strong> Manual mode (default), Hidden scan at startup, or System tray with periodic polling</li>
+<li><strong>Right-Click Context Menu:</strong> ⚡ Scan now!, 🪟 Open main window, ❌ Exit options with emoji icons</li>
+<li><strong>Dynamic Tooltip:</strong> Displays "WinUpdate - Next scan: HH:MM" showing the actual clock time of next scheduled scan</li>
+<li><strong>Smart Balloon Notifications:</strong> Shows update count when updates found, "You are updated!" only for manual scans (automatic scans are silent when no updates)</li>
+<li><strong>"Add to systray now" Button:</strong> Instantly adds app to system tray from config dialog (only visible when Mode 2 selected)</li>
+<li><strong>Automatic Startup Shortcuts:</strong> Mode 1 creates shortcut with --hidden parameter, Mode 2 with --systray parameter</li>
+<li><strong>Single Instance Handling:</strong> Starting app again activates existing window instead of creating duplicate instance</li>
+<li><strong>Window Hide to Tray:</strong> Clicking X in tray mode hides window instead of closing application</li>
+<li><strong>Tooltip Updates:</strong> Countdown refreshes every 60 seconds to keep time accurate</li>
+<li><strong>NIF_SHOWTIP Flag:</strong> Required for NOTIFYICON_VERSION_4 to properly display tooltips on Windows</li>
+<li><strong>closetray.exe Utility:</strong> Standalone CLI tool to cleanly close system tray instance</li>
+</ul>
 
-    <h2>Version History</h2>
+<h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">Version 2026.01.03</span></h3>
+<p><strong>New in this version (03 January 2026, 12:00 GMT+1):</strong></p>
+<ul>
+<li><strong>Config Dialog:</strong> Added configuration dialog for system tray settings (preparation for future tray integration)</li>
+<li><strong>Custom Tooltips:</strong> Implemented custom tooltip system for About button using same architecture as Skip column tooltips</li>
+<li><strong>Complete i18n System:</strong> Migrated from en_US/no to ISO-standard en_GB/nb_NO locale codes throughout the application</li>
+<li><strong>Full Translation Coverage:</strong> Added translations for all UI elements including Config dialog, tooltips, and status messages</li>
+<li><strong>Norwegian Localization Fixes:</strong> Fixed "Uskippe" prefix issue, corrected About button translation to "Om"</li>
+<li><strong>Button Spacing:</strong> Precise 2-pixel gap between Config and About buttons (Config at x=468, About at x=590)</li>
+<li><strong>Config Dialog UX:</strong> Checkbox enables/disables dropdown; status updates only after Apply/OK; Cancel properly discards changes</li>
+</ul>
 
-    <div class="version">
-        <h3>Version 2026-01-03</h3>
-        <p class="date">Released: January 3, 2026</p>
-        
-        <h4><span class="feature">New Features</span></h4>
-        <ul>
-            <li><strong>Config Dialog:</strong> Added configuration dialog for system tray settings (preparation for future tray integration)</li>
-            <li><strong>Custom Tooltips:</strong> Implemented custom tooltip system for About button using same architecture as Skip column tooltips</li>
-            <li><strong>Work in Progress Indicators:</strong> Added "Coming soon..." tooltip to About button to indicate features under development</li>
-        </ul>
-        
-        <h4><span class="improvement">Improvements</span></h4>
-        <ul>
-            <li><strong>Complete i18n System:</strong> Migrated from en_US/no to ISO-standard en_GB/nb_NO locale codes throughout the application</li>
-            <li><strong>Full Translation Coverage:</strong> Added translations for all UI elements including Config dialog, tooltips, and status messages</li>
-            <li><strong>Norwegian Localization Fixes:</strong> Fixed "Uskippe" prefix issue, corrected About button translation to "Om"</li>
-            <li><strong>Button Spacing:</strong> Precise 2-pixel gap between Config and About buttons (Config at x=468, About at x=590)</li>
-            <li><strong>Config Dialog UX:</strong> Checkbox enables/disables dropdown; status updates only after Apply/OK; Cancel properly discards changes</li>
-            <li><strong>Settings File Structure:</strong> Automatic creation of [systemtraystatus] section in wup_settings.ini with sensible defaults</li>
-        </ul>
-        
-        <h4><span class="fix">Bug Fixes</span></h4>
-        <ul>
-            <li><strong>Config Dialog Message Handling:</strong> Fixed checkbox and button clicks by implementing SetWindowSubclass for proper WM_COMMAND interception</li>
-            <li><strong>Cancel Button:</strong> Fixed Cancel button not closing dialog by correcting message loop and dialogDone flag handling</li>
-            <li><strong>Status Label Updates:</strong> Status now only updates after saving to .ini file (Apply/OK), not on every control change</li>
-            <li><strong>About Button Click:</strong> Disabled About dialog (ShowAboutDialog commented out) until redesign is complete</li>
-        </ul>
-        
-        <h4><span class="feature">Technical Changes</span></h4>
-        <ul>
-            <li><code>main.cpp</code>: Added g_hTooltipAbout global; created custom tooltip window class "WinUpdateSimpleTooltip"</li>
-            <li><code>src/Config.cpp</code>: New file implementing full configuration dialog with SetWindowSubclass message handling</li>
-            <li><code>i18n/en_GB.txt</code> and <code>i18n/nb_NO.txt</code>: Added config_* and coming_soon translation keys</li>
-            <li>Button positioning: Config button at x=468 width=120, About button at x=590 width=120 for exact 2px gap</li>
-            <li>Tooltip architecture: Custom WndProc with WM_PAINT for yellow info-style tooltips matching Skip column behavior</li>
-        </ul>
-    </div>
+<h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">Version 2026.01.02</span></h3>
+<p><strong>New in this version (02 January 2026, 10:30 GMT+1):</strong></p>
+<ul>
+<li><strong>Fixed Application Freeze After Skip Confirmation:</strong> Changed synchronous SendMessageW calls to asynchronous PostMessageW to prevent deadlock</li>
+<li><strong>Fixed Unskip Dialog Freeze:</strong> Removed slow winget list call (30-second timeout) and replaced with in-memory parsing of cached winget output</li>
+<li><strong>Fixed Display Name Truncation:</strong> Resolved issue where skip dialog and unskip list showed abbreviated names like "VLC" instead of full names like "VLC media player"</li>
+<li><strong>Fixed INI Key Matching:</strong> Added whitespace trimming for INI keys to correctly match parsed package IDs that had trailing spaces</li>
+<li><strong>In-Memory Display Name Cache:</strong> Introduced g_id_to_displayname map with mutex protection to store full package names in memory</li>
+<li><strong>Optimized Unskip Dialog Performance:</strong> Now opens instantly by parsing in-memory data instead of spawning external processes</li>
+<li><strong>Enhanced Display Name Resolution:</strong> Cascading lookup strategy: memory cache → in-memory winget output → g_packages → prettified fallback</li>
+</ul>
 
-    <div class="version">
-        <h3>Version 2026-01-02</h3>
-        <p class="date">Released: January 2, 2026</p>
-        
-        <h4><span class="fix">Bug Fixes</span></h4>
-        <ul>
-            <li><strong>Fixed Application Freeze After Skip Confirmation:</strong> Changed synchronous <code>SendMessageW</code> calls to asynchronous <code>PostMessageW</code> to prevent deadlock when refreshing the UI from modal dialog loops</li>
-            <li><strong>Fixed Unskip Dialog Freeze:</strong> Removed slow <code>winget list</code> call (30-second timeout) and replaced with in-memory parsing of cached winget output</li>
-            <li><strong>Fixed Display Name Truncation:</strong> Resolved issue where skip dialog and unskip list showed abbreviated names like "VLC" instead of full names like "VLC media player"</li>
-            <li><strong>Fixed INI Key Matching:</strong> Added whitespace trimming for INI keys to correctly match parsed package IDs that had trailing spaces</li>
-        </ul>
-        
-        <h4><span class="improvement">Improvements</span></h4>
-        <ul>
-            <li><strong>In-Memory Display Name Cache:</strong> Introduced <code>g_id_to_displayname</code> map with mutex protection to store full package names in memory</li>
-            <li><strong>Optimized Unskip Dialog Performance:</strong> Now opens instantly by parsing in-memory data instead of spawning external processes</li>
-            <li><strong>Enhanced Display Name Resolution:</strong> Cascading lookup strategy: memory cache → in-memory winget output → g_packages → prettified fallback</li>
-            <li><strong>Right-to-Left Parsing:</strong> Implemented robust parsing algorithm that extracts Source, Available, Version, and Id from right to left, treating the remainder as the display name</li>
-            <li><strong>Async Message Handling:</strong> All cross-dialog communication now uses non-blocking <code>PostMessageW</code> instead of synchronous <code>SendMessageW</code></li>
-        </ul>
-        
-        <h4><span class="feature">Technical Changes</span></h4>
-        <ul>
-            <li><code>main.cpp</code>: Modified WM_COPYDATA handler to retrieve full display name from <code>g_packages</code> before adding skip entry (lines 2156, 2385)</li>
-            <li><code>skip_confirm_dialog.cpp</code>: Removed WM_COPYDATA sending from modal message loop (lines 262-273)</li>
-            <li><code>hyperlink.cpp</code>: Removed synchronous WM_COPYDATA, added display name lookup from <code>g_packages</code> (lines 500-505)</li>
-            <li><code>skip_update.cpp</code>: Added <code>g_id_to_displayname</code> map and <code>GetDisplayNameForId()</code> function (lines 15-17, 175-196)</li>
-            <li><code>skip_update.h</code>: Updated <code>AddSkippedEntry()</code> signature to accept optional <code>displayName</code> parameter</li>
-            <li><code>unskip.cpp</code>: Implemented in-memory parsing of <code>g_last_winget_raw</code> and ID trimming for lookup (lines 346-407)</li>
-        </ul>
-    </div>
+<h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">Version 2025.12.20</span></h3>
+<p><strong>New in this version (20 December 2025, 15:00 GMT+1):</strong></p>
+<ul>
+<li><strong>Core Functionality:</strong> Initial release with basic winget wrapper capabilities</li>
+<li><strong>Skip Package Updates:</strong> Ability to skip specific package versions</li>
+<li><strong>ListView Display:</strong> Shows available updates in a sortable list</li>
+<li><strong>Settings Persistence:</strong> Saves skipped packages to INI file in %APPDATA%\WinUpdate</li>
+<li><strong>Multi-Language Support:</strong> English and Norwegian translations via INI files</li>
+<li><strong>About Dialog:</strong> Displays version information and license details</li>
+<li><strong>Hyperlink Controls:</strong> Custom ListView subclassing for clickable skip links</li>
+<li><strong>Resource Management:</strong> Icon and resource file integration</li>
+<li><strong>Architecture:</strong> Built with C++ and Win32 API (native Windows application), CMake build system with MinGW GCC 15.2.0</li>
+<li><strong>Modular Code Structure:</strong> Separate files for parsing, logging, hyperlinks, dialogs</li>
+<li><strong>Thread Safety:</strong> Mutex-protected global state for thread-safe operations</li>
+</ul>
 
-    <div class="version">
-        <h3>Version 2025-12-20</h3>
-        <p class="date">Released: December 20, 2025</p>
-        
-        <h4><span class="feature">Initial Features</span></h4>
-        <ul>
-            <li><strong>Core Functionality:</strong> Initial release with basic winget wrapper capabilities</li>
-            <li><strong>Skip Package Updates:</strong> Ability to skip specific package versions</li>
-            <li><strong>ListView Display:</strong> Shows available updates in a sortable list</li>
-            <li><strong>Settings Persistence:</strong> Saves skipped packages to INI file in <code>%APPDATA%\WinUpdate</code></li>
-            <li><strong>Multi-Language Support:</strong> English and Norwegian translations via INI files</li>
-            <li><strong>About Dialog:</strong> Displays version information and license details</li>
-            <li><strong>Hyperlink Controls:</strong> Custom ListView subclassing for clickable skip links</li>
-            <li><strong>Resource Management:</strong> Icon and resource file integration</li>
-        </ul>
-        
-        <h4><span class="feature">Architecture</span></h4>
-        <ul>
-            <li>Built with C++ and Win32 API (native Windows application)</li>
-            <li>CMake build system with MinGW GCC 15.2.0</li>
-            <li>Modular code structure: separate files for parsing, logging, hyperlinks, dialogs</li>
-            <li>Mutex-protected global state for thread-safe operations</li>
-            <li>Async process execution for running winget commands</li>
-        </ul>
-    </div>
-
-    <h2>Known Issues</h2>
-    <ul>
-        <li><strong>System Tray Integration:</strong> Not yet implemented (settings UI is ready, functionality pending)</li>
-        <li><strong>About Dialog:</strong> Temporarily disabled pending redesign</li>
-        <li><strong>Update Display:</strong> Visual improvements needed for better information presentation</li>
-        <li>Some edge cases in winget output parsing may need additional handling</li>
-    </ul>
-
-    <h2>Future Plans</h2>
-    <ul>
-        <li><strong>System Tray Functionality:</strong> Background monitoring and notifications</li>
-        <li><strong>Redesigned About Dialog:</strong> Modern, informative design with changelog access</li>
-        <li><strong>Enhanced Update Display:</strong> Better visualization of package information and version comparisons</li>
-        <li><strong>Additional Language Support:</strong> More locales beyond English and Norwegian</li>
-        <li><strong>Advanced Configuration:</strong> Custom winget command parameters and update policies</li>
-        <li><strong>Automatic Update Checks:</strong> Scheduled background scanning at configurable intervals</li>
-    </ul>
-
-    <h2>Technical Details</h2>
-    <h3>System Requirements</h3>
-    <ul>
-        <li>Windows 10/11 with winget installed</li>
-        <li>Microsoft App Installer (for winget functionality)</li>
-    </ul>
-    
-    <h3>Build Requirements</h3>
-    <ul>
-        <li>CMake 3.x or higher</li>
-        <li>MinGW GCC 15.2.0 or compatible C++ compiler</li>
-        <li>Windows SDK</li>
-    </ul>
-    
-    <h3>File Locations</h3>
-    <ul>
-        <li><strong>Settings:</strong> <code>%APPDATA%\WinUpdate\wup_settings.ini</code></li>
-        <li><strong>Logs:</strong> <code>%APPDATA%\WinUpdate\logs\wup_run_log.txt</code></li>
-        <li><strong>Localization:</strong> <code>locale\en_GB.txt</code>, <code>locale\nb_NO.txt</code></li>
-    </ul>
-
-    <h2>Credits</h2>
-    <p>Developed by NalleBerg</p>
-    <p>Licensed under GNU General Public License v2.0</p>
-    
-    <hr style="margin-top: 40px;">
-    <p style="text-align: center; color: #999; font-size: 0.9em;">
-        Last Updated: January 3, 2026<br>
-        WinUpdate - Making Windows package management accessible
-    </p>
-</body>
-</html>
+<hr>
+<br><br>
