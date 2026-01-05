@@ -477,7 +477,7 @@ static void InitDefaultTranslations() {
 
 static void LoadLocaleFromFile(const std::string &locale) {
     g_i18n = g_i18n_default; // start with defaults
-    std::string path = std::string("i18n\\") + locale + ".txt";
+    std::string path = std::string("locale\\") + locale + ".txt";
     std::string txt = ReadFileUtf8(std::wstring(path.begin(), path.end()));
     if (txt.empty()) return;
     std::istringstream iss(txt);
@@ -2004,6 +2004,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         if (hBtnRefresh) EnableWindow(hBtnRefresh, FALSE);
         if (hBtnUpgrade) EnableWindow(hBtnUpgrade, FALSE);
         ShowLoading(hwnd);
+        
+        // Update tray tooltip to show scanning status
+        if (g_systemTray && g_systemTray->IsActive()) {
+            g_systemTray->UpdateNextScanTime(t("tray_scanning"));
+        }
+        
         std::thread([hwnd, manual]() {
             std::vector<std::pair<std::string,std::string>> results;
 
@@ -2126,8 +2132,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                 UpdateUnskipButton(hwnd);
             } catch(...) {}
             
-            // If in system tray mode, show balloon notification
-            if (g_systemTray && g_systemTray->IsActive()) {
+            // If in system tray mode and window is hidden, show balloon notification and update tooltip
+            if (g_systemTray && g_systemTray->IsActive() && !IsWindowVisible(hwnd)) {
                 std::lock_guard<std::mutex> lk(g_packages_mutex);
                 int nonSkippedCount = 0;
                 for (const auto& pkg : g_packages) {
@@ -2135,6 +2141,17 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                         nonSkippedCount++;
                     }
                 }
+                
+                // Update tooltip with result
+                std::wstring statusLine;
+                if (nonSkippedCount == 0) {
+                    statusLine = t("tray_no_updates");
+                } else if (nonSkippedCount == 1) {
+                    statusLine = t("tray_one_update");
+                } else {
+                    statusLine = std::to_wstring(nonSkippedCount) + L" " + t("tray_updates_available");
+                }
+                g_systemTray->UpdateNextScanTime(statusLine);
                 
                 if (nonSkippedCount > 0) {
                     // Always show notification when updates are found
@@ -2147,6 +2164,25 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                     // Don't show for automatic periodic scans (would be annoying)
                     g_systemTray->ShowBalloon(L"WinUpdate", L"You are updated!");
                 }
+            } else if (g_systemTray && g_systemTray->IsActive()) {
+                // Window is visible - just update tooltip, no balloon
+                std::lock_guard<std::mutex> lk(g_packages_mutex);
+                int nonSkippedCount = 0;
+                for (const auto& pkg : g_packages) {
+                    if (g_skipped_versions.find(pkg.first) == g_skipped_versions.end()) {
+                        nonSkippedCount++;
+                    }
+                }
+                
+                std::wstring statusLine;
+                if (nonSkippedCount == 0) {
+                    statusLine = t("tray_no_updates");
+                } else if (nonSkippedCount == 1) {
+                    statusLine = t("tray_one_update");
+                } else {
+                    statusLine = std::to_wstring(nonSkippedCount) + L" " + t("tray_updates_available");
+                }
+                g_systemTray->UpdateNextScanTime(statusLine);
             }
         } catch(...) {}
         
@@ -3041,6 +3077,9 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR pCmdLine, int nCmdShow
         g_systemTray->AddToTray();
         g_systemTray->StartScanTimer(pollingInterval);
         g_systemTray->StartTooltipTimer();
+        
+        // Set initial tooltip (before first scan)
+        g_systemTray->UpdateNextScanTime();
         
         // Trigger immediate scan on startup (will run silently in background)
         g_systemTray->TriggerScan();

@@ -42,7 +42,7 @@ public:
     void StopTooltipTimer();
     
     // Update next scan time display
-    void UpdateNextScanTime();
+    void UpdateNextScanTime(const std::wstring& statusLine = L"");
     
     // Get next scan time as formatted string
     std::wstring GetNextScanTimeString();

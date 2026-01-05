@@ -13,3 +13,7 @@ your_system_updated=Systemet ditt er oppdatert!
 no_packages_selected=Vennligst velg minst én pakke å installere.
 install_done=Ferdig!
 msg_error_elevate=Kunne ikke starte prosess med forhøyede rettigheter.
+tray_scanning=Skanner...
+tray_no_updates=Ingen oppdateringer tilgjengelig
+tray_one_update=1 oppdatering tilgjengelig
+tray_updates_available=oppdateringer tilgjengelig

@@ -13,3 +13,7 @@ your_system_updated=Your system is updated!
 no_packages_selected=Please select at least one package to install.
 install_done=Done!
 msg_error_elevate=Failed to launch elevated process.
+tray_scanning=Scanning...
+tray_no_updates=No updates available
+tray_one_update=1 update available
+tray_updates_available=updates available

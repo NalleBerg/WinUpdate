@@ -46,7 +46,7 @@ bool SystemTray::Initialize(HWND hwnd) {
     m_nid.cbSize = sizeof(NOTIFYICONDATAW);
     m_nid.hWnd = hwnd;
     m_nid.uID = 1;
-    m_nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP | NIF_SHOWTIP;
+    m_nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
     m_nid.uCallbackMessage = WM_TRAYICON;
     
     // Load application icon (IDI_APP_ICON = 101)
@@ -75,11 +75,6 @@ bool SystemTray::AddToTray() {
     if (Shell_NotifyIconW(NIM_ADD, &m_nid)) {
         log << "NIM_ADD succeeded\n";
         m_active = true;
-        
-        // Set version for balloon support
-        m_nid.uVersion = NOTIFYICON_VERSION_4;
-        BOOL versionResult = Shell_NotifyIconW(NIM_SETVERSION, &m_nid);
-        log << "NIM_SETVERSION result: " << versionResult << "\n";
         log.close();
         
         return true;
@@ -106,7 +101,7 @@ bool SystemTray::UpdateTooltip(const std::wstring& text) {
     if (!m_active) return false;
     
     wcscpy_s(m_nid.szTip, text.c_str());
-    m_nid.uFlags = NIF_TIP | NIF_SHOWTIP;
+    m_nid.uFlags = NIF_TIP;
     
     // Debug logging
     std::ofstream log("C:\\Users\\NalleBerg\\AppData\\Roaming\\WinUpdate\\tray_debug.txt", std::ios::app);
@@ -215,11 +210,14 @@ void SystemTray::CalculateNextScanTime() {
     FileTimeToSystemTime(&ftNext, &m_nextScanTime);
 }
 
-void SystemTray::UpdateNextScanTime() {
+void SystemTray::UpdateNextScanTime(const std::wstring& statusLine) {
     std::wstring timeStr = GetNextScanTimeString();
     
-    // Single line tooltip: "WinUpdate - Next scan: HH:MM"
+    // Build tooltip with optional second line for status
     std::wstring tooltip = L"WinUpdate - Next scan: " + timeStr;
+    if (!statusLine.empty()) {
+        tooltip += L"\n" + statusLine;
+    }
     
     // Debug logging
     std::ofstream log("C:\\Users\\NalleBerg\\AppData\\Roaming\\WinUpdate\\tray_debug.txt", std::ios::app);
@@ -254,16 +252,15 @@ void SystemTray::TriggerScan(bool manual) {
 }
 
 LRESULT SystemTray::HandleTrayMessage(HWND hwnd, WPARAM wParam, LPARAM lParam) {
-    // With NOTIFYICON_VERSION_4, the icon ID is in HIWORD(lParam), not wParam
-    UINT iconId = HIWORD(lParam);
-    UINT uMsg = LOWORD(lParam);
+    // Default version: icon ID in wParam, mouse message in lParam
+    UINT iconId = (UINT)wParam;
+    UINT uMsg = (UINT)lParam;
     
     // Debug logging - write to file what message we received
     {
         std::ofstream log("C:\\Users\\NalleBerg\\AppData\\Roaming\\WinUpdate\\tray_debug.txt", std::ios::app);
-        log << "Tray message: wParam=" << wParam << ", lParam=0x" << std::hex << lParam 
-            << ", LOWORD=" << LOWORD(lParam) << ", HIWORD=" << HIWORD(lParam) << std::dec 
-            << " (iconId=" << iconId << ", uMsg=" << uMsg << ")\\n";
+        log << "Tray message: wParam=" << wParam << ", lParam=" << lParam 
+            << " (iconId=" << iconId << ", uMsg=" << uMsg << ")\n";
         log.close();
     }
     
