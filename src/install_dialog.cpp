@@ -543,26 +543,21 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
         }
         std::wstring helperPath = exeDir + L"\\winget_helper.exe";
         
-        // Build command line with all package IDs as arguments
-        std::wstring cmdLine = L"\"" + helperPath + L"\"";
+        // Build parameters: output file first, then all package IDs
+        std::wstring helperParams = L"\"" + outputFile + L"\"";
         for (const auto& pkgId : packageIds) {
-            cmdLine += L" \"" + Utf8ToWide(pkgId) + L"\"";
+            helperParams += L" \"" + Utf8ToWide(pkgId) + L"\"";
         }
         
-        // Add output redirection to temp file
-        cmdLine += L" > \"" + outputFile + L"\" 2>&1";
-        
-        // Build full cmd.exe parameters (must persist for ShellExecuteExW)
-        std::wstring cmdParams = L"/C " + cmdLine;
-        
         // Run winget_helper.exe elevated with UAC (single prompt)
+        // Launch directly without cmd.exe - helper writes to file directly
         SHELLEXECUTEINFOW sei{};
         sei.cbSize = sizeof(sei);
         sei.fMask = SEE_MASK_NOCLOSEPROCESS | SEE_MASK_NOASYNC;
         sei.hwnd = hwnd;
         sei.lpVerb = L"runas";
-        sei.lpFile = L"cmd.exe";
-        sei.lpParameters = cmdParams.c_str();
+        sei.lpFile = helperPath.c_str();
+        sei.lpParameters = helperParams.c_str();
         sei.nShow = SW_HIDE;
         
         if (!ShellExecuteExW(&sei) || !sei.hProcess) {

@@ -1,30 +1,43 @@
 // Simple helper to run winget commands with elevation (single UAC prompt)
-// Outputs all winget output to stdout for parent process to capture via pipe
+// Outputs all winget output to a file specified as first argument
 #include <windows.h>
 #include <iostream>
 #include <string>
 #include <vector>
+#include <fstream>
 
 int wmain(int argc, wchar_t* argv[]) {
-    if (argc < 2) {
-        std::wcerr << L"Usage: winget_helper.exe <package_id1> [package_id2] ..." << std::endl;
+    if (argc < 3) {
+        std::wcerr << L"Usage: winget_helper.exe <output_file> <package_id1> [package_id2] ..." << std::endl;
         return 1;
     }
 
-    // Collect all package IDs from arguments
+    // First argument is the output file
+    std::wstring outputFile = argv[1];
+    
+    // Collect all package IDs from remaining arguments
     std::vector<std::wstring> packageIds;
-    for (int i = 1; i < argc; i++) {
+    for (int i = 2; i < argc; i++) {
         packageIds.push_back(argv[i]);
     }
 
-    std::wcout << L"WinUpdate Helper - Installing " << packageIds.size() << L" package(s)" << std::endl;
-    std::wcout << L"========================================" << std::endl << std::endl;
+    // Open output file for writing
+    std::wofstream outFile(outputFile.c_str(), std::ios::out | std::ios::trunc);
+    if (!outFile) {
+        std::wcerr << L"Failed to open output file: " << outputFile << std::endl;
+        return 1;
+    }
+
+    outFile << L"WinUpdate Helper - Installing " << packageIds.size() << L" package(s)" << std::endl;
+    outFile << L"========================================" << std::endl << std::endl;
+    outFile.flush();
 
     int successCount = 0;
     int failCount = 0;
 
     for (size_t i = 0; i < packageIds.size(); i++) {
-        std::wcout << L"[" << (i+1) << L"/" << packageIds.size() << L"] " << packageIds[i] << std::endl;
+        outFile << L"[" << (i+1) << L"/" << packageIds.size() << L"] " << packageIds[i] << std::endl;
+        outFile.flush();
         
         // Build winget command
         std::wstring cmd = L"winget.exe upgrade --id \"" + packageIds[i] + 
@@ -38,7 +51,8 @@ int wmain(int argc, wchar_t* argv[]) {
         sa.lpSecurityDescriptor = NULL;
         
         if (!CreatePipe(&hReadPipe, &hWritePipe, &sa, 0)) {
-            std::wcerr << L"Failed to create pipe" << std::endl;
+            outFile << L"Failed to create pipe" << std::endl;
+            outFile.flush();
             failCount++;
             continue;
         }
@@ -55,7 +69,8 @@ int wmain(int argc, wchar_t* argv[]) {
         PROCESS_INFORMATION pi{};
         
         if (!CreateProcessW(NULL, (LPWSTR)cmd.c_str(), NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
-            std::wcerr << L"Failed to start winget" << std::endl;
+            outFile << L"Failed to start winget" << std::endl;
+            outFile.flush();
             CloseHandle(hWritePipe);
             CloseHandle(hReadPipe);
             failCount++;
@@ -64,13 +79,19 @@ int wmain(int argc, wchar_t* argv[]) {
         
         CloseHandle(hWritePipe);
         
-        // Read and forward output
+        // Read and forward output to file
         char buffer[4096];
         DWORD bytesRead;
         while (ReadFile(hReadPipe, buffer, sizeof(buffer)-1, &bytesRead, NULL) && bytesRead > 0) {
             buffer[bytesRead] = '\0';
-            std::cout << buffer;
-            std::cout.flush();
+            // Convert UTF-8 to wide and write to file
+            int needed = MultiByteToWideChar(CP_UTF8, 0, buffer, bytesRead, NULL, 0);
+            if (needed > 0) {
+                std::wstring wbuffer(needed, L'\0');
+                MultiByteToWideChar(CP_UTF8, 0, buffer, bytesRead, &wbuffer[0], needed);
+                outFile << wbuffer;
+                outFile.flush();
+            }
         }
         
         WaitForSingleObject(pi.hProcess, INFINITE);
@@ -84,17 +105,20 @@ int wmain(int argc, wchar_t* argv[]) {
         
         if (exitCode == 0) {
             successCount++;
-            std::wcout << L"✓ Success" << std::endl;
+            outFile << L"✓ Success" << std::endl;
         } else {
             failCount++;
-            std::wcout << L"✗ Failed (exit code: " << exitCode << L")" << std::endl;
+            outFile << L"✗ Failed (exit code: " << exitCode << L")" << std::endl;
         }
-        
-        std::wcout << std::endl;
+        outFile << std::endl;
+        outFile.flush();
     }
 
-    std::wcout << L"========================================" << std::endl;
-    std::wcout << L"Summary: " << successCount << L" succeeded, " << failCount << L" failed" << std::endl;
+    outFile << L"========================================" << std::endl;
+    outFile << L"=== Installation Complete ===" << std::endl;
+    outFile << successCount << L" package(s) processed." << std::endl;
+    outFile.flush();
+    outFile.close();
     
     return (failCount > 0) ? 1 : 0;
 }
