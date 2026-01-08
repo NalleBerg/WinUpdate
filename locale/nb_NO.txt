@@ -38,6 +38,7 @@ install_dialog_title=Installerer oppdateringer
 install_preparing=Forbereder...
 install_of=av
 install_progress=Installerer %d av %d
+downloading_package=Laster ned %s...
 installing_package=Installerer %s
 lang_changed_en=Språk endret til engelsk (UK)
 lang_changed_nb=Språk endret til norsk (bokmål)

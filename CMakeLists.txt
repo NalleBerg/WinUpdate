@@ -90,6 +90,15 @@ if(EXISTS ${CMAKE_SOURCE_DIR}/closetray.cpp)
   )
 endif()
 
+# Build winget_helper.exe - elevated helper for running winget commands
+if(EXISTS ${CMAKE_SOURCE_DIR}/winget_helper.cpp)
+  add_executable(winget_helper winget_helper.cpp)
+  set_target_properties(winget_helper PROPERTIES
+    WIN32_EXECUTABLE FALSE  # Console application
+    LINK_FLAGS "-municode"
+  )
+endif()
+
 # Build test_install_overlay.exe - test app for install UI
 if(EXISTS ${CMAKE_SOURCE_DIR}/test_install_overlay.cpp)
   add_executable(test_install_overlay test_install_overlay.cpp)

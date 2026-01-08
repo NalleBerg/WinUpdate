@@ -218,7 +218,7 @@ static LRESULT CALLBACK InstallDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPAR
         // Progress bar
         hProg = CreateWindowExW(0, PROGRESS_CLASSW, NULL, WS_CHILD | WS_VISIBLE, 
             24, 76, W-48, 20, hwnd, NULL, hInst, NULL);
-        SendMessageW(hProg, PBM_SETRANGE, 0, MAKELPARAM(0, 3));
+        SendMessageW(hProg, PBM_SETRANGE, 0, MAKELPARAM(0, 100));
         SendMessageW(hProg, PBM_SETPOS, 0, 0);
         
         // Animation overlay (hidden initially, shown during install phase)
@@ -273,7 +273,7 @@ static LRESULT CALLBACK InstallDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPAR
 }
 
 // Parse winget output line-by-line and detect phases
-static void ProcessWingetOutput(const std::string& line, HWND hwnd, HWND hProg, HWND hAnim, HWND hStatus, 
+static void ProcessWingetOutput(const std::string& line, HWND hwnd, HWND hProg, HWND hAnim, HWND hStatus, HWND hOut,
                                  std::string& currentPhase, std::string& currentPackage) {
     // Trim whitespace
     std::string trimmed = line;
@@ -302,8 +302,11 @@ static void ProcessWingetOutput(const std::string& line, HWND hwnd, HWND hProg, 
         ShowWindow(hProg, SW_SHOW);
         ShowWindow(hAnim, SW_HIDE);
         
-        std::wstring statusText = L"Downloading " + Utf8ToWide(currentPackage);
-        SetWindowTextW(hStatus, statusText.c_str());
+        // Use translation key with package name
+        wchar_t pkgBuf[512];
+        std::wstring pkgWide = Utf8ToWide(currentPackage);
+        swprintf(pkgBuf, 512, t("downloading_package").c_str(), pkgWide.c_str());
+        SetWindowTextW(hStatus, pkgBuf);
         
         // Reset progress bar for download (0-100%)
         SendMessageW(hProg, PBM_SETRANGE, 0, MAKELPARAM(0, 100));
@@ -329,8 +332,9 @@ static void ProcessWingetOutput(const std::string& line, HWND hwnd, HWND hProg, 
         }
     }
     
-    // Parse download progress (e.g., "10 MB / 100 MB")
+    // Parse download progress (e.g., "10 MB / 100 MB" or percentage indicators)
     if (currentPhase == "download") {
+        // Try MB/MB format
         std::regex mbRe(R"((\d+)\s*(MB|MiB)\s*/\s*(\d+)\s*(MB|MiB))", std::regex::icase);
         std::smatch match;
         if (std::regex_search(trimmed, match, mbRe)) {
@@ -342,6 +346,34 @@ static void ProcessWingetOutput(const std::string& line, HWND hwnd, HWND hProg, 
                     SendMessageW(hProg, PBM_SETPOS, percent, 0);
                 }
             } catch (...) {}
+        }
+        
+        // Try percentage format (e.g., "45%")
+        std::regex percRe(R"((\d+)%)");
+        if (std::regex_search(trimmed, match, percRe)) {
+            try {
+                int percent = std::stoi(match[1].str());
+                if (percent >= 0 && percent <= 100) {
+                    SendMessageW(hProg, PBM_SETPOS, percent, 0);
+                }
+            } catch (...) {}
+        }
+        
+        // Try progress bar character patterns (e.g., "█████░░░░░")
+        // Count filled vs total characters as percentage
+        size_t filled = 0;
+        size_t total = 0;
+        for (char c : trimmed) {
+            if (c == (char)0x88 || c == (char)0xDB || c == '#' || c == '=' || c == '>') { // Various progress chars
+                filled++;
+                total++;
+            } else if (c == (char)0x91 || c == (char)0xB0 || c == (char)0xB1 || c == ' ' || c == '-' || c == '.') {
+                total++;
+            }
+        }
+        if (total > 10 && filled > 0) { // At least 10 chars to be considered a progress bar
+            int percent = (filled * 100) / total;
+            SendMessageW(hProg, PBM_SETPOS, percent, 0);
         }
     }
 }
@@ -484,12 +516,12 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
     std::wstring initialStatus = initialBuf;
     SendMessageW(hOverallStatus, WM_SETTEXT, 0, (LPARAM)initialStatus.c_str());
     
-    // Generate unique temp file name for output only (no batch file)
+    // Generate unique temp file for output
     wchar_t tempPath[MAX_PATH];
     GetTempPathW(MAX_PATH, tempPath);
     std::wstring outputFile = std::wstring(tempPath) + L"winupdate_output_" + std::to_wstring(GetTickCount()) + L".txt";
     
-    // Start winget in background thread with UAC elevation
+    // Start winget_helper in background thread with UAC elevation
     std::thread([hwnd, hOut, hProg, hStatus, hDone, hAnim, hOverallStatus, packageIds, outputFile]() {
         // Update status to show starting
         wchar_t startBuf[256];
@@ -497,32 +529,37 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
         std::wstring startStatus = startBuf;
         SendMessageW(hOverallStatus, WM_SETTEXT, 0, (LPARAM)startStatus.c_str());
         
-        // Show animation from the start
-        ShowWindow(hAnim, SW_SHOW);
+        // Start with progress bar visible (for download phase), animation hidden
+        ShowWindow(hProg, SW_SHOW);
+        ShowWindow(hAnim, SW_HIDE);
         
-        // Build PowerShell script that installs each package sequentially
-        std::wstring script = L"Start-Transcript -Path '" + outputFile + L"' -Append; ";
-        for (size_t i = 0; i < packageIds.size(); i++) {
-            if (i > 0) {
-                script += L"Write-Host ''; Write-Host '========================================'; ";
-                script += L"Write-Host 'Package " + std::to_wstring(i + 1) + L" of " + std::to_wstring(packageIds.size()) + L"'; ";
-                script += L"Write-Host '========================================'; Write-Host ''; ";
-            }
-            script += L"winget upgrade --id '" + Utf8ToWide(packageIds[i]) + L"' --accept-package-agreements --accept-source-agreements; ";
+        // Get the path to winget_helper.exe (same directory as WinUpdate.exe)
+        wchar_t exePath[MAX_PATH];
+        GetModuleFileNameW(NULL, exePath, MAX_PATH);
+        std::wstring exeDir = exePath;
+        size_t lastSlash = exeDir.find_last_of(L"\\/");
+        if (lastSlash != std::wstring::npos) {
+            exeDir = exeDir.substr(0, lastSlash);
         }
-        script += L"Stop-Transcript";
+        std::wstring helperPath = exeDir + L"\\winget_helper.exe";
         
-        // Build PowerShell command with transcript logging for real-time output
-        std::wstring fullCmd = L"-NoProfile -ExecutionPolicy Bypass -Command \"" + script + L"\"";
+        // Build command line with all package IDs as arguments
+        std::wstring cmdLine = L"\"" + helperPath + L"\"";
+        for (const auto& pkgId : packageIds) {
+            cmdLine += L" \"" + Utf8ToWide(pkgId) + L"\"";
+        }
         
-        // Run PowerShell elevated with UAC (single prompt for all packages)
+        // Add output redirection to temp file
+        cmdLine += L" > \"" + outputFile + L"\" 2>&1";
+        
+        // Run winget_helper.exe elevated with UAC (single prompt)
         SHELLEXECUTEINFOW sei{};
         sei.cbSize = sizeof(sei);
         sei.fMask = SEE_MASK_NOCLOSEPROCESS | SEE_MASK_NOASYNC;
         sei.hwnd = hwnd;
         sei.lpVerb = L"runas";
-        sei.lpFile = L"powershell.exe";
-        sei.lpParameters = fullCmd.c_str();
+        sei.lpFile = L"cmd.exe";
+        sei.lpParameters = (L"/C " + cmdLine).c_str();
         sei.nShow = SW_HIDE;
         
         if (!ShellExecuteExW(&sei) || !sei.hProcess) {
@@ -538,9 +575,20 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
         std::string currentPackage;
         int packageIndex = 0;
         std::streampos lastPos = 0;
+        int timeoutCounter = 0;
+        const int TIMEOUT_LIMIT = 600; // 5 minutes (600 * 500ms)
         
         while (true) {
             DWORD waitResult = WaitForSingleObject(sei.hProcess, 500);
+            
+            timeoutCounter++;
+            if (timeoutCounter > TIMEOUT_LIMIT) {
+                // Timeout - terminate the process
+                TerminateProcess(sei.hProcess, 1);
+                std::wstring timeoutMsg = L"Installation timed out after 5 minutes.\r\n";
+                AppendFormattedText(hOut, timeoutMsg, true, RGB(255, 0, 0));
+                break;
+            }
             
             // Try to read new content from output file
             std::ifstream outFile(outputFile.c_str(), std::ios::binary);
@@ -552,33 +600,28 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
                 outFile.close();
                 
                 if (!newContent.empty()) {
-                    // Process each line
-                    std::istringstream iss(newContent);
-                    std::string line;
-                    while (std::getline(iss, line)) {
-                        // Remove any trailing \r that might remain
-                        if (!line.empty() && line.back() == '\r') {
-                            line.pop_back();
-                        }
-                        
-                        ProcessWingetOutput(line, hwnd, hProg, hAnim, hStatus, currentPhase, currentPackage);
-                        
-                        // Append to output window with formatting
-                        if (ShouldDisplayLine(line)) {
-                            int formatting = GetLineFormatting(line, g_inImportantBlock, g_skipNextDelimiter);
-                            if (formatting > 0) {  // 1 = gray, 2 = bold
-                                std::wstring wline = Utf8ToWide(line) + L"\r\n";
-                                bool isBold = (formatting == 2);
-                                COLORREF color = isBold ? RGB(0, 0, 0) : RGB(128, 128, 128);
-                                AppendFormattedText(hOut, wline, isBold, color);
-                                
-                                // Add extra spacing after "processed" line (end of package)
-                                std::string lower = line;
-                                for (auto& c : lower) c = tolower(c);
-                                if (lower.find("processed") != std::string::npos) {
-                                    AppendFormattedText(hOut, L"\r\n\r\n", false, RGB(128, 128, 128));
-                                }
+                    // Split on BOTH \n and \r to see all winget progress lines
+                    std::vector<std::string> lines;
+                    std::string currentLine;
+                    for (char c : newContent) {
+                        if (c == '\n' || c == '\r') {
+                            if (!currentLine.empty()) {
+                                lines.push_back(currentLine);
+                                currentLine.clear();
                             }
+                        } else {
+                            currentLine += c;
+                        }
+                    }
+                    if (!currentLine.empty()) {
+                        lines.push_back(currentLine);
+                    }
+                    
+                    // Display all output
+                    for (const auto& line : lines) {
+                        if (!line.empty()) {
+                            std::wstring wline = Utf8ToWide(line) + L"\r\n";
+                            AppendFormattedText(hOut, wline, false, RGB(0, 0, 0));
                         }
                     }
                 }
@@ -595,37 +638,22 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
             finalFile.seekg(lastPos);
             std::string remaining((std::istreambuf_iterator<char>(finalFile)), std::istreambuf_iterator<char>());
             if (!remaining.empty()) {
-                // Process remaining lines with formatting
                 std::istringstream iss(remaining);
                 std::string line;
                 while (std::getline(iss, line)) {
-                    // Remove any trailing \r
                     if (!line.empty() && line.back() == '\r') {
                         line.pop_back();
                     }
-                    
-                    if (ShouldDisplayLine(line)) {
-                        int formatting = GetLineFormatting(line, g_inImportantBlock, g_skipNextDelimiter);
-                        if (formatting > 0) {
-                            std::wstring wline = Utf8ToWide(line) + L"\r\n";
-                            bool isBold = (formatting == 2);
-                            COLORREF color = isBold ? RGB(0, 0, 0) : RGB(128, 128, 128);
-                            AppendFormattedText(hOut, wline, isBold, color);
-                            
-                            // Add extra spacing after "processed" line
-                            std::string lower = line;
-                            for (auto& c : lower) c = tolower(c);
-                            if (lower.find("processed") != std::string::npos) {
-                                AppendFormattedText(hOut, L"\r\n\r\n", false, RGB(128, 128, 128));
-                            }
-                        }
+                    if (!line.empty()) {
+                        std::wstring wline = Utf8ToWide(line) + L"\r\n";
+                        AppendFormattedText(hOut, wline, false, RGB(0, 0, 0));
                     }
                 }
             }
             finalFile.close();
         }
         
-        // ALWAYS clean up temp file
+        // Clean up temp file
         DeleteFileW(outputFile.c_str());
         
         // Hide animation, show completion

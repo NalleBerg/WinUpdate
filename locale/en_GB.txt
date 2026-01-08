@@ -37,6 +37,7 @@ install_dialog_title=Installing Updates
 install_preparing=Preparing...
 install_of=of
 install_progress=Installing %d of %d
+downloading_package=Downloading %s...
 installing_package=Installing %s
 lang_changed_en=Language changed to English (UK)
 lang_changed_nb=Language changed to Norwegian (Bokmål)
