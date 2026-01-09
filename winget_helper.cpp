@@ -92,7 +92,10 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR lpCmdLine, int) {
         
         PROCESS_INFORMATION pi{};
         
-        if (!CreateProcessW(NULL, (LPWSTR)cmd.c_str(), NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
+        // Use CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP to hide all console windows
+        DWORD creationFlags = CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP;
+        
+        if (!CreateProcessW(NULL, (LPWSTR)cmd.c_str(), NULL, NULL, TRUE, creationFlags, NULL, NULL, &si, &pi)) {
             WriteToPipe(hPipe, L"Failed to start winget\r\n");
             CloseHandle(hWritePipe);
             CloseHandle(hReadPipe);

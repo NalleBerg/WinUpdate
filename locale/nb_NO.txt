@@ -132,3 +132,7 @@ manage_excluded_apps=Administrer ekskluderte apper
 unexclude_select_app=Vennligst velg en app å fjerne ekskludering fra.
 unexclude_list_empty=Ingen flere ekskluderte apper. Lukker dialog.
 unexclude_failed=Kunne ikke fjerne ekskludering av app.
+view_install_log_btn=Logg
+view_install_log_tooltip=Les teksten fra siste gang «Oppdater nå» ble utført.
+install_log_title=Installasjonslogg
+no_install_log=Ingen installasjonslogg tilgjengelig ennå.

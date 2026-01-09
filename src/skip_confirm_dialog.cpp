@@ -224,7 +224,7 @@ bool ShowSkipConfirm(HWND parent, const std::wstring &appname, const std::wstrin
         int clientW = crect.right - crect.left;
         int clientH = crect.bottom - crect.top;
         // buttons (wider and with extra bottom padding)
-        int btnW = 140, btnH = 34; int gap = 16;
+        int btnW = 140, btnH = 32; int gap = 16;
         int paddingLeft = 12;
         int paddingTop = 12;
         int paddingBottom = 12; // ensure a few px padding below buttons

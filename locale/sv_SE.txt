@@ -132,3 +132,7 @@ manage_excluded_apps=Hantera exkluderade appar
 unexclude_select_app=Vänligen välj en app att ta bort exkludering från.
 unexclude_list_empty=Inga fler exkluderade appar. Stänger dialog.
 unexclude_failed=Kunde inte ta bort exkludering av app.
+view_install_log_btn=Logg
+view_install_log_tooltip=Läs texten från senaste gången «Uppdatera nu» kördes.
+install_log_title=Installationslogg
+no_install_log=Ingen installationslogg tillgänglig ännu.

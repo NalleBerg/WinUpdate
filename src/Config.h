@@ -15,3 +15,9 @@ void LoadExcludeSettings(std::unordered_map<std::string, std::string> &excludedA
 
 // Save excluded apps to [excluded_apps] section in settings INI
 void SaveExcludeSettings(const std::unordered_map<std::string, std::string> &excludedApps);
+
+// Save install log to [log] section in settings INI
+void SaveInstallLog(const std::string &log);
+
+// Load install log from [log] section in settings INI
+std::string LoadInstallLog();

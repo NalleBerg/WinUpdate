@@ -132,3 +132,7 @@ manage_excluded_apps=Manage Excluded Apps
 unexclude_select_app=Please select an app to unexclude.
 unexclude_list_empty=No more excluded apps. Closing dialog.
 unexclude_failed=Failed to unexclude app.
+view_install_log_btn=Log
+view_install_log_tooltip=Read the text from last time «Update now» was done.
+install_log_title=Install Log
+no_install_log=No install log available yet.

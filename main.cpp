@@ -22,6 +22,7 @@
 #include "hyperlink.h"
 #include "skip_update.h"
 #include "unskip.h"
+#include "view_log_dialog.h"
 #include "hidden_scan.h"
 #include "system_tray.h"
 #include "ctrlw.h"
@@ -65,6 +66,8 @@ const wchar_t CLASS_NAME[] = L"WinUpdateClass";
 #define IDC_BTN_ABOUT 2005
 #define IDC_BTN_CONFIG 2006
 #define IDC_BTN_UNSKIP 2007
+#define IDC_BTN_VIEW_LOG 2008
+#define IDC_BTN_MANAGE_EXCLUDED 2009
 // IDC_BTN_PASTE removed: app will auto-scan winget at startup/refresh
 #define IDC_COMBO_LANG 3001
 
@@ -1655,14 +1658,19 @@ static void AdjustListColumns(HWND hList) {
 // Show or hide the Unskip button based on whether any skipped entries exist
 static void UpdateUnskipButton(HWND hwnd) {
     HWND hUn = GetDlgItem(hwnd, IDC_BTN_UNSKIP);
+    HWND hSpacer = GetDlgItem(hwnd, IDC_BTN_UNSKIP + 1000);
     if (!hUn || !IsWindow(hUn)) return;
     try {
         if (g_skipped_versions.empty()) {
+            // No skipped versions: hide button and spacer
             ShowWindow(hUn, SW_HIDE);
             EnableWindow(hUn, FALSE);
+            if (hSpacer) ShowWindow(hSpacer, SW_HIDE);
         } else {
+            // Has skipped versions: show button, hide spacer
             ShowWindow(hUn, SW_SHOW);
             EnableWindow(hUn, TRUE);
+            if (hSpacer) ShowWindow(hSpacer, SW_HIDE);
         }
     } catch(...) {}
 }
@@ -1992,17 +2000,73 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         LVCOLUMNW colSkip{}; colSkip.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_FMT; colSkip.cx = 80; colSkip.fmt = LVCFMT_CENTER; colSkip.pszText = (LPWSTR)g_colHeaders[3].c_str(); ListView_InsertColumn(hList, 3, &colSkip);
         LVCOLUMNW colExclude{}; colExclude.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_FMT; colExclude.cx = 80; colExclude.fmt = LVCFMT_CENTER; colExclude.pszText = (LPWSTR)g_colHeaders[4].c_str(); ListView_InsertColumn(hList, 4, &colExclude);
 
-        hCheckAll = CreateWindowExW(0, L"Button", t("select_all").c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 10, 350, 120, 28, hwnd, (HMENU)IDC_BTN_SELECTALL, NULL, NULL);
-        // place Upgrade button 5px to the right of Select all
-        hBtnUpgrade = CreateWindowExW(0, L"Button", t("upgrade_now").c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 135, 350, 220, 28, hwnd, (HMENU)IDC_BTN_UPGRADE, NULL, NULL);
-        // Unskip selected (hidden by default). Place between Upgrade and Refresh.
-        HWND hBtnUnskip = CreateWindowExW(0, L"Button", t("unskip_btn").c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 365, 350, 100, 28, hwnd, (HMENU)IDC_BTN_UNSKIP, NULL, NULL);
+        // Button layout: Left-aligned with proper spacing
+        // [Select all][2px][Update now][2px][Log][2px][Unskip/Spacer][2px][Refresh]
+        const int BTN_Y = 350;
+        const int BTN_HEIGHT = 32;
+        const int BTN_GAP = 2;
+        
+        // Left-aligned starting position
+        int x = 20;
+        
+        // Select all - 100px
+        hCheckAll = CreateWindowExW(0, L"Button", t("select_all").c_str(), 
+                                     WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 
+                                     x, BTN_Y, 100, BTN_HEIGHT, 
+                                     hwnd, (HMENU)IDC_BTN_SELECTALL, NULL, NULL);
+        x += 100 + BTN_GAP;
+        
+        // Update now - 180px
+        hBtnUpgrade = CreateWindowExW(0, L"Button", t("upgrade_now").c_str(), 
+                                       WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 
+                                       x, BTN_Y, 180, BTN_HEIGHT, 
+                                       hwnd, (HMENU)IDC_BTN_UPGRADE, NULL, NULL);
+        x += 180 + BTN_GAP;
+        
+        // Log - 70px (positioned slightly higher and more to the right)
+        HWND hBtnViewLog = CreateWindowExW(0, L"Button", t("view_install_log_btn").c_str(), 
+                                            WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 
+                                            x + 80, BTN_Y - 3, 70, BTN_HEIGHT, 
+                                            hwnd, (HMENU)IDC_BTN_VIEW_LOG, NULL, NULL);
+        x += 70 + BTN_GAP + 80;
+        
+        // Unskip - 100px (real button, conditionally shown)
+        HWND hBtnUnskip = CreateWindowExW(0, L"Button", t("unskip_btn").c_str(), 
+                                           WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 
+                                           x, BTN_Y, 100, BTN_HEIGHT, 
+                                           hwnd, (HMENU)IDC_BTN_UNSKIP, NULL, NULL);
+        
+        // Spacer - 100px (invisible, shown when Unskip is hidden)
+        HWND hUnskipSpacer = CreateWindowExW(0, L"Static", L"", 
+                                              WS_CHILD, 
+                                              x, BTN_Y, 100, BTN_HEIGHT, 
+                                              hwnd, (HMENU)(IDC_BTN_UNSKIP + 1000), NULL, NULL);
+        if (hUnskipSpacer) {
+            SetWindowSubclass(hUnskipSpacer, [](HWND h, UINT msg, WPARAM wp, LPARAM lp, UINT_PTR, DWORD_PTR)->LRESULT {
+                if (msg == WM_PAINT) {
+                    PAINTSTRUCT ps;
+                    HDC hdc = BeginPaint(h, &ps);
+                    RECT rc;
+                    GetClientRect(h, &rc);
+                    FillRect(hdc, &rc, GetSysColorBrush(COLOR_3DFACE));
+                    EndPaint(h, &ps);
+                    return 0;
+                }
+                return DefSubclassProc(h, msg, wp, lp);
+            }, 0, 0);
+            ShowWindow(hUnskipSpacer, SW_HIDE);
+        }
+        
         if (hBtnUnskip) {
             UpdateUnskipButton(hwnd);
         }
-        // Paste button removed — app scans `winget` at startup and on Refresh
-        // position Refresh where the Upgrade button used to be (bottom-right)
-        hBtnRefresh = CreateWindowExW(0, L"Button", t("refresh").c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 470, 350, 140, 28, hwnd, (HMENU)IDC_BTN_REFRESH, NULL, NULL);
+        x += 100 + BTN_GAP;  // now at 438
+        
+        // Refresh - 150px
+        hBtnRefresh = CreateWindowExW(0, L"Button", t("refresh").c_str(), 
+                                       WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 
+                                       x, BTN_Y, 150, BTN_HEIGHT, 
+                                       hwnd, (HMENU)IDC_BTN_REFRESH, NULL, NULL);
 
         // Config button (owner-draw, positioned with 20px gap before About at 690)
         HWND hBtnConfig = CreateWindowExW(0, L"Button", t("config_btn").c_str(), WS_CHILD | WS_VISIBLE | BS_OWNERDRAW | WS_TABSTOP, 550, 10, 120, 28, hwnd, (HMENU)IDC_BTN_CONFIG, NULL, NULL);
@@ -2478,9 +2542,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         HWND hBtnUpgrade = GetDlgItem(hwnd, IDC_BTN_UPGRADE);
         HWND hBtnUnskip = GetDlgItem(hwnd, IDC_BTN_UNSKIP);
         HWND hBtnRefresh = GetDlgItem(hwnd, IDC_BTN_REFRESH);
-        int btnH = 28;
+        int btnH = 32;
         int checkW = 120;
-        if (hCheckAll && IsWindow(hCheckAll)) SetWindowPos(hCheckAll, NULL, padding, ch - 44, checkW, 24, SWP_NOZORDER | SWP_NOACTIVATE);
+        if (hCheckAll && IsWindow(hCheckAll)) SetWindowPos(hCheckAll, NULL, padding, ch - 44, checkW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
 
         int refreshW = 140;
         int aboutW = 120;
@@ -2491,7 +2555,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         // center Unskip between Upgrade (right edge) and Refresh (left edge)
         int upgradeRight = upgradeX + upgradeW;
         int unskipX = (upgradeRight + refreshX) / 2 - (unskipW / 2);
-        if (hBtnUpgrade && IsWindow(hBtnUpgrade)) SetWindowPos(hBtnUpgrade, NULL, upgradeX, ch - 46, upgradeW, btnH+2, SWP_NOZORDER | SWP_NOACTIVATE);
+        if (hBtnUpgrade && IsWindow(hBtnUpgrade)) SetWindowPos(hBtnUpgrade, NULL, upgradeX, ch - 44, upgradeW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
         if (hBtnUnskip && IsWindow(hBtnUnskip)) SetWindowPos(hBtnUnskip, NULL, unskipX, ch - 44, unskipW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
         if (hBtnRefresh && IsWindow(hBtnRefresh)) SetWindowPos(hBtnRefresh, NULL, refreshX, ch - 44, refreshW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
 
@@ -2868,6 +2932,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                 SetWindowTextW(GetDlgItem(hwnd, IDC_BTN_UPGRADE), t("upgrade_now").c_str());
                 SetWindowTextW(GetDlgItem(hwnd, IDC_BTN_REFRESH), t("refresh").c_str());
                 SetWindowTextW(GetDlgItem(hwnd, IDC_BTN_UNSKIP), t("unskip_btn").c_str());
+                SetWindowTextW(GetDlgItem(hwnd, IDC_BTN_VIEW_LOG), t("view_install_log_btn").c_str());
                 // update listview column headers
                 HWND hListLocal = GetDlgItem(hwnd, IDC_LISTVIEW);
                 if (hListLocal) {
@@ -2955,6 +3020,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                     try { SaveSkipConfig(g_locale); } catch(...) {}
                     if (!g_refresh_in_progress.load()) PostMessageW(hwnd, WM_REFRESH_ASYNC, 1, 0);
                 }
+            } catch(...) {}
+            break;
+        } else if (id == IDC_BTN_VIEW_LOG) {
+            // Open View Install Log dialog
+            try {
+                ShowInstallLogDialog(hwnd, g_locale);
             } catch(...) {}
             break;
         } else if (id == IDM_SCAN_NOW) {

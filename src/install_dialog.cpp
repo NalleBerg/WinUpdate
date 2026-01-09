@@ -1,8 +1,10 @@
 #include "install_dialog.h"
+#include "Config.h"
 #include <commctrl.h>
 #include <shellapi.h>
 #include <richedit.h>
 #include <thread>
+#include <mutex>
 #include <regex>
 #include <sstream>
 #include <fstream>
@@ -13,17 +15,69 @@
 // Translation function pointer
 static std::function<std::wstring(const char*)> g_translate = nullptr;
 
-static std::wstring t(const char* key) {
-    if (g_translate) return g_translate(key);
-    return std::wstring(key, key + strlen(key));
-}
-
 // Animation state
 static int g_animFrame = 0;
 static HWND g_hInstallAnim = NULL;
 static std::wstring g_doneButtonText = L"Done!";
 static bool g_inImportantBlock = false;  // Track if we're inside a multi-line important message
 static bool g_skipNextDelimiter = false;  // Track if next delimiter should be skipped
+
+// Install log accumulator (plain text)
+static std::string g_installLog;
+// RTF log accumulator (with formatting)
+static std::string g_rtfLog;
+static std::thread* g_installThread = nullptr;
+static std::mutex g_logMutex;
+
+static std::wstring t(const char* key) {
+    if (g_translate) return g_translate(key);
+    return std::wstring(key, key + strlen(key));
+}
+
+// Helper to escape RTF special characters
+static std::string EscapeRtf(const std::wstring& text) {
+    std::string result;
+    for (wchar_t ch : text) {
+        if (ch == '\\') result += "\\\\";
+        else if (ch == '{') result += "\\{";
+        else if (ch == '}') result += "\\}";
+        else if (ch == '\r') continue;  // Skip \r
+        else if (ch == '\n') result += "\\par\n";
+        else if (ch < 128) result += (char)ch;
+        else {
+            // Unicode escape
+            char buf[16];
+            sprintf(buf, "\\u%d?", (int)ch);
+            result += buf;
+        }
+    }
+    return result;
+}
+
+// Helper to add text to install log (both plain text and RTF)
+static void AddToLog(const std::wstring& text, bool isBold = false, COLORREF color = RGB(0, 0, 0)) {
+    if (text.empty()) return;
+    
+    // Convert wide string to UTF-8 for plain text log
+    int size = WideCharToMultiByte(CP_UTF8, 0, text.data(), (int)text.size(), NULL, 0, NULL, NULL);
+    if (size > 0) {
+        std::string utf8(size, 0);
+        WideCharToMultiByte(CP_UTF8, 0, text.data(), (int)text.size(), &utf8[0], size, NULL, NULL);
+        
+        std::lock_guard<std::mutex> lock(g_logMutex);
+        g_installLog += utf8;
+        
+        // Add to RTF log with formatting
+        int colorIndex = 1;  // Default black (color table index)
+        if (color == RGB(255, 0, 0)) colorIndex = 2;  // Red
+        else if (color == RGB(0, 128, 0)) colorIndex = 3;  // Green
+        
+        if (isBold) g_rtfLog += "\\b ";
+        g_rtfLog += "\\cf" + std::to_string(colorIndex) + " ";
+        g_rtfLog += EscapeRtf(text);
+        if (isBold) g_rtfLog += "\\b0 ";
+    }
+}
 
 // Animation subclass procedure (draws moving dot overlay on progress bar)
 static LRESULT CALLBACK AnimSubclassProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR) {
@@ -94,23 +148,119 @@ static std::wstring Utf8ToWide(const std::string& utf8) {
     return wide;
 }
 
-// Helper to append formatted text to RichEdit control
+static std::string WideToUtf8(const std::wstring& wide) {
+    if (wide.empty()) return "";
+    int needed = WideCharToMultiByte(CP_UTF8, 0, wide.c_str(), (int)wide.size(), NULL, 0, NULL, NULL);
+    if (needed <= 0) return "";
+    std::string utf8(needed, '\0');
+    WideCharToMultiByte(CP_UTF8, 0, wide.c_str(), (int)wide.size(), &utf8[0], needed, NULL, NULL);
+    return utf8;
+}
+
+// Helper to check if RichEdit is scrolled to the bottom
+static bool IsScrolledToBottom(HWND hRichEdit) {
+    // Get the first visible line and total line count
+    int firstVisible = (int)SendMessageW(hRichEdit, EM_GETFIRSTVISIBLELINE, 0, 0);
+    int totalLines = (int)SendMessageW(hRichEdit, EM_GETLINECOUNT, 0, 0);
+    
+    // Get the number of visible lines in the window
+    RECT rect;
+    GetClientRect(hRichEdit, &rect);
+    
+    // Use EM_GETRECT to get the formatting rectangle
+    RECT formatRect;
+    SendMessageW(hRichEdit, EM_GETRECT, 0, (LPARAM)&formatRect);
+    
+    // Calculate visible lines more accurately
+    TEXTMETRICW tm;
+    HDC hdc = GetDC(hRichEdit);
+    GetTextMetricsW(hdc, &tm);
+    ReleaseDC(hRichEdit, hdc);
+    
+    int lineHeight = tm.tmHeight + tm.tmExternalLeading;
+    int visibleLines = (rect.bottom - rect.top) / lineHeight;
+    
+    // Consider at bottom if we're showing the last few lines
+    return (firstVisible + visibleLines) >= (totalLines - 1);
+}
+
+// RTF streaming callback for incremental display
+static DWORD CALLBACK EditStreamCallback(DWORD_PTR dwCookie, LPBYTE pbBuff, LONG cb, LONG* pcb) {
+    std::string* pStr = reinterpret_cast<std::string*>(dwCookie);
+    if (pStr && !pStr->empty()) {
+        LONG bytesToCopy = std::min(cb, (LONG)pStr->size());
+        memcpy(pbBuff, pStr->data(), bytesToCopy);
+        pStr->erase(0, bytesToCopy);
+        *pcb = bytesToCopy;
+        return 0;
+    }
+    *pcb = 0;
+    return 0;
+}
+
+// Global to track the RTF content displayed so far (just the inner content, not full document)
+static std::string g_displayedRtfContent;
+static bool g_isFirstRtfAppend = true;
+
+// Helper to append formatted text to RichEdit control using RTF streaming
 static void AppendFormattedText(HWND hRichEdit, const std::wstring& text, bool isBold, COLORREF color) {
-    // Move to end
-    int len = GetWindowTextLengthW(hRichEdit);
-    SendMessageW(hRichEdit, EM_SETSEL, len, len);
+    // Add to install log (builds both plain text and RTF)
+    AddToLog(text, isBold, color);
     
-    // Set character format
-    CHARFORMAT2W cf = {};
-    cf.cbSize = sizeof(CHARFORMAT2W);
-    cf.dwMask = CFM_COLOR | CFM_BOLD;
-    cf.crTextColor = color;
-    cf.dwEffects = isBold ? CFE_BOLD : 0;
-    SendMessageW(hRichEdit, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)&cf);
+    std::string newRtfContent;
     
-    // Insert text
-    SendMessageW(hRichEdit, EM_REPLACESEL, FALSE, (LPARAM)text.c_str());
-    SendMessageW(hRichEdit, EM_SCROLLCARET, 0, 0);
+    // Lock g_rtfLog access and get the new content
+    {
+        std::lock_guard<std::mutex> lock(g_logMutex);
+        
+        // Check if there's new content to display
+        if (g_rtfLog.length() > g_displayedRtfContent.length()) {
+            // Get only the NEW RTF content that was added
+            newRtfContent = g_rtfLog.substr(g_displayedRtfContent.length());
+            g_displayedRtfContent = g_rtfLog;
+        }
+    }
+    
+    // If there's new content, stream it
+    if (!newRtfContent.empty()) {
+        // Build RTF fragment for the new content
+        std::string rtfFragment;
+        
+        if (g_isFirstRtfAppend) {
+            // First append: include full RTF header
+            rtfFragment = "{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 Consolas;}}"
+                         "{\\colortbl;\\red0\\green0\\blue0;\\red255\\green0\\blue0;\\red0\\green128\\blue0;}"
+                         "\\f0\\fs20 " + newRtfContent + "}";
+            
+            // Stream to replace all content (first time)
+            EDITSTREAM es = {};
+            es.dwCookie = (DWORD_PTR)&rtfFragment;
+            es.pfnCallback = EditStreamCallback;
+            SendMessageW(hRichEdit, EM_STREAMIN, SF_RTF, (LPARAM)&es);
+            
+            g_isFirstRtfAppend = false;
+        } else {
+            // Subsequent appends: just the new content (already has proper RTF codes from AddToLog)
+            rtfFragment = "{\\rtf1\\ansi{\\fonttbl{\\f0 Consolas;}}"
+                         "{\\colortbl;\\red0\\green0\\blue0;\\red255\\green0\\blue0;\\red0\\green128\\blue0;}"
+                         "\\f0\\fs20 " + newRtfContent + "}";
+            
+            // Move to end and append
+            int len = GetWindowTextLengthW(hRichEdit);
+            SendMessageW(hRichEdit, EM_SETSEL, len, len);
+            
+            // Stream to append at selection (SFF_SELECTION flag)
+            EDITSTREAM es = {};
+            es.dwCookie = (DWORD_PTR)&rtfFragment;
+            es.pfnCallback = EditStreamCallback;
+            SendMessageW(hRichEdit, EM_STREAMIN, SF_RTF | SFF_SELECTION, (LPARAM)&es);
+        }
+        
+        // ALWAYS scroll to bottom (tail -f behavior)
+        int lineCount = (int)SendMessageW(hRichEdit, EM_GETLINECOUNT, 0, 0);
+        SendMessageW(hRichEdit, EM_LINESCROLL, 0, lineCount);
+        SendMessageW(hRichEdit, EM_SCROLLCARET, 0, 0);
+    }
 }
 
 // Helper: Check if a line contains important keywords
@@ -233,6 +383,9 @@ static LRESULT CALLBACK InstallDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPAR
         hOut = CreateWindowExW(WS_EX_CLIENTEDGE, L"RichEdit20W", NULL, 
             WS_CHILD | WS_VISIBLE | ES_MULTILINE | ES_READONLY | WS_VSCROLL | ES_AUTOVSCROLL | ES_WANTRETURN,
             20, 110, W-40, H-190, hwnd, NULL, hInst, NULL);
+        
+        // Enable RTF mode for proper RTF generation
+        SendMessageW(hOut, EM_SETTEXTMODE, TM_RICHTEXT, 0);
         
         // Enable word wrap
         SendMessageW(hOut, EM_SETTARGETDEVICE, 0, 0);
@@ -417,14 +570,34 @@ static bool ShouldDisplayLine(const std::string& line) {
         return false;
     }
     
-    // Skip spinner/progress characters
-    static const std::regex spinnerRe(R"(^[\s\-\\\|\/\._\(\)\[\]│█▓▒]+$)");
+    // Skip progress bars with percentage (e.g., "2%  ██████████████▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒")
+    static const std::regex progressBarRe(R"(^\s*\d+%\s*[█▓▒░\s]+$)");
+    if (std::regex_match(trimmed, progressBarRe)) {
+        return false;
+    }
+    
+    // Skip spinner animation lines (e.g., "    -     \     |     /     -     \     |")
+    // Match lines with only spaces and spinner characters (-, \, |, /) with spaces between them
+    static const std::regex spinnerRe(R"(^[\s\-\\\\/]+$)");
     if (std::regex_match(trimmed, spinnerRe)) {
         return false;
     }
     
-    // Skip large block bars
-    static const std::regex blockBarRe(R"([█▓▒]{8,})");
+    // Also skip lines that are just repeated spinner patterns with spacing
+    // E.g., "  -   \   |   /   -   \  "
+    size_t spinChars = 0;
+    size_t totalChars = trimmed.length();
+    for (char ch : trimmed) {
+        if (ch == '-' || ch == '\\' || ch == '|' || ch == '/' || ch == ' ' || ch == '\t') {
+            spinChars++;
+        }
+    }
+    if (totalChars > 5 && spinChars == totalChars) {
+        return false;  // Line is only spinner characters and spaces
+    }
+    
+    // Skip lines that are mostly progress bar characters
+    static const std::regex blockBarRe(R"([█▓▒░]{8,})");
     if (std::regex_search(trimmed, blockBarRe)) {
         return false;
     }
@@ -436,6 +609,9 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
                       const std::wstring& doneButtonText,
                       std::function<std::wstring(const char*)> translateFunc) {
     if (packageIds.empty()) return false;
+    
+    // Clear install log for new session
+    g_installLog.clear();
     
     // Store translate function and done button text
     g_translate = translateFunc;
@@ -517,7 +693,11 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
     SendMessageW(hOverallStatus, WM_SETTEXT, 0, (LPARAM)initialStatus.c_str());
     
     // Start winget_helper in background thread with UAC elevation
-    std::thread([hwnd, hOut, hProg, hStatus, hDone, hAnim, hOverallStatus, packageIds]() {
+    auto installFunc = [hwnd, hOut, hProg, hStatus, hDone, hAnim, hOverallStatus, packageIds]() {
+        // Reset RTF tracking for new installation
+        g_displayedRtfContent.clear();
+        g_isFirstRtfAppend = true;
+        
         // Update status to show preparing
         SetWindowTextW(hStatus, t("install_preparing").c_str());
         
@@ -555,6 +735,20 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
             exeDir = exeDir.substr(0, lastSlash);
         }
         std::wstring helperPath = exeDir + L"\\winget_helper.exe";
+        
+        // Clear winget cache before installing to force fresh downloads
+        std::wstring clearCmd = L"cmd.exe /c winget source reset --force >nul 2>&1";
+        STARTUPINFOW siClear = {};
+        siClear.cb = sizeof(siClear);
+        siClear.dwFlags = STARTF_USESHOWWINDOW;
+        siClear.wShowWindow = SW_HIDE;
+        PROCESS_INFORMATION piClear = {};
+        if (CreateProcessW(NULL, (LPWSTR)clearCmd.c_str(), NULL, NULL, FALSE,
+                          CREATE_NO_WINDOW, NULL, NULL, &siClear, &piClear)) {
+            WaitForSingleObject(piClear.hProcess, 10000);  // Wait max 10 seconds
+            CloseHandle(piClear.hThread);
+            CloseHandle(piClear.hProcess);
+        }
         
         // Build parameters: pipe name first, then all package IDs
         std::wstring helperParams = L"\"" + pipeName + L"\"";
@@ -611,6 +805,7 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
         const int TIMEOUT_LIMIT = 600; // 5 minutes (600 * 500ms)
         int completedPackages = 0;
         std::wstring currentPackageId;
+        std::wstring lineBuffer;  // Accumulate partial lines
         
         while (true) {
             DWORD waitResult = WaitForSingleObject(sei.hProcess, 100);
@@ -630,12 +825,51 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
             while (ReadFile(hPipe, buffer, sizeof(buffer)-1, &bytesRead, NULL) && bytesRead > 0) {
                 buffer[bytesRead] = '\0';
                 
-                // Convert UTF-8 to wide and display
+                // Convert UTF-8 to wide string and add to buffer
                 std::wstring wtext = Utf8ToWide(std::string(buffer, bytesRead));
                 if (!wtext.empty()) {
-                    AppendFormattedText(hOut, wtext, false, RGB(0, 0, 0));
+                    lineBuffer += wtext;
                     
-                    // Parse output for progress tracking
+                    // Handle carriage returns (\r) - they're used by spinners to overwrite same line
+                    // If we have \r without \n, it means "go back to start of line and overwrite"
+                    // Keep only content after the last \r in the buffer
+                    size_t lastCR = lineBuffer.find_last_of(L'\r');
+                    if (lastCR != std::wstring::npos) {
+                        // Check if there's a newline after this \r
+                        size_t nextNL = lineBuffer.find(L'\n', lastCR);
+                        if (nextNL == std::wstring::npos) {
+                            // No newline after \r - this is a spinner update, keep only after last \r
+                            lineBuffer = lineBuffer.substr(lastCR + 1);
+                        }
+                    }
+                    
+                    // Process complete lines
+                    size_t pos = 0;
+                    while ((pos = lineBuffer.find(L'\n')) != std::wstring::npos) {
+                        std::wstring line = lineBuffer.substr(0, pos);
+                        lineBuffer.erase(0, pos + 1);
+                        
+                        // Remove \r if present
+                        if (!line.empty() && line.back() == L'\r') {
+                            line.pop_back();
+                        }
+                        
+                        // Filter and display
+                        std::string narrowLine = WideToUtf8(line + L"\n");
+                        if (ShouldDisplayLine(narrowLine)) {
+                            AppendFormattedText(hOut, line + L"\n", false, RGB(0, 0, 0));
+                        }
+                    }
+                    
+                    // If buffer is getting large without newlines (spinner updates), check and clear if it's junk
+                    if (lineBuffer.length() > 200) {
+                        std::string check = WideToUtf8(lineBuffer);
+                        if (!ShouldDisplayLine(check)) {
+                            lineBuffer.clear();  // Discard spinner/progress bar updates
+                        }
+                    }
+                    
+                    // Parse output for progress tracking (use full text)
                     // Look for "[X/Y] PackageId" lines
                     size_t bracketPos = wtext.find(L"[");
                     if (bracketPos != std::wstring::npos) {
@@ -691,7 +925,10 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
         std::wstring completionMsg = L"\r\n\r\n=== Installation Complete ===\r\n";
         completionMsg += std::to_wstring(packageIds.size()) + L" package(s) processed.\r\n";
         AppendFormattedText(hOut, completionMsg, true, RGB(0, 0, 0));
-    }).detach();
+    };
+    
+    // Store thread (don't detach - we need to join it before saving log)
+    g_installThread = new std::thread(installFunc);
     
     // Modal message loop
     MSG msg = {};
@@ -713,6 +950,43 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
     
     DestroyWindow(hwnd);
     UnregisterClassW(CLASS_NAME, GetModuleHandleW(NULL));
+    
+    // Wait for install thread to complete before saving log
+    if (g_installThread) {
+        if (g_installThread->joinable()) {
+            g_installThread->join();
+        }
+        delete g_installThread;
+        g_installThread = nullptr;
+    }
+    
+    // Save install log to INI file (always save, even if empty, for debugging)
+    // Build complete RTF document with header and color table
+    std::string completeRtf = 
+        "{\\rtf1\\ansi\\deff0"
+        "{\\fonttbl{\\f0 Consolas;}}"
+        "{\\colortbl;\\red0\\green0\\blue0;\\red255\\green0\\blue0;\\red0\\green128\\blue0;}"
+        "\\f0\\fs20 ";
+    
+    {
+        std::lock_guard<std::mutex> lock(g_logMutex);
+        completeRtf += g_rtfLog;
+        g_installLog.clear();
+        g_rtfLog.clear();
+    }
+    
+    completeRtf += "}";
+    
+    // Debug: check RTF format
+    std::ofstream debugFile("C:\\Users\\NalleBerg\\Documents\\C++\\Workspace\\WinUpdate\\rtf_debug.txt");
+    if (debugFile) {
+        debugFile << "RTF Log size: " << completeRtf.size() << " bytes\n";
+        debugFile << "First 200 chars: " << completeRtf.substr(0, std::min(size_t(200), completeRtf.size())) << "\n";
+        debugFile << "Is RTF format: " << (completeRtf.find("{\\rtf") == 0 ? "YES" : "NO") << "\n";
+        debugFile.close();
+    }
+    
+    SaveInstallLog(completeRtf);
     
     return true;
 }

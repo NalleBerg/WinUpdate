@@ -8,6 +8,8 @@
 #include <fstream>
 #include <sstream>
 #include <unordered_map>
+#include <vector>
+#include <algorithm>
 
 // Dialog control IDs
 #define IDC_RADIO_MANUAL 3001
@@ -299,6 +301,87 @@ void SaveExcludeSettings(const std::unordered_map<std::string, std::string> &exc
     if (ofs) {
         ofs << content.str();
     }
+}
+
+void SaveInstallLog(const std::string &log) {
+    std::string path = GetSettingsPath();
+    
+    // Read existing file to preserve other sections
+    std::stringstream content;
+    std::ifstream ifs(path);
+    std::string line;
+    bool inLog = false;
+    bool logWritten = false;
+    
+    if (ifs) {
+        while (std::getline(ifs, line)) {
+            // Check if we're entering a new section
+            if (!line.empty() && line[0] == '[') {
+                // If it's [log], write it with new content
+                if (line.find("[log]") != std::string::npos) {
+                    inLog = true;
+                    logWritten = true;
+                    content << "[log]\n" << log << "\n";
+                } else {
+                    // It's a different section, stop skipping log content
+                    inLog = false;
+                    content << line << "\n";
+                }
+            } else if (!inLog) {
+                // Not in [log] section, preserve this line
+                content << line << "\n";
+            }
+            // If inLog is true and it's not a section header, skip the line (old log content)
+        }
+        ifs.close();
+    }
+    
+    // If [log] section didn't exist, add it
+    if (!logWritten) {
+        content << "\n[log]\n" << log << "\n";
+    }
+    
+    // Write back
+    std::ofstream ofs(path);
+    if (ofs) {
+        ofs << content.str();
+    }
+}
+
+std::string LoadInstallLog() {
+    std::string path = GetSettingsPath();
+    std::ifstream ifs(path);
+    if (!ifs) return std::string();
+    
+    std::string line;
+    bool inLog = false;
+    std::string rtfContent;
+    
+    while (std::getline(ifs, line)) {
+        // Check if this is a section header
+        if (!line.empty() && line[0] == '[') {
+            if (line.find("[log]") != std::string::npos) {
+                inLog = true;
+                continue; // Skip the [log] line itself
+            } else {
+                // Hit a different section
+                if (inLog) {
+                    // We were in log section, now we're done
+                    break;
+                }
+                // Not in log yet, just skip this section header
+                continue;
+            }
+        }
+        
+        if (inLog) {
+            // We're in the log section, collect all lines
+            if (!rtfContent.empty()) rtfContent += "\n";
+            rtfContent += line;
+        }
+    }
+    
+    return rtfContent;
 }
 
 static void UpdateStatusLabel(HWND hDlg, HWND hStatus, const ConfigSettings &settings, const std::unordered_map<std::string, std::wstring> &trans) {
