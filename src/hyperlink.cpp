@@ -1,9 +1,11 @@
 #include "hyperlink.h"
 #include "skip_confirm_dialog.h"
+#include "exclude_confirm_dialog.h"
 #include <string>
 #include "logging.h"
 #include "parsing.h"
 #include "skip_update.h"
+#include "exclude.h"
 #include <unordered_map>
 #include <commctrl.h>
 #include <windowsx.h>
@@ -13,6 +15,14 @@
 #include <fstream>
 #include <functional>
 #include <sstream>
+#include <mutex>
+
+// External declarations from main.cpp
+extern std::vector<std::pair<std::string,std::string>> g_packages;
+extern std::mutex g_packages_mutex;
+
+// Button IDs from main.cpp
+#define IDC_BTN_REFRESH 1003
 
 struct HoverInfo { int item; int sub; RECT rect; };
 // track hovered item index per list (or -1 for none)
@@ -27,6 +37,15 @@ static bool IsPointOverSkip(HWND hList, POINT pt, int &outItem, RECT &outRect) {
     int idx = ListView_HitTest(hList, &ht);
     if (idx < 0) return false;
     RECT r; if (!ListView_GetSubItemRect(hList, idx, 3, LVIR_BOUNDS, &r)) return false;
+    if (!PtInRectStrict(r, pt)) return false;
+    outItem = idx; outRect = r; return true;
+}
+
+static bool IsPointOverExclude(HWND hList, POINT pt, int &outItem, RECT &outRect) {
+    LVHITTESTINFO ht{}; ht.pt = pt;
+    int idx = ListView_HitTest(hList, &ht);
+    if (idx < 0) return false;
+    RECT r; if (!ListView_GetSubItemRect(hList, idx, 4, LVIR_BOUNDS, &r)) return false;
     if (!PtInRectStrict(r, pt)) return false;
     outItem = idx; outRect = r; return true;
 }
@@ -278,13 +297,20 @@ void Hyperlink_Attach(HWND hList) {
 
 bool Hyperlink_ProcessMouseMove(HWND hList, POINT pt) {
     int hitIndex = -1; RECT hitRect{};
-    bool now = IsPointOverSkip(hList, pt, hitIndex, hitRect);
+    bool nowSkip = IsPointOverSkip(hList, pt, hitIndex, hitRect);
+    bool nowExclude = false;
+    if (!nowSkip) nowExclude = IsPointOverExclude(hList, pt, hitIndex, hitRect);
+    bool now = nowSkip || nowExclude;
     int prev = -1;
     auto pit = g_hovered_index.find(hList);
     if (pit != g_hovered_index.end()) prev = pit->second;
     int nowIndex = now ? hitIndex : -1;
     if (nowIndex != prev) {
-        if (prev != -1) { RECT prevRect; if (ListView_GetSubItemRect(hList, prev, 3, LVIR_BOUNDS, &prevRect)) InvalidateRect(hList, &prevRect, FALSE); }
+        if (prev != -1) {
+            RECT prevRect;
+            if (ListView_GetSubItemRect(hList, prev, 3, LVIR_BOUNDS, &prevRect)) InvalidateRect(hList, &prevRect, FALSE);
+            if (ListView_GetSubItemRect(hList, prev, 4, LVIR_BOUNDS, &prevRect)) InvalidateRect(hList, &prevRect, FALSE);
+        }
         if (now) InvalidateRect(hList, &hitRect, FALSE);
         g_hovered_index[hList] = nowIndex;
         return true;
@@ -310,15 +336,24 @@ static LRESULT CALLBACK Hyperlink_ListSubclassProc(HWND hwnd, UINT uMsg, WPARAM 
             TrackMouseEvent(&tme);
         }
 
-        // show tooltip when hovering over Skip
+        // show tooltip when hovering over Skip or Exclude
         int hitIndex = -1; RECT hitRect{};
-        if (IsPointOverSkip(hwnd, pt, hitIndex, hitRect)) {
+        bool overSkip = IsPointOverSkip(hwnd, pt, hitIndex, hitRect);
+        bool overExclude = false;
+        if (!overSkip) overExclude = IsPointOverExclude(hwnd, pt, hitIndex, hitRect);
+        if (overSkip || overExclude) {
             HWND tt = EnsureTooltipForList(hwnd);
             if (tt) {
                 // build tooltip text using i18n
                 std::string locale = LoadLocaleSetting(); if (locale.empty()) locale = "en_GB";
-                std::string tmpl = LoadI18nValue(locale, "skip_tooltip");
-                if (tmpl.empty()) tmpl = LoadI18nValue(locale, "skip_confirm_question");
+                std::string tmpl;
+                if (overSkip) {
+                    tmpl = LoadI18nValue(locale, "skip_tooltip");
+                    if (tmpl.empty()) tmpl = LoadI18nValue(locale, "skip_confirm_question");
+                } else {
+                    tmpl = LoadI18nValue(locale, "exclude_tooltip");
+                    if (tmpl.empty()) tmpl = LoadI18nValue(locale, "confirm_exclude");
+                }
                 std::wstring wtmpl = Utf8ToWide(tmpl);
                 // get app name from list item text (subitem 0)
                 wchar_t buf[512]; buf[0]=0;
@@ -395,12 +430,45 @@ static LRESULT CALLBACK Hyperlink_ListSubclassProc(HWND hwnd, UINT uMsg, WPARAM 
         Hyperlink_ProcessMouseMove(hwnd, pt);
         int hitItem; RECT hitRect;
         if (IsPointOverSkip(hwnd, pt, hitItem, hitRect)) { SetCursor(LoadCursor(NULL, IDC_HAND)); return TRUE; }
+        if (IsPointOverExclude(hwnd, pt, hitItem, hitRect)) { SetCursor(LoadCursor(NULL, IDC_HAND)); return TRUE; }
         break;
     }
     case WM_LBUTTONDOWN: {
         // consume clicks that hit the hyperlink so they don't change selection
         POINT pt; pt.x = GET_X_LPARAM(lParam); pt.y = GET_Y_LPARAM(lParam);
         int hitItem; RECT hitRect;
+        // Handle Exclude column clicks
+        if (IsPointOverExclude(hwnd, pt, hitItem, hitRect)) {
+            HWND parent = GetParent(hwnd);
+            LVITEMW lvi{}; lvi.iItem = hitItem; lvi.mask = LVIF_PARAM;
+            SendMessageW(hwnd, LVM_GETITEMW, 0, (LPARAM)&lvi);
+            int pkgIdx = (int)lvi.lParam;
+            if (pkgIdx >= 0 && pkgIdx < (int)g_packages.size()) {
+                std::string id = g_packages[pkgIdx].first;
+                std::string name = g_packages[pkgIdx].second;
+                std::wstring wname = Utf8ToWide(name);
+                
+                if (IsExcluded(id)) {
+                    // Already excluded - simple confirmation for unexclude
+                    std::string locale = LoadLocaleSetting();
+                    if (locale.empty()) locale = "en_GB";
+                    std::string tmpl = LoadI18nValue(locale, "confirm_unexclude");
+                    std::wstring msg = Utf8ToWide(tmpl);
+                    std::wstring title = Utf8ToWide(LoadI18nValue(locale, "app_title"));
+                    if (MessageBoxW(parent, msg.c_str(), title.c_str(), MB_YESNO | MB_ICONQUESTION) == IDYES) {
+                        UnexcludeApp(id);
+                        if (parent) PostMessageW(parent, WM_COMMAND, MAKEWPARAM(IDC_BTN_REFRESH, BN_CLICKED), 0);
+                    }
+                } else {
+                    // Not excluded - show custom dialog
+                    if (ShowExcludeConfirm(parent, wname)) {
+                        ExcludeApp(id, "manual");
+                        if (parent) PostMessageW(parent, WM_COMMAND, MAKEWPARAM(IDC_BTN_REFRESH, BN_CLICKED), 0);
+                    }
+                }
+            }
+            return 0; // consume the click
+        }
         if (IsPointOverSkip(hwnd, pt, hitItem, hitRect)) {
             HWND parent = GetParent(hwnd);
             // retrieve app name (subitem 0) and available version (subitem 2) for the confirm dialog

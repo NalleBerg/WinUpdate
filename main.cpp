@@ -27,6 +27,7 @@
 #include "ctrlw.h"
 #include "src/install_dialog.h"
 #include "src/startup_manager.h"
+#include "src/exclude.h"
 // detect nlohmann/json.hpp if available; fall back to ad-hoc parser otherwise
 #if defined(__has_include)
 #  if __has_include(<nlohmann/json.hpp>)
@@ -95,6 +96,9 @@ extern std::atomic<bool> g_refresh_in_progress;
 static std::set<std::string> g_not_applicable_ids;
 // per-locale skipped versions: id -> version
 static std::unordered_map<std::string,std::string> g_skipped_versions;
+// excluded apps: id -> reason ("auto" or "manual")
+std::unordered_map<std::string,std::string> g_excluded_apps;
+HANDLE g_excluded_mutex = CreateMutex(NULL, FALSE, NULL);
 static std::atomic<int> g_total_winget_packages{11107}; // Updated during each scan
 static HFONT g_hListFont = NULL;
 static std::vector<std::wstring> g_colHeaders;
@@ -180,11 +184,11 @@ static std::vector<std::pair<std::string,std::string>> ParseRawWingetTextInMemor
     return out;
 }
 
-// Load/Save per-locale skip config in i18n/<locale>.ini with lines: skip=Id|Version
+// Load/Save per-locale skip config in locale/<locale>.ini with lines: skip=Id|Version
 static void LoadSkipConfig(const std::string &locale) {
     g_skipped_versions.clear();
     try {
-        std::string fn = std::string("i18n/") + locale + ".ini";
+        std::string fn = std::string("locale/") + locale + ".ini";
         std::ifstream ifs(fn, std::ios::binary);
         if (!ifs) return;
         std::string ln;
@@ -213,7 +217,7 @@ static void LoadSkipConfig(const std::string &locale) {
 
 static void SaveSkipConfig(const std::string &locale) {
     try {
-        std::string fn = std::string("i18n\\") + locale + ".ini";
+        std::string fn = std::string("locale\\") + locale + ".ini";
         std::ofstream ofs(fn + ".tmp", std::ios::binary | std::ios::trunc);
         if (!ofs) return;
         for (auto &p : g_skipped_versions) {
@@ -1526,8 +1530,9 @@ static void PopulateListView(HWND hList) {
     static std::vector<std::wstring> itemCurBuf;
     static std::vector<std::wstring> itemAvailBuf;
     static std::vector<std::wstring> itemSkipBuf;
-    itemNameBuf.clear(); itemCurBuf.clear(); itemAvailBuf.clear(); itemSkipBuf.clear();
-    itemNameBuf.resize(g_packages.size()); itemCurBuf.resize(g_packages.size()); itemAvailBuf.resize(g_packages.size()); itemSkipBuf.resize(g_packages.size());
+    static std::vector<std::wstring> itemExcludeBuf;
+    itemNameBuf.clear(); itemCurBuf.clear(); itemAvailBuf.clear(); itemSkipBuf.clear(); itemExcludeBuf.clear();
+    itemNameBuf.resize(g_packages.size()); itemCurBuf.resize(g_packages.size()); itemAvailBuf.resize(g_packages.size()); itemSkipBuf.resize(g_packages.size()); itemExcludeBuf.resize(g_packages.size());
     // prepare maps for versions (prefer cached probes to avoid blocking UI twice)
     auto avail = GetAvailableVersionsCached();
     auto inst = GetInstalledVersionsCached();
@@ -1599,6 +1604,12 @@ static void PopulateListView(HWND hList) {
         itemSkipBuf[i] = skipText;
         lviSkip.pszText = (LPWSTR)itemSkipBuf[i].c_str();
         SendMessageW(hList, LVM_SETITEMW, 0, (LPARAM)&lviSkip);
+        // Exclude column (subitem 4): always show localized Exclude label (clickable hyperlink)
+        LVITEMW lviExclude{}; lviExclude.mask = LVIF_TEXT; lviExclude.iItem = i; lviExclude.iSubItem = 4;
+        std::wstring excludeText = t("exclude_col");
+        itemExcludeBuf[i] = excludeText;
+        lviExclude.pszText = (LPWSTR)itemExcludeBuf[i].c_str();
+        SendMessageW(hList, LVM_SETITEMW, 0, (LPARAM)&lviExclude);
     }
 }
 
@@ -1609,11 +1620,12 @@ static void UpdateListViewHeaders(HWND hList) {
     if (!hHeader || !IsWindow(hHeader)) return;
     static std::vector<std::wstring> headerBuffers;
     headerBuffers.clear();
-    // Columns: Package, Current, Available, Skip
+    // Columns: Package, Current, Available, Skip, Exclude
     headerBuffers.push_back(t("package_col"));
     headerBuffers.push_back(t("current_col"));
     headerBuffers.push_back(t("available_col"));
     headerBuffers.push_back(t("skip_col"));
+    headerBuffers.push_back(t("exclude_col"));
     for (int i = 0; i < (int)headerBuffers.size(); ++i) {
         HDITEMW hi{};
         hi.mask = HDI_TEXT;
@@ -1626,14 +1638,16 @@ static void AdjustListColumns(HWND hList) {
     RECT rc; GetClientRect(hList, &rc);
     int totalW = rc.right - rc.left;
     if (totalW <= 0) return;
-    int wCur = (int)(totalW * 0.15);
-    int wAvail = (int)(totalW * 0.15);
-    int wSkip = (int)(totalW * 0.10);
-    int wName = totalW - (wCur + wAvail + wSkip) - 4;
+    int wCur = (int)(totalW * 0.16);
+    int wAvail = (int)(totalW * 0.16);
+    int wSkip = (int)(totalW * 0.11);
+    int wExclude = (int)(totalW * 0.11);
+    int wName = totalW - (wCur + wAvail + wSkip + wExclude) - 4;
     ListView_SetColumnWidth(hList, 0, wName);
     ListView_SetColumnWidth(hList, 1, wCur);
     ListView_SetColumnWidth(hList, 2, wAvail);
     ListView_SetColumnWidth(hList, 3, wSkip);
+    ListView_SetColumnWidth(hList, 4, wExclude);
     // Adjust font if needed (shrink if columns exceed width)
     // For simplicity, leave font as-is; could implement dynamic font sizing here.
 }
@@ -1966,15 +1980,17 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         g_colHeaders.push_back(t("current_col"));
         g_colHeaders.push_back(t("available_col"));
         g_colHeaders.push_back(t("skip_col"));
+        g_colHeaders.push_back(t("exclude_col"));
         LVCOLUMNW col{};
         col.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_FMT;
-        col.cx = 420;
+        col.cx = 280;
         col.fmt = LVCFMT_LEFT;
         col.pszText = (LPWSTR)g_colHeaders[0].c_str();
         ListView_InsertColumn(hList, 0, &col);
         LVCOLUMNW colCur{}; colCur.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_FMT; colCur.cx = 100; colCur.fmt = LVCFMT_LEFT; colCur.pszText = (LPWSTR)g_colHeaders[1].c_str(); ListView_InsertColumn(hList, 1, &colCur);
         LVCOLUMNW colAvail{}; colAvail.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_FMT; colAvail.cx = 100; colAvail.fmt = LVCFMT_LEFT; colAvail.pszText = (LPWSTR)g_colHeaders[2].c_str(); ListView_InsertColumn(hList, 2, &colAvail);
         LVCOLUMNW colSkip{}; colSkip.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_FMT; colSkip.cx = 80; colSkip.fmt = LVCFMT_CENTER; colSkip.pszText = (LPWSTR)g_colHeaders[3].c_str(); ListView_InsertColumn(hList, 3, &colSkip);
+        LVCOLUMNW colExclude{}; colExclude.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_FMT; colExclude.cx = 80; colExclude.fmt = LVCFMT_CENTER; colExclude.pszText = (LPWSTR)g_colHeaders[4].c_str(); ListView_InsertColumn(hList, 4, &colExclude);
 
         hCheckAll = CreateWindowExW(0, L"Button", t("select_all").c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 10, 350, 120, 28, hwnd, (HMENU)IDC_BTN_SELECTALL, NULL, NULL);
         // place Upgrade button 5px to the right of Select all
@@ -1988,8 +2004,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         // position Refresh where the Upgrade button used to be (bottom-right)
         hBtnRefresh = CreateWindowExW(0, L"Button", t("refresh").c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 470, 350, 140, 28, hwnd, (HMENU)IDC_BTN_REFRESH, NULL, NULL);
 
-        // Config button (owner-draw, positioned with 2px gap before About at 590)
-        HWND hBtnConfig = CreateWindowExW(0, L"Button", t("config_btn").c_str(), WS_CHILD | WS_VISIBLE | BS_OWNERDRAW | WS_TABSTOP, 468, 10, 120, 28, hwnd, (HMENU)IDC_BTN_CONFIG, NULL, NULL);
+        // Config button (owner-draw, positioned with 20px gap before About at 690)
+        HWND hBtnConfig = CreateWindowExW(0, L"Button", t("config_btn").c_str(), WS_CHILD | WS_VISIBLE | BS_OWNERDRAW | WS_TABSTOP, 550, 10, 120, 28, hwnd, (HMENU)IDC_BTN_CONFIG, NULL, NULL);
         if (hBtnConfig) {
             SetWindowSubclass(hBtnConfig, [](HWND h, UINT msg, WPARAM wp, LPARAM lp, UINT_PTR, DWORD_PTR)->LRESULT {
                 switch (msg) {
@@ -2010,7 +2026,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         }
 
         // About button at top-right (owner-draw so we can color on hover/press)
-        HWND hBtnAbout = CreateWindowExW(0, L"Button", t("about_btn").c_str(), WS_CHILD | WS_VISIBLE | BS_OWNERDRAW | WS_TABSTOP, 590, 10, 120, 28, hwnd, (HMENU)IDC_BTN_ABOUT, NULL, NULL);
+        HWND hBtnAbout = CreateWindowExW(0, L"Button", t("about_btn").c_str(), WS_CHILD | WS_VISIBLE | BS_OWNERDRAW | WS_TABSTOP, 690, 10, 120, 28, hwnd, (HMENU)IDC_BTN_ABOUT, NULL, NULL);
         if (hBtnAbout) {
             // Create custom tooltip window (same style as Skip column tooltip)
             static const wchar_t *kTipClass = L"WinUpdateSimpleTooltip";
@@ -2166,10 +2182,23 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     case WM_REFRESH_DONE: {
         std::vector<std::pair<std::string,std::string>> *pv = (std::vector<std::pair<std::string,std::string>>*)lParam;
         if (pv) {
+            // Reload excluded apps from .ini file to pick up any manual changes
+            LoadExcludeSettings(g_excluded_apps);
+            
+            // Filter out excluded apps before updating global packages
+            std::vector<std::pair<std::string,std::string>> filtered;
+            WaitForSingleObject(g_excluded_mutex, INFINITE);
+            for (const auto& pkg : *pv) {
+                if (g_excluded_apps.find(pkg.first) == g_excluded_apps.end()) {
+                    filtered.push_back(pkg);
+                }
+            }
+            ReleaseMutex(g_excluded_mutex);
+            
             // update global packages and UI
             {
                 std::lock_guard<std::mutex> lk(g_packages_mutex);
-                g_packages = *pv;
+                g_packages = std::move(filtered);
             }
             delete pv;
             // If an install panel is blocking destruction, avoid changing the main list/controls
@@ -2194,16 +2223,19 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         if (hBtnUpgrade) EnableWindow(hBtnUpgrade, TRUE);
         EnableWindow(GetDlgItem(hwnd, IDC_BTN_SELECTALL), TRUE);
         EnableWindow(GetDlgItem(hwnd, IDC_COMBO_LANG), TRUE);
-        // If the refresh produced no non-skipped packages, show an 'up-to-date' dialog
+        // If the refresh produced no non-skipped and non-excluded packages, show an 'up-to-date' dialog
         {
             std::lock_guard<std::mutex> lk(g_packages_mutex);
-            // Count non-skipped packages
+            // Count non-skipped and non-excluded packages
             int nonSkippedCount = 0;
+            WaitForSingleObject(g_excluded_mutex, INFINITE);
             for (const auto& pkg : g_packages) {
-                if (g_skipped_versions.find(pkg.first) == g_skipped_versions.end()) {
+                if (g_skipped_versions.find(pkg.first) == g_skipped_versions.end() &&
+                    g_excluded_apps.find(pkg.first) == g_excluded_apps.end()) {
                     nonSkippedCount++;
                 }
             }
+            ReleaseMutex(g_excluded_mutex);
             
             if (nonSkippedCount == 0) {
                 // Only show the 'up-to-date' popup if this was a manual refresh (user requested)
@@ -2652,6 +2684,39 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                                 }
                             } catch(...) {}
                         }
+                    } else if (sub == 4) {
+                        // Handle Exclude column click
+                        std::string id = g_packages[idx].first;
+                        std::string name = g_packages[idx].second;
+                        std::wstring wname = Utf8ToWide(name);
+                        
+                        if (IsExcluded(id)) {
+                            // Already excluded - confirm unexclude
+                            std::wstring msg = t("confirm_unexclude");
+                            size_t pos = msg.find(L"{0}");
+                            if (pos != std::wstring::npos) {
+                                msg.replace(pos, 3, wname);
+                            }
+                            if (MessageBoxW(hwnd, msg.c_str(), t("app_title").c_str(), MB_YESNO | MB_ICONQUESTION) == IDYES) {
+                                UnexcludeApp(id);
+                                PopulateListView(hListLocal);
+                                // Trigger rescan to show the newly unexcluded app
+                                if (!g_refresh_in_progress.load()) PostMessageW(hwnd, WM_REFRESH_ASYNC, 1, 0);
+                            }
+                        } else {
+                            // Not excluded - confirm exclude
+                            std::wstring msg = t("confirm_exclude");
+                            size_t pos = msg.find(L"{0}");
+                            if (pos != std::wstring::npos) {
+                                msg.replace(pos, 3, wname);
+                            }
+                            if (MessageBoxW(hwnd, msg.c_str(), t("app_title").c_str(), MB_YESNO | MB_ICONQUESTION) == IDYES) {
+                                ExcludeApp(id, "manual");
+                                PopulateListView(hListLocal);
+                                // Trigger rescan to remove the excluded app from the list
+                                if (!g_refresh_in_progress.load()) PostMessageW(hwnd, WM_REFRESH_ASYNC, 1, 0);
+                            }
+                        }
                     }
                 }
             } else if (pnm->code == NM_CUSTOMDRAW) {
@@ -2706,24 +2771,25 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                 }
                 case CDDS_ITEMPOSTPAINT: {
                     int idx = (int)lvc->nmcd.dwItemSpec;
-                    int sub = 3; // Skip column
                     HWND hListLocal = GetDlgItem(hwnd, IDC_LISTVIEW);
                     if (hListLocal && IsWindow(hListLocal)) {
-                        // get subitem rect
-                        RECT tr{};
-                        if (ListView_GetSubItemRect(hListLocal, idx, sub, LVIR_BOUNDS, &tr)) {
-                            wchar_t buf[256] = {0};
-                            LVITEMW _lvit{};
-                            _lvit.iSubItem = sub;
-                            _lvit.cchTextMax = (int)(sizeof(buf)/sizeof(buf[0]));
-                            _lvit.pszText = buf;
-                            SendMessageW(hListLocal, LVM_GETITEMTEXTW, (WPARAM)idx, (LPARAM)&_lvit);
-                            // determine hover by hit-testing current cursor position
-                            POINT pt; GetCursorPos(&pt); ScreenToClient(hListLocal, &pt);
-                            LVHITTESTINFO ht{}; ht.pt = pt;
-                            int hit = ListView_HitTest(hListLocal, &ht);
-                            bool hovered = (hit == idx && ht.iSubItem == sub);
-                            DrawAndTrackHyperlink(lvc->nmcd.hdc, hListLocal, tr, std::wstring(buf), g_hListFont, hovered, idx, sub);
+                        // Draw hyperlinks for Skip (column 3) and Exclude (column 4)
+                        for (int sub : {3, 4}) {
+                            RECT tr{};
+                            if (ListView_GetSubItemRect(hListLocal, idx, sub, LVIR_BOUNDS, &tr)) {
+                                wchar_t buf[256] = {0};
+                                LVITEMW _lvit{};
+                                _lvit.iSubItem = sub;
+                                _lvit.cchTextMax = (int)(sizeof(buf)/sizeof(buf[0]));
+                                _lvit.pszText = buf;
+                                SendMessageW(hListLocal, LVM_GETITEMTEXTW, (WPARAM)idx, (LPARAM)&_lvit);
+                                // determine hover by hit-testing current cursor position
+                                POINT pt; GetCursorPos(&pt); ScreenToClient(hListLocal, &pt);
+                                LVHITTESTINFO ht{}; ht.pt = pt;
+                                int hit = ListView_HitTest(hListLocal, &ht);
+                                bool hovered = (hit == idx && ht.iSubItem == sub);
+                                DrawAndTrackHyperlink(lvc->nmcd.hdc, hListLocal, tr, std::wstring(buf), g_hListFont, hovered, idx, sub);
+                            }
                         }
                     }
                     return CDRF_DODEFAULT;
@@ -3144,10 +3210,12 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR pCmdLine, int nCmdShow
     LoadLocaleFromFile(g_locale);
     // load per-locale skip configuration
     LoadSkipConfig(g_locale);
+    // load excluded apps
+    LoadExcludeSettings(g_excluded_apps);
 
     std::wstring winTitle = std::wstring(L"WinUpdate - ") + t("app_window_suffix");
     HWND hwnd = CreateWindowExW(0, CLASS_NAME, winTitle.c_str(), WS_OVERLAPPEDWINDOW,
-        CW_USEDEFAULT, CW_USEDEFAULT, 736, 430, NULL, NULL, hInstance, NULL);
+        CW_USEDEFAULT, CW_USEDEFAULT, 820, 430, NULL, NULL, hInstance, NULL);
     if (!hwnd) return 0;
     
     // Store main window handle globally

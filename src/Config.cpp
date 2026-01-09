@@ -1,6 +1,7 @@
 #include "Config.h"
 #include "startup_manager.h"
 #include "ctrlw.h"
+#include "unexclude_dialog.h"
 #include <windows.h>
 #include <commctrl.h>
 #include <string>
@@ -18,6 +19,7 @@
 #define IDC_BTN_OK 3007
 #define IDC_BTN_CANCEL 3008
 #define IDC_BTN_ADD_TO_TRAY 3009
+#define IDC_BTN_MANAGE_EXCLUDED 3010
 
 // Polling interval options (prime numbers in hours)
 static const int POLLING_INTERVALS[] = {0, 2, 3, 5, 7, 11, 13, 17, 19, 23};
@@ -207,6 +209,98 @@ static void SaveSettings(const ConfigSettings &settings) {
     }
 }
 
+void LoadExcludeSettings(std::unordered_map<std::string, std::string> &excludedApps) {
+    excludedApps.clear();
+    std::string path = GetSettingsPath();
+    std::ifstream ifs(path);
+    if (!ifs) return;
+    
+    std::string line;
+    bool inExcluded = false;
+    while (std::getline(ifs, line)) {
+        // Trim whitespace
+        size_t start = line.find_first_not_of(" \t\r\n");
+        if (start == std::string::npos) continue;
+        size_t end = line.find_last_not_of(" \t\r\n");
+        line = line.substr(start, end - start + 1);
+        
+        if (line.empty() || line[0] == '#' || line[0] == ';') continue;
+        
+        if (line == "[excluded]") {
+            inExcluded = true;
+            continue;
+        } else if (line[0] == '[') {
+            inExcluded = false;
+            continue;
+        }
+        
+        if (inExcluded) {
+            size_t eq = line.find('=');
+            if (eq != std::string::npos) {
+                std::string packageId = line.substr(0, eq);
+                std::string reason = line.substr(eq + 1);
+                // Trim key and value
+                size_t ks = packageId.find_first_not_of(" \t");
+                size_t ke = packageId.find_last_not_of(" \t");
+                if (ks != std::string::npos) packageId = packageId.substr(ks, ke - ks + 1);
+                size_t vs = reason.find_first_not_of(" \t");
+                size_t ve = reason.find_last_not_of(" \t");
+                if (vs != std::string::npos) reason = reason.substr(vs, ve - vs + 1);
+                
+                if (!packageId.empty() && !reason.empty()) {
+                    excludedApps[packageId] = reason;
+                }
+            }
+        }
+    }
+}
+
+void SaveExcludeSettings(const std::unordered_map<std::string, std::string> &excludedApps) {
+    std::string path = GetSettingsPath();
+    
+    // Read existing file to preserve other sections
+    std::stringstream content;
+    std::ifstream ifs(path);
+    std::string line;
+    bool inExcluded = false;
+    bool excludedWritten = false;
+    
+    if (ifs) {
+        while (std::getline(ifs, line)) {
+            if (line.find("[excluded]") != std::string::npos) {
+                inExcluded = true;
+                excludedWritten = true;
+                content << "[excluded]\n";
+                for (const auto &pair : excludedApps) {
+                    content << pair.first << "=" << pair.second << "\n";
+                }
+                continue;
+            } else if (!line.empty() && line[0] == '[') {
+                inExcluded = false;
+            }
+            
+            if (!inExcluded) {
+                content << line << "\n";
+            }
+        }
+        ifs.close();
+    }
+    
+    // If [excluded] section didn't exist, add it
+    if (!excludedWritten) {
+        content << "\n[excluded]\n";
+        for (const auto &pair : excludedApps) {
+            content << pair.first << "=" << pair.second << "\n";
+        }
+    }
+    
+    // Write back
+    std::ofstream ofs(path);
+    if (ofs) {
+        ofs << content.str();
+    }
+}
+
 static void UpdateStatusLabel(HWND hDlg, HWND hStatus, const ConfigSettings &settings, const std::unordered_map<std::string, std::wstring> &trans) {
     std::wstring status;
     if (settings.mode == StartupMode::Manual) {
@@ -259,7 +353,7 @@ bool ShowConfigDialog(HWND parent, const std::string &currentLocale) {
     int parentCenterY = (rcParent.top + rcParent.bottom) / 2;
     
     // Create dialog
-    const int dlgW = 600, dlgH = 270;
+    const int dlgW = 600, dlgH = 320;
     int dlgX = parentCenterX - dlgW / 2;
     int dlgY = parentCenterY - dlgH / 2;
     
@@ -381,6 +475,13 @@ bool ShowConfigDialog(HWND parent, const std::string &currentLocale) {
     // Show/hide button based on current mode
     ShowWindow(hAddToTray, (settings.mode == StartupMode::SysTray) ? SW_SHOW : SW_HIDE);
     
+    // "Manage Excluded Apps" button (left side, above button row)
+    HWND hManageExcluded = CreateWindowExW(0, L"Button", t(trans, "manage_excluded_apps").c_str(),
+        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP,
+        20, dlgH - 120, 200, 32,
+        hDlg, (HMENU)IDC_BTN_MANAGE_EXCLUDED, NULL, NULL);
+    SendMessageW(hManageExcluded, WM_SETFONT, (WPARAM)hFont, TRUE);
+    
     // Subclass dialog to handle messages
     struct DialogData {
         ConfigSettings* settings;
@@ -388,6 +489,7 @@ bool ShowConfigDialog(HWND parent, const std::string &currentLocale) {
         HWND hStatus;
         HWND hAddToTray;
         const std::unordered_map<std::string, std::wstring>* trans;
+        const std::string* locale;
         bool* dialogResult;
         bool* dialogDone;
     };
@@ -398,6 +500,7 @@ bool ShowConfigDialog(HWND parent, const std::string &currentLocale) {
     dlgData.hStatus = hStatus;
     dlgData.hAddToTray = hAddToTray;
     dlgData.trans = &trans;
+    dlgData.locale = &currentLocale;
     bool dialogResult = false;
     bool dialogDone = false;
     dlgData.dialogResult = &dialogResult;
@@ -476,8 +579,16 @@ bool ShowConfigDialog(HWND parent, const std::string &currentLocale) {
                 *pData->dialogResult = true;
                 *pData->dialogDone = true;
                 PostMessageW(hwnd, WM_CLOSE, 0, 0);
-                return 0;
-            } else if (id == IDC_BTN_ADD_TO_TRAY) {
+                return 0;            } else if (id == IDC_BTN_MANAGE_EXCLUDED) {
+                // Show the Manage Excluded Apps dialog
+                if (ShowUnexcludeDialog(hwnd, *pData->locale)) {
+                    // Apps were unexcluded, trigger a refresh in main window
+                    HWND mainWnd = GetParent(hwnd);
+                    if (mainWnd) {
+                        PostMessageW(mainWnd, WM_APP + 1, 1, 0);
+                    }
+                }
+                return 0;            } else if (id == IDC_BTN_ADD_TO_TRAY) {
                 // "Add to systray now" button clicked
                 // Read current settings and save
                 if (IsDlgButtonChecked(hwnd, IDC_RADIO_SYSTRAY) == BST_CHECKED) {
