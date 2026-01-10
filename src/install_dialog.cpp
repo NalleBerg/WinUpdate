@@ -68,9 +68,12 @@ static void AddToLog(const std::wstring& text, bool isBold = false, COLORREF col
         g_installLog += utf8;
         
         // Add to RTF log with formatting
+        // Color table: 1=Black, 2=Red, 3=Green, 4=DarkBlue, 5=BrightBlue
         int colorIndex = 1;  // Default black (color table index)
         if (color == RGB(255, 0, 0)) colorIndex = 2;  // Red
         else if (color == RGB(0, 128, 0)) colorIndex = 3;  // Green
+        else if (color == RGB(0, 51, 153)) colorIndex = 4;  // Dark blue (for info/skipped)
+        else if (color == RGB(0, 120, 215)) colorIndex = 5;  // Bright blue (for warnings/recommendations)
         
         if (isBold) g_rtfLog += "\\b ";
         g_rtfLog += "\\cf" + std::to_string(colorIndex) + " ";
@@ -227,9 +230,9 @@ static void AppendFormattedText(HWND hRichEdit, const std::wstring& text, bool i
         std::string rtfFragment;
         
         if (g_isFirstRtfAppend) {
-            // First append: include full RTF header
+            // First append: include full RTF header with color table
             rtfFragment = "{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 Consolas;}}"
-                         "{\\colortbl;\\red0\\green0\\blue0;\\red255\\green0\\blue0;\\red0\\green128\\blue0;}"
+                         "{\\colortbl;\\red0\\green0\\blue0;\\red255\\green0\\blue0;\\red0\\green128\\blue0;\\red0\\green51\\blue153;\\red0\\green120\\blue215;}"
                          "\\f0\\fs20 " + newRtfContent + "}";
             
             // Stream to replace all content (first time)
@@ -242,7 +245,7 @@ static void AppendFormattedText(HWND hRichEdit, const std::wstring& text, bool i
         } else {
             // Subsequent appends: just the new content (already has proper RTF codes from AddToLog)
             rtfFragment = "{\\rtf1\\ansi{\\fonttbl{\\f0 Consolas;}}"
-                         "{\\colortbl;\\red0\\green0\\blue0;\\red255\\green0\\blue0;\\red0\\green128\\blue0;}"
+                         "{\\colortbl;\\red0\\green0\\blue0;\\red255\\green0\\blue0;\\red0\\green128\\blue0;\\red0\\green51\\blue153;\\red0\\green120\\blue215;}"
                          "\\f0\\fs20 " + newRtfContent + "}";
             
             // Move to end and append
@@ -326,6 +329,39 @@ static int GetLineFormatting(const std::string& line, bool& inImportantBlock, bo
     }
     
     return 1;  // Gray (normal output)
+}
+
+// Helper to determine color and boldness for a line based on its content
+static void GetLineStyle(const std::wstring& line, bool& isBold, COLORREF& color) {
+    isBold = false;
+    color = RGB(0, 0, 0);  // Default black
+    
+    // Check for status indicators
+    if (line.find(L"✓ Success") != std::wstring::npos) {
+        color = RGB(0, 128, 0);  // Green
+        isBold = true;
+    }
+    else if (line.find(L"ℹ️") != std::wstring::npos || line.find(L"Skipped") != std::wstring::npos) {
+        color = RGB(0, 51, 153);  // Dark blue (info/skipped)
+        isBold = true;
+    }
+    else if (line.find(L"⚠️") != std::wstring::npos || line.find(L"Cancelled") != std::wstring::npos) {
+        color = RGB(0, 120, 215);  // Bright blue (warnings)
+        isBold = true;
+    }
+    else if (line.find(L"❌") != std::wstring::npos || line.find(L"Failed") != std::wstring::npos) {
+        color = RGB(255, 0, 0);  // Red
+        isBold = true;
+    }
+    // Recommendation lines (starts with 💡 or contains "Recommendation:")
+    else if (line.find(L"💡") != std::wstring::npos || line.find(L"Recommendation:") != std::wstring::npos) {
+        color = RGB(0, 120, 215);  // Bright blue (recommendations)
+        isBold = false;
+    }
+    // Separator lines
+    else if (line.find(L"═══") != std::wstring::npos || line.find(L"━━━") != std::wstring::npos) {
+        color = RGB(128, 128, 128);  // Gray
+    }
 }
 
 // Dialog window procedure
@@ -688,7 +724,7 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
     
     // Update overall status with correct count
     wchar_t initialBuf[256];
-    swprintf(initialBuf, 256, t("install_progress").c_str(), 0, (int)packageIds.size());
+    swprintf(initialBuf, 256, t("install_progress").c_str(), (int)packageIds.size());
     std::wstring initialStatus = initialBuf;
     SendMessageW(hOverallStatus, WM_SETTEXT, 0, (LPARAM)initialStatus.c_str());
     
@@ -857,7 +893,12 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
                         // Filter and display
                         std::string narrowLine = WideToUtf8(line + L"\n");
                         if (ShouldDisplayLine(narrowLine)) {
-                            AppendFormattedText(hOut, line + L"\n", false, RGB(0, 0, 0));
+                            // Determine color and styling based on content
+                            bool isBold = false;
+                            COLORREF color = RGB(0, 0, 0);
+                            GetLineStyle(line, isBold, color);
+                            
+                            AppendFormattedText(hOut, line + L"\n", isBold, color);
                         }
                     }
                     
@@ -898,8 +939,7 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
                         
                         // Update overall status
                         wchar_t progBuf[256];
-                        swprintf(progBuf, 256, t("install_progress").c_str(), completedPackages, (int)packageIds.size());
-                        SendMessageW(hOverallStatus, WM_SETTEXT, 0, (LPARAM)progBuf);
+                        // Status already shows total packages, no need to update per-package
                     }
                 }
             }
@@ -918,8 +958,7 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
         
         // Update overall status to show completion
         wchar_t completeBuf[256];
-        swprintf(completeBuf, 256, t("install_progress").c_str(), (int)packageIds.size(), (int)packageIds.size());
-        SendMessageW(hOverallStatus, WM_SETTEXT, 0, (LPARAM)completeBuf);
+        // Status already shows total packages, no need to update on completion
         
         // Append completion message in bold
         std::wstring completionMsg = L"\r\n\r\n=== Installation Complete ===\r\n";
@@ -965,7 +1004,7 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
     std::string completeRtf = 
         "{\\rtf1\\ansi\\deff0"
         "{\\fonttbl{\\f0 Consolas;}}"
-        "{\\colortbl;\\red0\\green0\\blue0;\\red255\\green0\\blue0;\\red0\\green128\\blue0;}"
+        "{\\colortbl;\\red0\\green0\\blue0;\\red255\\green0\\blue0;\\red0\\green128\\blue0;\\red0\\green51\\blue153;\\red0\\green120\\blue215;}"
         "\\f0\\fs20 ";
     
     {

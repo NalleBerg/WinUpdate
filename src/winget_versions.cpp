@@ -1,4 +1,5 @@
 #include "winget_versions.h"
+#include "winget_errors.h"
 #include "parsing.h"
 #include <windows.h>
 #include <regex>
@@ -46,9 +47,21 @@ static std::pair<int,std::string> RunProcessCaptureExitCodeLocal(const std::wstr
     DWORD wait = WaitForSingleObject(pi.hProcess, timeoutMs > 0 ? (DWORD)timeoutMs : INFINITE);
     if (wait == WAIT_TIMEOUT) {
         TerminateProcess(pi.hProcess, 1);
-        result.first = -2;
+        result.first = (int)WingetErrors::TIMEOUT;
     } else {
-        DWORD exitCode = 0; GetExitCodeProcess(pi.hProcess, &exitCode); result.first = (int)exitCode;
+        DWORD exitCode = 0; 
+        GetExitCodeProcess(pi.hProcess, &exitCode); 
+        result.first = (int)exitCode;
+        
+        // Log non-standard exit codes for diagnostics
+        if (exitCode != WingetErrors::SUCCESS && 
+            exitCode != WingetErrors::UPDATE_NOT_APPLICABLE &&
+            exitCode != WingetErrors::PACKAGE_ALREADY_INSTALLED) {
+            // Only log if it's a true error (not just "no updates")
+            if (WingetErrors::IsFailure(exitCode)) {
+                // Could add logging here if needed for version query failures
+            }
+        }
     }
 
     // read all available output from pipe

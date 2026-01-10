@@ -3,6 +3,7 @@
 #include <windows.h>
 #include <string>
 #include <vector>
+#include "src/winget_errors.h"
 
 // Write to pipe helper
 void WriteToPipe(HANDLE hPipe, const std::wstring& text) {
@@ -60,6 +61,10 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR lpCmdLine, int) {
 
     int successCount = 0;
     int failCount = 0;
+    int skipCount = 0;
+    int warningCount = 0;
+    
+    std::vector<std::pair<std::wstring, DWORD>> results; // packageId, exitCode
 
     for (size_t i = 0; i < packageIds.size(); i++) {
         WriteToPipe(hPipe, L"[" + std::to_wstring(i+1) + L"/" + std::to_wstring(packageIds.size()) + L"] " + packageIds[i] + L"\r\n");
@@ -92,8 +97,9 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR lpCmdLine, int) {
         
         PROCESS_INFORMATION pi{};
         
-        // Use CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP to hide all console windows
-        DWORD creationFlags = CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP;
+        // Use CREATE_NO_WINDOW | DETACHED_PROCESS to completely hide console windows
+        // DETACHED_PROCESS prevents any console window from appearing, even briefly
+        DWORD creationFlags = CREATE_NO_WINDOW | DETACHED_PROCESS;
         
         if (!CreateProcessW(NULL, (LPWSTR)cmd.c_str(), NULL, NULL, TRUE, creationFlags, NULL, NULL, &si, &pi)) {
             WriteToPipe(hPipe, L"Failed to start winget\r\n");
@@ -128,19 +134,90 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR lpCmdLine, int) {
         CloseHandle(pi.hThread);
         CloseHandle(hReadPipe);
         
-        if (exitCode == 0) {
+        // Store result for summary
+        results.push_back({packageIds[i], exitCode});
+        
+        // Categorize result
+        if (exitCode == WingetErrors::SUCCESS) {
             successCount++;
-            WriteToPipe(hPipe, L"✓ Success\r\n");
-        } else {
+        } else if (WingetErrors::IsSkipped(exitCode)) {
+            skipCount++;
+        } else if (exitCode == WingetErrors::INSTALL_CANCELLED_BY_USER || 
+                   exitCode == WingetErrors::WINDOWS_ERROR_CANCELLED) {
+            warningCount++;
+        } else if (WingetErrors::IsFailure(exitCode)) {
             failCount++;
-            WriteToPipe(hPipe, L"✗ Failed (exit code: " + std::to_wstring(exitCode) + L")\r\n");
         }
+        
+        // Write status and detailed message
+        WriteToPipe(hPipe, WingetErrors::GetStatusText(exitCode) + L"\r\n");
+        
+        // Add detailed error message if not successful
+        if (exitCode != WingetErrors::SUCCESS) {
+            WriteToPipe(hPipe, WingetErrors::GetErrorMessage(exitCode) + L"\r\n");
+        }
+        
         WriteToPipe(hPipe, L"\r\n");
     }
 
     WriteToPipe(hPipe, L"========================================\r\n");
     WriteToPipe(hPipe, L"=== Installation Complete ===\r\n");
-    WriteToPipe(hPipe, std::to_wstring(successCount) + L" package(s) processed.\r\n");
+    
+    // Summary with breakdown by category
+    if (successCount > 0) {
+        WriteToPipe(hPipe, L"✅ " + std::to_wstring(successCount) + L" package(s) installed successfully\r\n");
+    }
+    if (skipCount > 0) {
+        WriteToPipe(hPipe, L"ℹ️ " + std::to_wstring(skipCount) + L" package(s) skipped (not applicable)\r\n");
+    }
+    if (warningCount > 0) {
+        WriteToPipe(hPipe, L"⚠️ " + std::to_wstring(warningCount) + L" package(s) cancelled by user\r\n");
+    }
+    if (failCount > 0) {
+        WriteToPipe(hPipe, L"❌ " + std::to_wstring(failCount) + L" package(s) failed\r\n");
+    }
+    
+    // Detailed breakdown if there were non-success results
+    if (!results.empty() && (skipCount > 0 || warningCount > 0 || failCount > 0)) {
+        WriteToPipe(hPipe, L"\r\n");
+        
+        if (successCount > 0) {
+            WriteToPipe(hPipe, L"Successful:\r\n");
+            for (const auto& [pkgId, exitCode] : results) {
+                if (exitCode == WingetErrors::SUCCESS) {
+                    WriteToPipe(hPipe, L"  • " + pkgId + L"\r\n");
+                }
+            }
+        }
+        
+        if (skipCount > 0) {
+            WriteToPipe(hPipe, L"\r\nSkipped:\r\n");
+            for (const auto& [pkgId, exitCode] : results) {
+                if (WingetErrors::IsSkipped(exitCode)) {
+                    WriteToPipe(hPipe, L"  • " + pkgId + L" (" + WingetErrors::GetStatusText(exitCode).substr(3) + L")\r\n");
+                }
+            }
+        }
+        
+        if (warningCount > 0) {
+            WriteToPipe(hPipe, L"\r\nCancelled:\r\n");
+            for (const auto& [pkgId, exitCode] : results) {
+                if (exitCode == WingetErrors::INSTALL_CANCELLED_BY_USER || 
+                    exitCode == WingetErrors::WINDOWS_ERROR_CANCELLED) {
+                    WriteToPipe(hPipe, L"  ⚠️ " + pkgId + L" (cancelled by user or by the installer itself)\r\n");
+                }
+            }
+        }
+        
+        if (failCount > 0) {
+            WriteToPipe(hPipe, L"\r\nFailed:\r\n");
+            for (const auto& [pkgId, exitCode] : results) {
+                if (WingetErrors::IsFailure(exitCode)) {
+                    WriteToPipe(hPipe, L"  • " + pkgId + L" (" + WingetErrors::GetStatusText(exitCode).substr(3) + L")\r\n");
+                }
+            }
+        }
+    }
     
     CloseHandle(hPipe);
     

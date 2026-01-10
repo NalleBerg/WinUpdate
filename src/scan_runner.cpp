@@ -3,6 +3,7 @@
 
 // Simple scanner: run `winget upgrade` and parse the aligned table by columns.
 #include "scan_runner.h"
+#include "winget_errors.h"
 #include <windows.h>
 #include <string>
 #include <sstream>
@@ -42,8 +43,30 @@ static std::pair<int,std::string> RunProcessCaptureExitCodeLocal(const std::wstr
     if (!CreateProcessW(NULL, &cmdCopy[0], NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) { CloseHandle(hWrite); CloseHandle(hRead); return res; }
     CloseHandle(hWrite);
     DWORD wait = WaitForSingleObject(pi.hProcess, timeoutMs > 0 ? (DWORD)timeoutMs : INFINITE);
-    if (wait == WAIT_TIMEOUT) { TerminateProcess(pi.hProcess, 1); res.first = -2; }
-    else { DWORD exitCode = 0; GetExitCodeProcess(pi.hProcess, &exitCode); res.first = (int)exitCode; }
+    if (wait == WAIT_TIMEOUT) { 
+        TerminateProcess(pi.hProcess, 1); 
+        res.first = (int)WingetErrors::TIMEOUT;
+        try { AppendLog("Scan timeout: winget process exceeded time limit\n"); } catch(...) {}
+    }
+    else { 
+        DWORD exitCode = 0; 
+        GetExitCodeProcess(pi.hProcess, &exitCode); 
+        res.first = (int)exitCode;
+        
+        // Log non-success exit codes
+        if (exitCode != WingetErrors::SUCCESS && exitCode != WingetErrors::UPDATE_NOT_APPLICABLE) {
+            try { 
+                std::string logMsg = "Scan exit code: " + std::to_string((int)exitCode);
+                if (WingetErrors::IsFailure(exitCode)) {
+                    logMsg += " (error)";
+                } else if (WingetErrors::IsSkipped(exitCode)) {
+                    logMsg += " (skipped)";
+                }
+                logMsg += "\n";
+                AppendLog(logMsg); 
+            } catch(...) {}
+        }
+    }
     std::string out; const DWORD bufSize = 4096; char buf[bufSize]; DWORD read = 0;
     while (ReadFile(hRead, buf, bufSize, &read, NULL) && read > 0) out.append(buf, buf + read);
     CloseHandle(hRead); CloseHandle(pi.hProcess); CloseHandle(pi.hThread);
@@ -56,9 +79,23 @@ bool ScanAndPopulateMaps(std::unordered_map<std::string,std::string> &avail, std
         // Use centralized, normalized parsing implemented in winget_versions.cpp
         avail = MapAvailableVersions();
         inst = MapInstalledVersions();
-        try { AppendLog(std::string("ScanAndPopulateMaps: avail count=") + std::to_string((int)avail.size()) + " inst count=" + std::to_string((int)inst.size()) + "\n"); } catch(...) {}
+        try { 
+            std::string logMsg = "ScanAndPopulateMaps: avail count=" + std::to_string((int)avail.size()) + 
+                                " inst count=" + std::to_string((int)inst.size());
+            if (avail.empty() || inst.empty()) {
+                logMsg += " (WARN: one or both maps empty)";
+            }
+            logMsg += "\n";
+            AppendLog(logMsg);
+        } catch(...) {}
         return !avail.empty() && !inst.empty();
-    } catch(...) { return false; }
+    } catch(const std::exception& e) {
+        try { AppendLog(std::string("ScanAndPopulateMaps exception: ") + e.what() + "\n"); } catch(...) {}
+        return false;
+    } catch(...) { 
+        try { AppendLog("ScanAndPopulateMaps unknown exception\n"); } catch(...) {}
+        return false; 
+    }
 }
 
 bool RunFullScan(std::vector<std::pair<std::string,std::string>> &outResults,
@@ -69,10 +106,25 @@ bool RunFullScan(std::vector<std::pair<std::string,std::string>> &outResults,
     try {
         avail = MapAvailableVersions();
         inst = MapInstalledVersions();
-        if (avail.empty() || inst.empty()) return false;
+        if (avail.empty() || inst.empty()) {
+            try { 
+                AppendLog("RunFullScan: Failed - one or both maps empty after scan\n");
+            } catch(...) {}
+            return false;
+        }
         // Build outResults using normalized ids as keys; display name uses id (can be improved later)
         for (auto &p : avail) outResults.emplace_back(p.first, p.first);
-        try { AppendLog(std::string("RunFullScan: avail count=") + std::to_string((int)avail.size()) + " inst count=" + std::to_string((int)inst.size()) + "\n"); } catch(...) {}
+        try { 
+            AppendLog(std::string("RunFullScan: avail count=") + std::to_string((int)avail.size()) + 
+                     " inst count=" + std::to_string((int)inst.size()) + 
+                     " results count=" + std::to_string((int)outResults.size()) + "\n"); 
+        } catch(...) {}
         return true;
-    } catch(...) { return false; }
+    } catch(const std::exception& e) {
+        try { AppendLog(std::string("RunFullScan exception: ") + e.what() + "\n"); } catch(...) {}
+        return false;
+    } catch(...) { 
+        try { AppendLog("RunFullScan unknown exception\n"); } catch(...) {}
+        return false; 
+    }
 }
