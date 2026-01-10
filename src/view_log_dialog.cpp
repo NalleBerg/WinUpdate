@@ -157,13 +157,17 @@ bool ShowInstallLogDialog(HWND parent, const std::string &locale) {
     ctx->hEdit = hEdit;
     SetWindowLongPtrW(hDlg, GWLP_USERDATA, (LONG_PTR)ctx);
     
-    // Close button
+    // Close button (centered)
     std::string txtClose = LoadI18nValue(locale, "btn_cancel");
     if (txtClose.empty()) txtClose = "Close";
     std::wstring wclose = Utf8ToWide(txtClose);
+    int btnWidth = 100;
+    int btnHeight = 30;
+    int btnX = (W - btnWidth) / 2;  // Center horizontally
+    int btnY = H - 55;  // Near bottom
     HWND hBtnClose = CreateWindowExW(0, L"BUTTON", wclose.c_str(), 
         WS_CHILD | WS_VISIBLE | BS_DEFPUSHBUTTON, 
-        W-120, H-50, 100, 30, hDlg, (HMENU)1001, GetModuleHandleW(NULL), NULL);
+        btnX, btnY, btnWidth, btnHeight, hDlg, (HMENU)1001, GetModuleHandleW(NULL), NULL);
     
     ShowWindow(hDlg, SW_SHOW);
     

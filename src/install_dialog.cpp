@@ -1,5 +1,6 @@
 #include "install_dialog.h"
 #include "Config.h"
+#include "parsing.h"
 #include <commctrl.h>
 #include <shellapi.h>
 #include <richedit.h>
@@ -205,10 +206,80 @@ static DWORD CALLBACK EditStreamCallback(DWORD_PTR dwCookie, LPBYTE pbBuff, LONG
 static std::string g_displayedRtfContent;
 static bool g_isFirstRtfAppend = true;
 
+// Helper: Translate error summary section text
+static std::wstring TranslateSummaryLine(const std::wstring& line) {
+    std::wstring result = line;
+    
+    // Translate section labels
+    if (line.find(L"Errors:") != std::wstring::npos) {
+        result = t("error_summary_title");
+        if (line.length() > 7) result += line.substr(7);  // Keep any text after "Errors:"
+        return result;
+    }
+    if (line.find(L"Error number:") != std::wstring::npos) {
+        size_t pos = line.find(L"Error number:");
+        result = t("error_summary_number") + line.substr(pos + 13);
+        return result;
+    }
+    if (line.find(L"Reason:") != std::wstring::npos && line.find(L"Recommendation:") == std::wstring::npos) {
+        size_t pos = line.find(L"Reason:");
+        std::wstring reasonText = line.substr(pos + 7);
+        // Trim leading space
+        if (!reasonText.empty() && reasonText[0] == L' ') reasonText = reasonText.substr(1);
+        
+        // Translate specific reason texts
+        if (reasonText.find(L"No applicable upgrade") != std::wstring::npos) {
+            result = t("error_summary_reason") + L" " + t("error_not_applicable");
+        } else if (reasonText.find(L"Installation cancelled") != std::wstring::npos) {
+            result = t("error_summary_reason") + L" " + t("error_cancelled");
+        } else if (reasonText.find(L"Download failed") != std::wstring::npos) {
+            result = t("error_summary_reason") + L" " + t("error_download_failed");
+        } else if (reasonText.find(L"Package not found") != std::wstring::npos) {
+            result = t("error_summary_reason") + L" " + t("error_not_found");
+        } else if (reasonText.find(L"Installation timed out") != std::wstring::npos) {
+            result = t("error_summary_reason") + L" " + t("error_timeout");
+        } else if (reasonText.find(L"Installation failed with unknown") != std::wstring::npos) {
+            result = t("error_summary_reason") + L" " + t("error_unknown");
+        } else {
+            result = t("error_summary_reason") + L" " + reasonText;
+        }
+        return result;
+    }
+    if (line.find(L"Recommendation:") != std::wstring::npos) {
+        size_t pos = line.find(L"Recommendation:");
+        std::wstring recText = line.substr(pos + 15);
+        // Trim leading space
+        if (!recText.empty() && recText[0] == L' ') recText = recText.substr(1);
+        
+        // Translate specific recommendation texts
+        if (recText.find(L"Skip this package and wait") != std::wstring::npos) {
+            result = t("error_summary_recommendation") + L" " + t("recommend_skip");
+        } else if (recText.find(L"Exclude this package if you want to stop") != std::wstring::npos) {
+            result = t("error_summary_recommendation") + L" " + t("recommend_exclude");
+        } else if (recText.find(L"Retry the installation when network") != std::wstring::npos) {
+            result = t("error_summary_recommendation") + L" " + t("recommend_retry");
+        } else if (recText.find(L"Exclude this package - it's no longer") != std::wstring::npos) {
+            result = t("error_summary_recommendation") + L" " + t("recommend_exclude_unavailable");
+        } else if (recText.find(L"Check Task Manager") != std::wstring::npos) {
+            result = t("error_summary_recommendation") + L" " + t("recommend_check_taskmanager");
+        } else if (recText.find(L"Search online") != std::wstring::npos) {
+            result = t("error_summary_recommendation") + L" " + t("recommend_search_online");
+        } else {
+            result = t("error_summary_recommendation") + L" " + recText;
+        }
+        return result;
+    }
+    
+    return result;
+}
+
 // Helper to append formatted text to RichEdit control using RTF streaming
 static void AppendFormattedText(HWND hRichEdit, const std::wstring& text, bool isBold, COLORREF color) {
+    // Translate error summary text before logging
+    std::wstring translatedText = TranslateSummaryLine(text);
+    
     // Add to install log (builds both plain text and RTF)
-    AddToLog(text, isBold, color);
+    AddToLog(translatedText, isBold, color);
     
     std::string newRtfContent;
     
@@ -277,8 +348,7 @@ static bool HasImportantKeywords(const std::string& line) {
             lower.find("no applicable upgrade") != std::string::npos ||
             lower.find("successfully installed") != std::string::npos ||
             lower.find("installation complete") != std::string::npos ||
-            lower.find("===") != std::string::npos ||
-            (lower.find("package") != std::string::npos && lower.find("processed") != std::string::npos));
+            lower.find("===") != std::string::npos);
 }
 
 // Helper: Check if line is only asterisks (block delimiter)
@@ -353,6 +423,20 @@ static void GetLineStyle(const std::wstring& line, bool& isBold, COLORREF& color
         color = RGB(255, 0, 0);  // Red
         isBold = true;
     }
+    // Error summary section (bold red for title)
+    else if (line.find(L"Errors:") != std::wstring::npos && line.length() < 10) {
+        color = RGB(255, 0, 0);  // Red
+        isBold = true;
+    }
+    // Error details (app name with " --" or " -- " format and ending with colon)
+    else if ((line.find(L" --") != std::wstring::npos || line.find(L" -- ") != std::wstring::npos) && 
+             line.back() == L':' &&
+             line.find(L"Error number:") == std::wstring::npos &&
+             line.find(L"Reason:") == std::wstring::npos &&
+             line.find(L"Recommendation:") == std::wstring::npos) {
+        color = RGB(34, 177, 76);  // Bright green (visible but not too bright)
+        isBold = true;
+    }
     // Recommendation lines (starts with 💡 or contains "Recommendation:")
     else if (line.find(L"💡") != std::wstring::npos || line.find(L"Recommendation:") != std::wstring::npos) {
         color = RGB(0, 120, 215);  // Bright blue (recommendations)
@@ -393,23 +477,33 @@ static LRESULT CALLBACK InstallDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPAR
         HFONT hFont = CreateFontW(-13, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
             DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
             DEFAULT_PITCH | FF_SWISS, L"Segoe UI");
-        hStatus = CreateWindowExW(0, L"Static", t("install_preparing").c_str(), WS_CHILD | WS_VISIBLE | SS_LEFT,
+        hStatus = CreateWindowExW(0, L"Static", L"", WS_CHILD | WS_VISIBLE | SS_LEFT,
             24, 48, W-48, 20, hwnd, NULL, hInst, NULL);
         SendMessageW(hStatus, WM_SETFONT, (WPARAM)hFont, TRUE);
         
-        // Progress bar container (groove)
-        HWND hGroove = CreateWindowExW(WS_EX_CLIENTEDGE, L"Static", L"", WS_CHILD | WS_VISIBLE | SS_LEFT, 
-            20, 72, W-40, 28, hwnd, NULL, hInst, NULL);
+        // Groove container for progress bar and animation (always visible)
+        HWND hGroove = CreateWindowExW(0, L"Static", NULL, WS_CHILD | WS_VISIBLE | SS_ETCHEDFRAME,
+            20, 72, W-40, 24, hwnd, NULL, hInst, NULL);
         
-        // Progress bar
-        hProg = CreateWindowExW(0, PROGRESS_CLASSW, NULL, WS_CHILD | WS_VISIBLE, 
-            24, 76, W-48, 20, hwnd, NULL, hInst, NULL);
+        // Progress bar inside groove (always visible, segmented style)
+        hProg = CreateWindowExW(0, PROGRESS_CLASSW, NULL, 
+            WS_CHILD | WS_VISIBLE, 
+            22, 74, W-44, 20, hwnd, (HMENU)2001, hInst, NULL);
         SendMessageW(hProg, PBM_SETRANGE, 0, MAKELPARAM(0, 100));
-        SendMessageW(hProg, PBM_SETPOS, 0, 0);
+        SendMessageW(hProg, PBM_SETPOS, 10, 0);  // Set initial position to make it visible
+        ShowWindow(hProg, SW_SHOW);  // Explicitly show the progress bar
+        // Ensure progress bar is on top of groove
+        SetWindowPos(hProg, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
+        UpdateWindow(hProg);
+        InvalidateRect(hProg, NULL, TRUE);
+        
+        // Force parent window update to ensure controls are visible
+        UpdateWindow(hwnd);
+        InvalidateRect(hwnd, NULL, TRUE);
         
         // Animation overlay (hidden initially, shown during install phase)
         hAnim = CreateWindowExW(WS_EX_TRANSPARENT, L"STATIC", NULL, WS_CHILD, 
-            20, 72, W-40, 28, hwnd, NULL, hInst, NULL);
+            22, 74, W-44, 20, hwnd, (HMENU)2002, hInst, NULL);
         g_hInstallAnim = hAnim;
         SetWindowSubclass(hAnim, AnimSubclassProc, 0, 0);
         SetTimer(hAnim, 0xBEEF, 1, NULL); // 1ms refresh rate
@@ -433,15 +527,33 @@ static LRESULT CALLBACK InstallDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPAR
         SendMessageW(hOut, WM_SETFONT, (WPARAM)hEditFont, TRUE);
         SendMessageW(hOut, EM_SETBKGNDCOLOR, 0, (LPARAM)GetSysColor(COLOR_WINDOW));
         
+        // Initialize second status line with placeholder to ensure it's visible
+        SetWindowTextW(hStatus, L"Klargjør...");
+        ShowWindow(hStatus, SW_SHOW);
+        UpdateWindow(hStatus);
+        
         // Done button (centered, disabled initially)
         hDone = CreateWindowExW(0, L"Button", g_doneButtonText.c_str(), WS_CHILD | WS_VISIBLE | WS_DISABLED | BS_PUSHBUTTON, 
             (W-150)/2, H-70, 150, 32, hwnd, (HMENU)1001, hInst, NULL);
         
         return 0;
     }
+    case WM_CTLCOLORSTATIC: {
+        HDC hdcStatic = (HDC)wParam;
+        HWND hStatic = (HWND)lParam;
+        // Make static controls above progress bar have white background
+        if (hStatic == hOverallStatus || hStatic == hStatus) {
+            SetBkColor(hdcStatic, RGB(255, 255, 255));
+            return (INT_PTR)GetStockObject(WHITE_BRUSH);
+        }
+        break;
+    }
     case WM_COMMAND:
         if (LOWORD(wParam) == 1001) {
-            // Done button clicked - destroy window to exit message loop
+            // Done button clicked - bring window to foreground then destroy
+            SetForegroundWindow(hwnd);
+            BringWindowToTop(hwnd);
+            SetWindowPos(hwnd, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
             DestroyWindow(hwnd);
         }
         return 0;
@@ -449,8 +561,15 @@ static LRESULT CALLBACK InstallDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPAR
         // Allow closing after install completes (when Done button is enabled)
         if (hDone && IsWindowEnabled(hDone)) {
             DestroyWindow(hwnd);
+        } else {
+            // Show cancelling message and terminate helper process
+            if (g_installThread && g_installThread->joinable()) {
+                MessageBoxW(hwnd, L"Avbryter installasjonen...\n\nVennligst vent mens prosessen avsluttes.",
+                           L"Avbryter", MB_OK | MB_ICONINFORMATION | MB_TOPMOST);
+                // The thread will detect process termination and clean up
+            }
+            DestroyWindow(hwnd);
         }
-        // Otherwise ignore close during installation
         return 0;
     case WM_DESTROY:
         if (hAnim) {
@@ -492,10 +611,14 @@ static void ProcessWingetOutput(const std::string& line, HWND hwnd, HWND hProg, 
         ShowWindow(hAnim, SW_HIDE);
         
         // Use translation key with package name
-        wchar_t pkgBuf[512];
-        std::wstring pkgWide = Utf8ToWide(currentPackage);
-        swprintf(pkgBuf, 512, t("downloading_package").c_str(), pkgWide.c_str());
-        SetWindowTextW(hStatus, pkgBuf);
+        if (!currentPackage.empty()) {
+            wchar_t pkgBuf[512];
+            std::wstring pkgWide = Utf8ToWide(currentPackage);
+            swprintf(pkgBuf, 512, t("downloading_package").c_str(), pkgWide.c_str());
+            SetWindowTextW(hStatus, pkgBuf);
+        } else {
+            SetWindowTextW(hStatus, L"Downloading...");
+        }
         
         // Reset progress bar for download (0-100%)
         SendMessageW(hProg, PBM_SETRANGE, 0, MAKELPARAM(0, 100));
@@ -506,8 +629,7 @@ static void ProcessWingetOutput(const std::string& line, HWND hwnd, HWND hProg, 
              trimmed.find("Successfully installed") == 0) {
         if (currentPhase != "install" && trimmed.find("Installing") == 0) {
             currentPhase = "install";
-            // Hide progress bar, show animation
-            ShowWindow(hProg, SW_HIDE);
+            // Show animation overlay (progress bar stays visible underneath)
             ShowWindow(hAnim, SW_SHOW);
             
             // Reset animation to start position
@@ -734,12 +856,19 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
         g_displayedRtfContent.clear();
         g_isFirstRtfAppend = true;
         
-        // Update status to show preparing
-        SetWindowTextW(hStatus, t("install_preparing").c_str());
-        
-        // Start with progress bar visible (for download phase), animation hidden
+        // Start with progress bar visible (default to download mode), animation hidden
         ShowWindow(hProg, SW_SHOW);
         ShowWindow(hAnim, SW_HIDE);
+        SendMessageW(hProg, PBM_SETPOS, 0, 0);
+        
+        // Force progress bar to front to ensure visibility
+        SetWindowPos(hProg, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
+        InvalidateRect(hProg, NULL, TRUE);
+        UpdateWindow(hProg);
+        
+        // Track current phase and package name
+        std::wstring currentPhase = L"download";  // Start in download mode by default
+        std::wstring currentAppName = L"";  // Display name for status
         
         // Create a unique named pipe for IPC (in-memory communication)
         std::wstring pipeName = L"\\\\.\\pipe\\WinUpdate_" + std::to_wstring(GetCurrentProcessId()) + L"_" + std::to_wstring(GetTickCount());
@@ -756,8 +885,9 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
         );
         
         if (hPipe == INVALID_HANDLE_VALUE) {
-            SendMessageW(hStatus, WM_SETTEXT, 0, (LPARAM)L"Failed to create pipe");
-            AppendFormattedText(hOut, L"Error: Failed to create named pipe\r\n", true, RGB(255, 0, 0));
+            std::wstring errMsg = t("install_error_pipe") + L"\r\n";
+            SendMessageW(hStatus, WM_SETTEXT, 0, (LPARAM)errMsg.c_str());
+            AppendFormattedText(hOut, errMsg, true, RGB(255, 0, 0));
             EnableWindow(hDone, TRUE);
             return;
         }
@@ -772,6 +902,18 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
         }
         std::wstring helperPath = exeDir + L"\\winget_helper.exe";
         
+        // Write package name map to temporary file for winget_helper to read
+        std::wstring mapFile = exeDir + L"\\wup_pkg_names.txt";
+        {
+            std::lock_guard<std::mutex> lock(g_packages_mutex);
+            std::wofstream ofs(mapFile.c_str());
+            if (ofs) {
+                for (const auto& [id, name] : g_packages) {
+                    ofs << Utf8ToWide(id) << L"|" << Utf8ToWide(name) << L"\n";
+                }
+            }
+        }
+        
         // Clear winget cache before installing to force fresh downloads
         std::wstring clearCmd = L"cmd.exe /c winget source reset --force >nul 2>&1";
         STARTUPINFOW siClear = {};
@@ -781,7 +923,7 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
         PROCESS_INFORMATION piClear = {};
         if (CreateProcessW(NULL, (LPWSTR)clearCmd.c_str(), NULL, NULL, FALSE,
                           CREATE_NO_WINDOW, NULL, NULL, &siClear, &piClear)) {
-            WaitForSingleObject(piClear.hProcess, 10000);  // Wait max 10 seconds
+            WaitForSingleObject(piClear.hProcess, 15000);  // Wait max 15 seconds
             CloseHandle(piClear.hThread);
             CloseHandle(piClear.hProcess);
         }
@@ -806,10 +948,9 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
         if (!ShellExecuteExW(&sei) || !sei.hProcess) {
             // User cancelled UAC or elevation failed
             DWORD err = GetLastError();
-            wchar_t errMsg[512];
-            swprintf(errMsg, 512, L"Installation cancelled or failed (error %lu)", err);
-            SendMessageW(hStatus, WM_SETTEXT, 0, (LPARAM)errMsg);
-            AppendFormattedText(hOut, std::wstring(L"Error: ") + errMsg + L"\r\n", true, RGB(255, 0, 0));
+            std::wstring errMsg = t("install_error_elevate") + L" (" + std::to_wstring(err) + L")";
+            SendMessageW(hStatus, WM_SETTEXT, 0, (LPARAM)errMsg.c_str());
+            AppendFormattedText(hOut, errMsg + L"\r\n", true, RGB(255, 0, 0));
             EnableWindow(hDone, TRUE);
             CloseHandle(hPipe);
             return;
@@ -829,7 +970,7 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
         }
         
         if (!connected) {
-            AppendFormattedText(hOut, L"Helper failed to connect\r\n", true, RGB(255, 0, 0));
+            AppendFormattedText(hOut, t("install_error_connect") + L"\r\n", true, RGB(255, 0, 0));
             CloseHandle(hPipe);
             CloseHandle(sei.hProcess);
             EnableWindow(hDone, TRUE);
@@ -850,7 +991,7 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
             if (timeoutCounter > TIMEOUT_LIMIT) {
                 // Timeout - terminate the process
                 TerminateProcess(sei.hProcess, 1);
-                std::wstring timeoutMsg = L"Installation timed out after 5 minutes.\r\n";
+                std::wstring timeoutMsg = t("install_error_timeout") + L"\r\n";
                 AppendFormattedText(hOut, timeoutMsg, true, RGB(255, 0, 0));
                 break;
             }
@@ -890,15 +1031,61 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
                             line.pop_back();
                         }
                         
+                        // PARSE PROGRESS BEFORE FILTERING (so we capture MB values even if line is hidden)
+                        if (currentPhase == L"download") {
+                            // Look for "XX MB / YY MB" pattern
+                            size_t mbPos = line.find(L" MB");
+                            if (mbPos != std::wstring::npos) {
+                                size_t slashPos = line.rfind(L" / ", mbPos);
+                                if (slashPos != std::wstring::npos) {
+                                    // Find the total MB after the slash
+                                    size_t totalStart = slashPos + 3;
+                                    size_t totalEnd = line.find(L" MB", totalStart);
+                                    if (totalEnd != std::wstring::npos) {
+                                        // Find the current MB before the slash
+                                        size_t currentStart = slashPos;
+                                        while (currentStart > 0 && (iswdigit(line[currentStart - 1]) || line[currentStart - 1] == L'.' || line[currentStart - 1] == L' ')) {
+                                            currentStart--;
+                                        }
+                                        // Trim leading spaces
+                                        while (currentStart < slashPos && line[currentStart] == L' ') {
+                                            currentStart++;
+                                        }
+                                        try {
+                                            double currentMB = std::stod(line.substr(currentStart, slashPos - currentStart));
+                                            double totalMB = std::stod(line.substr(totalStart, totalEnd - totalStart));
+                                            if (totalMB > 0) {
+                                                int percent = (int)((currentMB / totalMB) * 100.0);
+                                                if (percent >= 0 && percent <= 100) {
+                                                    SendMessageW(hProg, PBM_SETPOS, percent, 0);
+                                                    InvalidateRect(hProg, NULL, TRUE);
+                                                    UpdateWindow(hProg);
+                                                }
+                                            }
+                                        } catch (...) {}
+                                    }
+                                }
+                            }
+                        }
+                        
                         // Filter and display
                         std::string narrowLine = WideToUtf8(line + L"\n");
                         if (ShouldDisplayLine(narrowLine)) {
+                            // Trim leading and trailing whitespace from the line before display
+                            std::wstring trimmedLine = line;
+                            while (!trimmedLine.empty() && iswspace(trimmedLine.front())) {
+                                trimmedLine.erase(0, 1);
+                            }
+                            while (!trimmedLine.empty() && iswspace(trimmedLine.back())) {
+                                trimmedLine.pop_back();
+                            }
+                            
                             // Determine color and styling based on content
                             bool isBold = false;
                             COLORREF color = RGB(0, 0, 0);
-                            GetLineStyle(line, isBold, color);
+                            GetLineStyle(trimmedLine, isBold, color);
                             
-                            AppendFormattedText(hOut, line + L"\n", isBold, color);
+                            AppendFormattedText(hOut, trimmedLine + L"\n", isBold, color);
                         }
                     }
                     
@@ -910,36 +1097,86 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
                         }
                     }
                     
-                    // Parse output for progress tracking (use full text)
-                    // Look for "[X/Y] PackageId" lines
-                    size_t bracketPos = wtext.find(L"[");
-                    if (bracketPos != std::wstring::npos) {
-                        size_t slashPos = wtext.find(L"/", bracketPos);
-                        size_t closeBracket = wtext.find(L"]", slashPos);
-                        if (slashPos != std::wstring::npos && closeBracket != std::wstring::npos) {
-                            // Extract package ID after the bracket
-                            size_t pkgStart = closeBracket + 1;
-                            while (pkgStart < wtext.length() && iswspace(wtext[pkgStart])) pkgStart++;
-                            size_t pkgEnd = wtext.find(L"\r", pkgStart);
-                            if (pkgEnd == std::wstring::npos) pkgEnd = wtext.find(L"\n", pkgStart);
-                            if (pkgEnd != std::wstring::npos) {
-                                currentPackageId = wtext.substr(pkgStart, pkgEnd - pkgStart);
-                                // Update status
-                                SendMessageW(hStatus, WM_SETTEXT, 0, (LPARAM)currentPackageId.c_str());
+                    // Extract app name from "Found" lines
+                    // Format: "Found App Name [Package.ID] Version X.X.X"
+                    // Also: "(1/2) Found App Name [Package.ID] Version X.X.X"
+                    size_t foundPos = wtext.find(L"Found ");
+                    if (foundPos != std::wstring::npos) {
+                        size_t nameStart = foundPos + 6;  // After "Found "
+                        size_t bracketPos = wtext.find(L"[", nameStart);
+                        if (bracketPos != std::wstring::npos) {
+                            currentAppName = wtext.substr(nameStart, bracketPos - nameStart);
+                            // Trim leading whitespace
+                            while (!currentAppName.empty() && iswspace(currentAppName.front())) {
+                                currentAppName.erase(0, 1);
+                            }
+                            // Trim trailing whitespace
+                            while (!currentAppName.empty() && iswspace(currentAppName.back())) {
+                                currentAppName.pop_back();
                             }
                         }
                     }
                     
-                    // Look for success/fail markers
-                    if (wtext.find(L"✓ Success") != std::wstring::npos || wtext.find(L"✗ Failed") != std::wstring::npos) {
-                        completedPackages++;
-                        // Update progress bar
-                        int progress = (completedPackages * 100) / (int)packageIds.size();
-                        SendMessageW(hProg, PBM_SETPOS, progress, 0);
-                        
-                        // Update overall status
-                        wchar_t progBuf[256];
-                        // Status already shows total packages, no need to update per-package
+                    // Detect download phase (multiple patterns)
+                    if (wtext.find(L"Downloading") != std::wstring::npos || 
+                        wtext.find(L"  ██") != std::wstring::npos ||  // Progress bar characters
+                        wtext.find(L"Download started") != std::wstring::npos) {
+                        if (currentPhase != L"download") {
+                            currentPhase = L"download";
+                            // Show progress bar, hide animation
+                            ShowWindow(hProg, SW_SHOW);
+                            ShowWindow(hAnim, SW_HIDE);
+                            // Reset progress bar
+                            SendMessageW(hProg, PBM_SETRANGE, 0, MAKELPARAM(0, 100));
+                            SendMessageW(hProg, PBM_SETPOS, 0, 0);
+                            // Update status text
+                            if (!currentAppName.empty()) {
+                                wchar_t statusBuf[512];
+                                swprintf(statusBuf, 512, t("downloading_package").c_str(), currentAppName.c_str());
+                                SetWindowTextW(hStatus, statusBuf);
+                            } else {
+                                SetWindowTextW(hStatus, L"Downloading...");
+                            }
+                            // Force immediate update
+                            UpdateWindow(hProg);
+                            UpdateWindow(hStatus);
+                            InvalidateRect(hProg, NULL, TRUE);
+                            InvalidateRect(hStatus, NULL, TRUE);
+                        }
+                    }
+                    
+                    // Detect install phase
+                    if (wtext.find(L"Starting package install") != std::wstring::npos ||
+                        (wtext.find(L"Installing") != std::wstring::npos && wtext.find(L"Successfully installed") == std::wstring::npos)) {
+                        if (currentPhase != L"install") {
+                            currentPhase = L"install";
+                            // Show animation overlay (progress bar stays visible underneath)
+                            ShowWindow(hAnim, SW_SHOW);
+                            // Reset animation
+                            g_animFrame = 0;
+                            // Update status text
+                            if (!currentAppName.empty()) {
+                                wchar_t statusBuf[512];
+                                swprintf(statusBuf, 512, t("installing_package").c_str(), currentAppName.c_str());
+                                SetWindowTextW(hStatus, statusBuf);
+                            }
+                            // Force immediate update
+                            UpdateWindow(hAnim);
+                            UpdateWindow(hStatus);
+                            InvalidateRect(hStatus, NULL, TRUE);
+                        }
+                    }
+                    
+                    // Look for success/fail markers (phase complete)
+                    if (wtext.find(L"✓ Success") != std::wstring::npos || 
+                        wtext.find(L"ℹ️") != std::wstring::npos || 
+                        wtext.find(L"⚠️") != std::wstring::npos ||
+                        wtext.find(L"❌") != std::wstring::npos) {
+                        // Package completed - reset phase for next package
+                        currentPhase = L"";
+                        currentAppName = L"";
+                        ShowWindow(hAnim, SW_HIDE);
+                        SetWindowTextW(hStatus, L"");
                     }
                 }
             }
@@ -964,6 +1201,17 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
         std::wstring completionMsg = L"\r\n\r\n=== Installation Complete ===\r\n";
         completionMsg += std::to_wstring(packageIds.size()) + L" package(s) processed.\r\n";
         AppendFormattedText(hOut, completionMsg, true, RGB(0, 0, 0));
+        
+        // Force window update and scroll aggressively to ensure text is visible
+        int finalLineCount = (int)SendMessageW(hOut, EM_GETLINECOUNT, 0, 0);
+        for (int i = 0; i < 3; i++) {  // Multiple scroll attempts
+            SendMessageW(hOut, EM_LINESCROLL, 0, finalLineCount);
+            SendMessageW(hOut, WM_VSCROLL, SB_BOTTOM, 0);
+            SendMessageW(hOut, EM_SCROLLCARET, 0, 0);
+        }
+        InvalidateRect(hOut, NULL, TRUE);
+        UpdateWindow(hOut);
+        RedrawWindow(hOut, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
     };
     
     // Store thread (don't detach - we need to join it before saving log)

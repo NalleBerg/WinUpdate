@@ -3,6 +3,8 @@
 #include <windows.h>
 #include <string>
 #include <vector>
+#include <fstream>
+#include <unordered_map>
 #include "src/winget_errors.h"
 
 // Write to pipe helper
@@ -21,6 +23,31 @@ void WriteToPipe(HANDLE hPipe, const std::wstring& text) {
 }
 
 int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR lpCmdLine, int) {
+    // Load package ID->Name map from file
+    std::unordered_map<std::wstring, std::wstring> packageNameMap;
+    {
+        wchar_t exePath[MAX_PATH];
+        GetModuleFileNameW(NULL, exePath, MAX_PATH);
+        std::wstring exeDir = exePath;
+        size_t lastSlash = exeDir.find_last_of(L"\\/");
+        if (lastSlash != std::wstring::npos) {
+            exeDir = exeDir.substr(0, lastSlash);
+        }
+        std::wstring mapFile = exeDir + L"\\wup_pkg_names.txt";
+        std::wifstream ifs(mapFile.c_str());
+        if (ifs) {
+            std::wstring line;
+            while (std::getline(ifs, line)) {
+                size_t sep = line.find(L'|');
+                if (sep != std::wstring::npos) {
+                    std::wstring id = line.substr(0, sep);
+                    std::wstring name = line.substr(sep + 1);
+                    packageNameMap[id] = name;
+                }
+            }
+        }
+    }
+    
     // Parse command line manually (first arg is pipe name, rest are package IDs)
     int argc;
     wchar_t** argv = CommandLineToArgvW(GetCommandLineW(), &argc);
@@ -64,9 +91,11 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR lpCmdLine, int) {
     int skipCount = 0;
     int warningCount = 0;
     
-    std::vector<std::pair<std::wstring, DWORD>> results; // packageId, exitCode
+    // Store packageId, appName, exitCode
+    std::vector<std::tuple<std::wstring, std::wstring, DWORD>> results;
 
     for (size_t i = 0; i < packageIds.size(); i++) {
+        std::wstring currentAppName = L""; // Track app name from "Found" lines
         WriteToPipe(hPipe, L"[" + std::to_wstring(i+1) + L"/" + std::to_wstring(packageIds.size()) + L"] " + packageIds[i] + L"\r\n");
         
         // Build winget command
@@ -121,6 +150,27 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR lpCmdLine, int) {
             if (needed > 0) {
                 std::wstring wbuffer(needed, L'\0');
                 MultiByteToWideChar(CP_UTF8, 0, buffer, bytesRead, &wbuffer[0], needed);
+                
+                // Parse app name from "Found AppName [PackageID]" lines
+                if (currentAppName.empty()) {
+                    size_t foundPos = wbuffer.find(L"Found ");
+                    if (foundPos != std::wstring::npos) {
+                        size_t nameStart = foundPos + 6;
+                        size_t bracketPos = wbuffer.find(L"[", nameStart);
+                        if (bracketPos != std::wstring::npos) {
+                            currentAppName = wbuffer.substr(nameStart, bracketPos - nameStart);
+                            // Trim leading whitespace
+                            while (!currentAppName.empty() && iswspace(currentAppName.front())) {
+                                currentAppName.erase(0, 1);
+                            }
+                            // Trim trailing whitespace
+                            while (!currentAppName.empty() && iswspace(currentAppName.back())) {
+                                currentAppName.pop_back();
+                            }
+                        }
+                    }
+                }
+                
                 WriteToPipe(hPipe, wbuffer);
             }
         }
@@ -135,7 +185,28 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR lpCmdLine, int) {
         CloseHandle(hReadPipe);
         
         // Store result for summary
-        results.push_back({packageIds[i], exitCode});
+        if (currentAppName.empty()) {
+            currentAppName = packageIds[i]; // Fallback to ID if name not found
+        }
+        
+        // Try to get display name from map first
+        std::wstring displayName;
+        if (packageNameMap.count(packageIds[i])) {
+            displayName = packageNameMap[packageIds[i]];
+        } else if (!currentAppName.empty()) {
+            displayName = currentAppName;
+        } else {
+            displayName = packageIds[i];
+        }
+        
+        // Trim any leading/trailing whitespace before storing
+        while (!displayName.empty() && iswspace(displayName.front())) {
+            displayName.erase(0, 1);
+        }
+        while (!displayName.empty() && iswspace(displayName.back())) {
+            displayName.pop_back();
+        }
+        results.push_back({packageIds[i], displayName, exitCode});
         
         // Categorize result
         if (exitCode == WingetErrors::SUCCESS) {
@@ -183,7 +254,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR lpCmdLine, int) {
         
         if (successCount > 0) {
             WriteToPipe(hPipe, L"Successful:\r\n");
-            for (const auto& [pkgId, exitCode] : results) {
+            for (const auto& [pkgId, appName, exitCode] : results) {
                 if (exitCode == WingetErrors::SUCCESS) {
                     WriteToPipe(hPipe, L"  • " + pkgId + L"\r\n");
                 }
@@ -192,7 +263,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR lpCmdLine, int) {
         
         if (skipCount > 0) {
             WriteToPipe(hPipe, L"\r\nSkipped:\r\n");
-            for (const auto& [pkgId, exitCode] : results) {
+            for (const auto& [pkgId, appName, exitCode] : results) {
                 if (WingetErrors::IsSkipped(exitCode)) {
                     WriteToPipe(hPipe, L"  • " + pkgId + L" (" + WingetErrors::GetStatusText(exitCode).substr(3) + L")\r\n");
                 }
@@ -201,7 +272,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR lpCmdLine, int) {
         
         if (warningCount > 0) {
             WriteToPipe(hPipe, L"\r\nCancelled:\r\n");
-            for (const auto& [pkgId, exitCode] : results) {
+            for (const auto& [pkgId, appName, exitCode] : results) {
                 if (exitCode == WingetErrors::INSTALL_CANCELLED_BY_USER || 
                     exitCode == WingetErrors::WINDOWS_ERROR_CANCELLED) {
                     WriteToPipe(hPipe, L"  ⚠️ " + pkgId + L" (cancelled by user or by the installer itself)\r\n");
@@ -211,10 +282,86 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR lpCmdLine, int) {
         
         if (failCount > 0) {
             WriteToPipe(hPipe, L"\r\nFailed:\r\n");
-            for (const auto& [pkgId, exitCode] : results) {
+            for (const auto& [pkgId, appName, exitCode] : results) {
                 if (WingetErrors::IsFailure(exitCode)) {
                     WriteToPipe(hPipe, L"  • " + pkgId + L" (" + WingetErrors::GetStatusText(exitCode).substr(3) + L")\r\n");
                 }
+            }
+        }
+    }
+    
+    WriteToPipe(hPipe, L"\r\n" + std::to_wstring(results.size()) + L" package(s) processed.\r\n");
+    
+    // Detailed error summary at the very end (for ALL non-success results)
+    if (!results.empty() && (skipCount > 0 || warningCount > 0 || failCount > 0)) {
+        WriteToPipe(hPipe, L"\r\n========================================\r\n");
+        WriteToPipe(hPipe, L"\r\nErrors:\r\n");
+        
+        for (const auto& [pkgId, appName, exitCode] : results) {
+            // Include skipped, cancelled, and failed packages
+            if (exitCode != WingetErrors::SUCCESS) {
+                // Trim any leading/trailing whitespace from app name
+                std::wstring trimmedAppName = appName;
+                while (!trimmedAppName.empty() && iswspace(trimmedAppName.front())) {
+                    trimmedAppName.erase(0, 1);
+                }
+                while (!trimmedAppName.empty() && iswspace(trimmedAppName.back())) {
+                    trimmedAppName.pop_back();
+                }
+                
+                // Add blank line before each entry, then app name with ID (will be colored by UI)
+                WriteToPipe(hPipe, L"\r\n" + trimmedAppName + L" -- " + pkgId + L":\r\n");
+                
+                // Error number (hex and decimal)
+                wchar_t codeHex[32];
+                swprintf(codeHex, 32, L"0x%08X", exitCode);
+                int signedCode = (int)exitCode;
+                WriteToPipe(hPipe, L"Error number: " + std::wstring(codeHex) + L" (" + std::to_wstring(signedCode) + L")\r\n");
+                
+                // Reason
+                std::wstring reason;
+                if (WingetErrors::IsSkipped(exitCode)) {
+                    if (exitCode == WingetErrors::UPDATE_NOT_APPLICABLE) {
+                        reason = L"No applicable upgrade - package version doesn't match system requirements";
+                    } else if (exitCode == WingetErrors::NO_APPLICABLE_INSTALLER) {
+                        reason = L"No compatible installer available for your system configuration";
+                    } else if (exitCode == WingetErrors::PACKAGE_ALREADY_INSTALLED) {
+                        reason = L"Package is already up to date";
+                    } else {
+                        reason = L"Package skipped - not applicable";
+                    }
+                } else if (exitCode == WingetErrors::INSTALL_CANCELLED_BY_USER || 
+                           exitCode == WingetErrors::WINDOWS_ERROR_CANCELLED) {
+                    reason = L"Installation cancelled by user or installer";
+                } else if (exitCode == WingetErrors::DOWNLOAD_FAILED) {
+                    reason = L"Download failed due to network or server issues";
+                } else if (exitCode == WingetErrors::NO_APPLICATIONS_FOUND) {
+                    reason = L"Package not found in any configured source";
+                } else if (exitCode == WingetErrors::TIMEOUT) {
+                    reason = L"Installation timed out";
+                } else {
+                    reason = L"Installation failed with unknown error";
+                }
+                WriteToPipe(hPipe, L"Reason: " + reason + L"\r\n");
+                
+                // Recommendation
+                std::wstring recommendation;
+                if (WingetErrors::IsSkipped(exitCode)) {
+                    recommendation = L"Skip this package and wait for the next version";
+                } else if (exitCode == WingetErrors::INSTALL_CANCELLED_BY_USER || 
+                           exitCode == WingetErrors::WINDOWS_ERROR_CANCELLED) {
+                    recommendation = L"Exclude this package if you want to stop update prompts";
+                } else if (exitCode == WingetErrors::DOWNLOAD_FAILED) {
+                    recommendation = L"Retry the installation when network conditions improve";
+                } else if (exitCode == WingetErrors::NO_APPLICATIONS_FOUND) {
+                    recommendation = L"Exclude this package - it's no longer available";
+                } else if (exitCode == WingetErrors::TIMEOUT) {
+                    recommendation = L"Check Task Manager for stuck installer processes and try again";
+                } else {
+                    recommendation = L"Search online for this error code to find specific information";
+                }
+                WriteToPipe(hPipe, L"Recommendation: " + recommendation + L"\r\n");
+                WriteToPipe(hPipe, L"----------------------------------------\r\n\r\n");
             }
         }
     }
