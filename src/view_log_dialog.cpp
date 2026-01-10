@@ -55,12 +55,20 @@ static LRESULT CALLBACK ViewLogWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARA
         int id = LOWORD(wParam);
         if (!ctx) return DefWindowProcW(hWnd, msg, wParam, lParam);
         if (id == 1001) { // Close
-            if (ctx && ctx->parent && IsWindow(ctx->parent)) PostMessageW(ctx->parent, (WM_APP+7), 0, 0);
+            if (ctx && ctx->parent && IsWindow(ctx->parent)) {
+                PostMessageW(ctx->parent, (WM_APP+7), 0, 0);
+                SetForegroundWindow(ctx->parent);
+                BringWindowToTop(ctx->parent);
+            }
             DestroyWindow(hWnd);
             return 0;
         }
     }
     if (msg == WM_CLOSE) {
+        if (ctx && ctx->parent && IsWindow(ctx->parent)) {
+            SetForegroundWindow(ctx->parent);
+            BringWindowToTop(ctx->parent);
+        }
         DestroyWindow(hWnd);
         return 0;
     }
@@ -114,6 +122,12 @@ bool ShowInstallLogDialog(HWND parent, const std::string &locale) {
         px, py, W, H, parent, NULL, GetModuleHandleW(NULL), NULL);
     if (!hDlg) return false;
     
+    // Get actual client area size (excludes title bar and borders)
+    RECT clientRect;
+    GetClientRect(hDlg, &clientRect);
+    int clientW = clientRect.right - clientRect.left;
+    int clientH = clientRect.bottom - clientRect.top;
+    
     DialogContext *ctx = new DialogContext();
     ctx->parent = parent;
     ctx->locale = locale;
@@ -121,10 +135,10 @@ bool ShowInstallLogDialog(HWND parent, const std::string &locale) {
     // Load RichEdit library
     LoadLibraryW(L"Riched20.dll");
     
-    // Create RichEdit control for RTF display
+    // Create RichEdit control for RTF display (use client height for sizing)
     HWND hEdit = CreateWindowExW(WS_EX_CLIENTEDGE, L"RichEdit20W", NULL, 
-        WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_HSCROLL | ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL | ES_AUTOHSCROLL, 
-        12, 12, W-24, H-70, hDlg, NULL, GetModuleHandleW(NULL), NULL);
+        WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL, 
+        12, 12, clientW-24, clientH-58, hDlg, NULL, GetModuleHandleW(NULL), NULL);
     
     // Enable RTF mode
     SendMessageW(hEdit, EM_SETTEXTMODE, TM_RICHTEXT, 0);
@@ -157,14 +171,14 @@ bool ShowInstallLogDialog(HWND parent, const std::string &locale) {
     ctx->hEdit = hEdit;
     SetWindowLongPtrW(hDlg, GWLP_USERDATA, (LONG_PTR)ctx);
     
-    // Close button (centered)
+    // Close button (centered, positioned in client area)
     std::string txtClose = LoadI18nValue(locale, "btn_cancel");
     if (txtClose.empty()) txtClose = "Close";
     std::wstring wclose = Utf8ToWide(txtClose);
     int btnWidth = 100;
     int btnHeight = 30;
-    int btnX = (W - btnWidth) / 2;  // Center horizontally
-    int btnY = H - 55;  // Near bottom
+    int btnX = (clientW - btnWidth) / 2;  // Center horizontally in client area
+    int btnY = clientH - 38;  // 8 pixels from bottom of client area
     HWND hBtnClose = CreateWindowExW(0, L"BUTTON", wclose.c_str(), 
         WS_CHILD | WS_VISIBLE | BS_DEFPUSHBUTTON, 
         btnX, btnY, btnWidth, btnHeight, hDlg, (HMENU)1001, GetModuleHandleW(NULL), NULL);
