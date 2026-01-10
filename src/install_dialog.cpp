@@ -96,8 +96,10 @@ static LRESULT CALLBACK AnimSubclassProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
         RECT rc; 
         GetClientRect(hwnd, &rc);
         
-        // Clear entire area (erase previous dot)
-        FillRect(hdc, &rc, (HBRUSH)(COLOR_BTNFACE + 1));
+        // Clear the entire area with parent background color
+        HBRUSH hBgBrush = (HBRUSH)GetClassLongPtr(GetParent(hwnd), GCLP_HBRBACKGROUND);
+        if (!hBgBrush) hBgBrush = GetSysColorBrush(COLOR_WINDOW);
+        FillRect(hdc, &rc, hBgBrush);
         
         int width = rc.right - rc.left;
         int height = rc.bottom - rc.top;
@@ -108,12 +110,17 @@ static LRESULT CALLBACK AnimSubclassProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
         // Movement range (dot travels from left edge to right edge)
         int travelDistance = width - dotSize;
         
-        // Position cycles: move 1 pixel per frame
-        int position = (g_animFrame * 1) % (travelDistance + dotSize);
+        // Bounce back and forth: double the cycle length
+        int cycleLength = travelDistance * 2;
+        int posInCycle = (g_animFrame * 1) % cycleLength;
         
-        // When dot exits right side, reset
-        if (position > travelDistance) {
-            position = 0;
+        int position;
+        if (posInCycle <= travelDistance) {
+            // Moving forward
+            position = posInCycle;
+        } else {
+            // Moving backward
+            position = travelDistance - (posInCycle - travelDistance);
         }
         
         // Draw the round dot
@@ -137,6 +144,7 @@ static LRESULT CALLBACK AnimSubclassProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
         return 0;
     }
     if (uMsg == WM_ERASEBKGND) {
+        // Let WM_PAINT handle all drawing
         return 1;
     }
     return DefSubclassProc(hwnd, uMsg, wParam, lParam);
@@ -481,18 +489,14 @@ static LRESULT CALLBACK InstallDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPAR
             24, 48, W-48, 20, hwnd, NULL, hInst, NULL);
         SendMessageW(hStatus, WM_SETFONT, (WPARAM)hFont, TRUE);
         
-        // Groove container for progress bar and animation (always visible)
-        HWND hGroove = CreateWindowExW(0, L"Static", NULL, WS_CHILD | WS_VISIBLE | SS_ETCHEDFRAME,
-            20, 72, W-40, 24, hwnd, NULL, hInst, NULL);
-        
-        // Progress bar inside groove (always visible, segmented style)
+        // Progress bar (always visible, segmented style)
         hProg = CreateWindowExW(0, PROGRESS_CLASSW, NULL, 
             WS_CHILD | WS_VISIBLE, 
-            22, 74, W-44, 20, hwnd, (HMENU)2001, hInst, NULL);
+            20, 72, W-40, 24, hwnd, (HMENU)2001, hInst, NULL);
         SendMessageW(hProg, PBM_SETRANGE, 0, MAKELPARAM(0, 100));
         SendMessageW(hProg, PBM_SETPOS, 10, 0);  // Set initial position to make it visible
         ShowWindow(hProg, SW_SHOW);  // Explicitly show the progress bar
-        // Ensure progress bar is on top of groove
+        // Ensure progress bar is on top
         SetWindowPos(hProg, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
         UpdateWindow(hProg);
         InvalidateRect(hProg, NULL, TRUE);
@@ -503,7 +507,7 @@ static LRESULT CALLBACK InstallDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPAR
         
         // Animation overlay (hidden initially, shown during install phase)
         hAnim = CreateWindowExW(WS_EX_TRANSPARENT, L"STATIC", NULL, WS_CHILD, 
-            22, 74, W-44, 20, hwnd, (HMENU)2002, hInst, NULL);
+            20, 72, W-40, 24, hwnd, (HMENU)2002, hInst, NULL);
         g_hInstallAnim = hAnim;
         SetWindowSubclass(hAnim, AnimSubclassProc, 0, 0);
         SetTimer(hAnim, 0xBEEF, 1, NULL); // 1ms refresh rate
