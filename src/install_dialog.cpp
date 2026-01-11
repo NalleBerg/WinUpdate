@@ -23,6 +23,12 @@ static std::wstring g_doneButtonText = L"Done!";
 static bool g_inImportantBlock = false;  // Track if we're inside a multi-line important message
 static bool g_skipNextDelimiter = false;  // Track if next delimiter should be skipped
 
+// Download progress state
+static bool g_isDownloading = false;
+static double g_downloadProgress = 0.0;  // 0.0 to 100.0
+static double g_currentMB = 0.0;
+static double g_totalMB = 0.0;
+
 // Install log accumulator (plain text)
 static std::string g_installLog;
 // RTF log accumulator (with formatting)
@@ -83,6 +89,76 @@ static void AddToLog(const std::wstring& text, bool isBold = false, COLORREF col
     }
 }
 
+// Draw progress bar with rounded ends and text overlay
+static void DrawProgressBar(HDC hdc, RECT rc, double progress) {
+    int width = rc.right - rc.left;
+    int height = rc.bottom - rc.top;
+    
+    // Calculate filled width based on progress (0-100%)
+    int filledWidth = (int)((progress / 100.0) * width);
+    if (filledWidth < 0) filledWidth = 0;
+    if (filledWidth > width) filledWidth = width;
+    
+    // Bar color (same as ball)
+    COLORREF barColor = RGB(0, 120, 215);
+    
+    // Draw rounded bar if we have any progress
+    if (filledWidth > 0) {
+        // Create rounded bar shape
+        int radius = height / 2;
+        
+        HBRUSH hBrush = CreateSolidBrush(barColor);
+        HPEN hPen = CreatePen(PS_SOLID, 1, barColor);
+        HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, hBrush);
+        HPEN hOldPen = (HPEN)SelectObject(hdc, hPen);
+        
+        // Draw rounded rectangle (left cap + middle + right cap)
+        RoundRect(hdc, rc.left, rc.top, rc.left + filledWidth, rc.bottom, height, height);
+        
+        SelectObject(hdc, hOldBrush);
+        SelectObject(hdc, hOldPen);
+        DeleteObject(hBrush);
+        DeleteObject(hPen);
+    }
+    
+    // Draw percentage text with color transition effect
+    wchar_t percentText[32];
+    swprintf(percentText, 32, L"%.0f%%", progress);
+    
+    // Set up text rendering
+    SetBkMode(hdc, TRANSPARENT);
+    HFONT hFont = CreateFontW(-16, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
+        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
+        DEFAULT_PITCH | FF_SWISS, L"Segoe UI");
+    HFONT hOldFont = (HFONT)SelectObject(hdc, hFont);
+    
+    // Calculate text position (centered)
+    SIZE textSize;
+    GetTextExtentPoint32W(hdc, percentText, wcslen(percentText), &textSize);
+    int textX = rc.left + (width - textSize.cx) / 2;
+    int textY = rc.top + (height - textSize.cy) / 2;
+    
+    // Draw text in BLACK (background)
+    SetTextColor(hdc, RGB(0, 0, 0));
+    TextOutW(hdc, textX, textY, percentText, wcslen(percentText));
+    
+    // Draw text in WHITE clipped to filled area
+    if (filledWidth > 0) {
+        // Create clip region for filled area
+        HRGN clipRgn = CreateRoundRectRgn(rc.left, rc.top, rc.left + filledWidth + 1, rc.bottom + 1, height, height);
+        SelectClipRgn(hdc, clipRgn);
+        
+        SetTextColor(hdc, RGB(255, 255, 255));
+        TextOutW(hdc, textX, textY, percentText, wcslen(percentText));
+        
+        SelectClipRgn(hdc, NULL);
+        DeleteObject(clipRgn);
+    }
+    
+    SelectObject(hdc, hOldFont);
+    DeleteObject(hFont);
+}
+
 // Animation subclass procedure (draws moving dot overlay on progress bar)
 static LRESULT CALLBACK AnimSubclassProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR) {
     if (uMsg == WM_TIMER && wParam == 0xBEEF) {
@@ -101,44 +177,50 @@ static LRESULT CALLBACK AnimSubclassProc(HWND hwnd, UINT uMsg, WPARAM wParam, LP
         if (!hBgBrush) hBgBrush = GetSysColorBrush(COLOR_WINDOW);
         FillRect(hdc, &rc, hBgBrush);
         
-        int width = rc.right - rc.left;
-        int height = rc.bottom - rc.top;
-        
-        // Size of the dot (almost full height)
-        int dotSize = height - 6;  // 3px margin on each side
-        
-        // Movement range (dot travels from left edge to right edge)
-        int travelDistance = width - dotSize;
-        
-        // Bounce back and forth: double the cycle length
-        int cycleLength = travelDistance * 2;
-        int posInCycle = (g_animFrame * 1) % cycleLength;
-        
-        int position;
-        if (posInCycle <= travelDistance) {
-            // Moving forward
-            position = posInCycle;
+        if (g_isDownloading) {
+            // Draw progress bar with rounded ends
+            DrawProgressBar(hdc, rc, g_downloadProgress);
         } else {
-            // Moving backward
-            position = travelDistance - (posInCycle - travelDistance);
+            // Draw bouncing ball
+            int width = rc.right - rc.left;
+            int height = rc.bottom - rc.top;
+            
+            // Size of the dot (almost full height)
+            int dotSize = height - 6;  // 3px margin on each side
+            
+            // Movement range (dot travels from left edge to right edge)
+            int travelDistance = width - dotSize;
+            
+            // Bounce back and forth: double the cycle length
+            int cycleLength = travelDistance * 2;
+            int posInCycle = (g_animFrame * 1) % cycleLength;
+            
+            int position;
+            if (posInCycle <= travelDistance) {
+                // Moving forward
+                position = posInCycle;
+            } else {
+                // Moving backward
+                position = travelDistance - (posInCycle - travelDistance);
+            }
+            
+            // Draw the round dot
+            HBRUSH hBrush = CreateSolidBrush(RGB(0, 120, 215));
+            HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, hBrush);
+            HPEN hPen = CreatePen(PS_SOLID, 1, RGB(0, 120, 215));
+            HPEN hOldPen = (HPEN)SelectObject(hdc, hPen);
+            
+            int centerX = position + dotSize / 2;
+            int centerY = height / 2;
+            int radius = dotSize / 2;
+            
+            Ellipse(hdc, centerX - radius, centerY - radius, centerX + radius, centerY + radius);
+            
+            SelectObject(hdc, hOldBrush);
+            SelectObject(hdc, hOldPen);
+            DeleteObject(hBrush);
+            DeleteObject(hPen);
         }
-        
-        // Draw the round dot
-        HBRUSH hBrush = CreateSolidBrush(RGB(0, 120, 215));
-        HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, hBrush);
-        HPEN hPen = CreatePen(PS_SOLID, 1, RGB(0, 120, 215));
-        HPEN hOldPen = (HPEN)SelectObject(hdc, hPen);
-        
-        int centerX = position + dotSize / 2;
-        int centerY = height / 2;
-        int radius = dotSize / 2;
-        
-        Ellipse(hdc, centerX - radius, centerY - radius, centerX + radius, centerY + radius);
-        
-        SelectObject(hdc, hOldBrush);
-        SelectObject(hdc, hOldPen);
-        DeleteObject(hBrush);
-        DeleteObject(hPen);
         
         EndPaint(hwnd, &ps);
         return 0;
@@ -458,7 +540,6 @@ static void GetLineStyle(const std::wstring& line, bool& isBold, COLORREF& color
 
 // Dialog window procedure
 static LRESULT CALLBACK InstallDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-    static HWND hProg = NULL;
     static HWND hOut = NULL;
     static HWND hStatus = NULL;
     static HWND hAnim = NULL;
@@ -468,8 +549,6 @@ static LRESULT CALLBACK InstallDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPAR
     switch (uMsg) {
     case WM_CREATE: {
         HINSTANCE hInst = GetModuleHandleW(NULL);
-        INITCOMMONCONTROLSEX icce{ sizeof(icce), ICC_PROGRESS_CLASS };
-        InitCommonControlsEx(&icce);
         
         const int W = 640, H = 480;
         
@@ -489,24 +568,8 @@ static LRESULT CALLBACK InstallDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPAR
             24, 48, W-48, 20, hwnd, NULL, hInst, NULL);
         SendMessageW(hStatus, WM_SETFONT, (WPARAM)hFont, TRUE);
         
-        // Progress bar (always visible, segmented style)
-        hProg = CreateWindowExW(0, PROGRESS_CLASSW, NULL, 
-            WS_CHILD | WS_VISIBLE, 
-            20, 72, W-40, 24, hwnd, (HMENU)2001, hInst, NULL);
-        SendMessageW(hProg, PBM_SETRANGE, 0, MAKELPARAM(0, 100));
-        SendMessageW(hProg, PBM_SETPOS, 10, 0);  // Set initial position to make it visible
-        ShowWindow(hProg, SW_SHOW);  // Explicitly show the progress bar
-        // Ensure progress bar is on top
-        SetWindowPos(hProg, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
-        UpdateWindow(hProg);
-        InvalidateRect(hProg, NULL, TRUE);
-        
-        // Force parent window update to ensure controls are visible
-        UpdateWindow(hwnd);
-        InvalidateRect(hwnd, NULL, TRUE);
-        
-        // Animation overlay (hidden initially, shown during install phase)
-        hAnim = CreateWindowExW(WS_EX_TRANSPARENT, L"STATIC", NULL, WS_CHILD, 
+        // Custom progress bar / animation window (always visible)
+        hAnim = CreateWindowExW(WS_EX_TRANSPARENT, L"STATIC", NULL, WS_CHILD | WS_VISIBLE, 
             20, 72, W-40, 24, hwnd, (HMENU)2002, hInst, NULL);
         g_hInstallAnim = hAnim;
         SetWindowSubclass(hAnim, AnimSubclassProc, 0, 0);
@@ -1041,18 +1104,36 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
                             line.pop_back();
                         }
                         
-                        // PARSE PROGRESS BEFORE FILTERING (so we capture MB values even if line is hidden)
-                        if (currentPhase == L"download") {
-                            // Look for "XX MB / YY MB" pattern
-                            size_t mbPos = line.find(L" MB");
-                            if (mbPos != std::wstring::npos) {
-                                size_t slashPos = line.rfind(L" / ", mbPos);
-                                if (slashPos != std::wstring::npos) {
-                                    // Find the total MB after the slash
+                        // PARSE PROGRESS (look for "XX MB / YY MB" pattern regardless of phase)
+                        // Also check for KB and GB patterns
+                        size_t mbPos = line.find(L" MB");
+                        size_t kbPos = line.find(L" KB");
+                        size_t gbPos = line.find(L" GB");
+                        
+                        // Debug: log all lines with timestamps
+                        {
+                            SYSTEMTIME stDebug;
+                            GetLocalTime(&stDebug);
+                            char timeStrDebug[32];
+                            sprintf(timeStrDebug, "%02d:%02d:%02d:%03d", stDebug.wHour, stDebug.wMinute, stDebug.wSecond, stDebug.wMilliseconds);
+                            
+                            std::string debugLine = WideToUtf8(line);
+                            
+                            std::ofstream debugLog("C:\\Users\\NalleBerg\\Documents\\C++\\Workspace\\WinUpdate\\progress_raw_debug.txt", std::ios::app);
+                            if (debugLog.is_open()) {
+                                debugLog << timeStrDebug << " | " << debugLine << std::endl;
+                                debugLog.close();
+                            }
+                        }
+                        
+                        if (mbPos != std::wstring::npos || kbPos != std::wstring::npos || gbPos != std::wstring::npos) {
+                            size_t slashPos = line.rfind(L" / ");
+                            if (slashPos != std::wstring::npos) {
+                                    // Find the total after the slash (look for next space after number)
                                     size_t totalStart = slashPos + 3;
-                                    size_t totalEnd = line.find(L" MB", totalStart);
+                                    size_t totalEnd = line.find_first_of(L" ", totalStart);
                                     if (totalEnd != std::wstring::npos) {
-                                        // Find the current MB before the slash
+                                        // Find the current before the slash
                                         size_t currentStart = slashPos;
                                         while (currentStart > 0 && (iswdigit(line[currentStart - 1]) || line[currentStart - 1] == L'.' || line[currentStart - 1] == L' ')) {
                                             currentStart--;
@@ -1061,22 +1142,77 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
                                         while (currentStart < slashPos && line[currentStart] == L' ') {
                                             currentStart++;
                                         }
+                                        
                                         try {
-                                            double currentMB = std::stod(line.substr(currentStart, slashPos - currentStart));
-                                            double totalMB = std::stod(line.substr(totalStart, totalEnd - totalStart));
-                                            if (totalMB > 0) {
-                                                int percent = (int)((currentMB / totalMB) * 100.0);
+                                            // Extract the substrings for current and total
+                                            std::wstring currentSubstr = line.substr(currentStart, slashPos - currentStart);
+                                            std::wstring totalSubstr = line.substr(totalStart, totalEnd - totalStart);
+                                            
+                                            // Trim whitespace
+                                            while (!currentSubstr.empty() && iswspace(currentSubstr.back())) currentSubstr.pop_back();
+                                            while (!currentSubstr.empty() && iswspace(currentSubstr.front())) currentSubstr.erase(0, 1);
+                                            while (!totalSubstr.empty() && iswspace(totalSubstr.back())) totalSubstr.pop_back();
+                                            while (!totalSubstr.empty() && iswspace(totalSubstr.front())) totalSubstr.erase(0, 1);
+                                            
+                                            double currentValue = std::stod(currentSubstr);
+                                            double totalValue = std::stod(totalSubstr);
+                                            
+                                            // Determine units by looking at what comes after the numbers
+                                            std::wstring currentUnit = L"MB";  // default
+                                            std::wstring totalUnit = L"MB";    // default
+                                            
+                                            // Check what unit appears after current value
+                                            size_t afterCurrent = currentStart + currentSubstr.length();
+                                            if (line.substr(afterCurrent, 3) == L" KB") currentUnit = L"KB";
+                                            else if (line.substr(afterCurrent, 3) == L" GB") currentUnit = L"GB";
+                                            else if (line.substr(afterCurrent, 3) == L" MB") currentUnit = L"MB";
+                                            
+                                            // Check what unit appears after total value
+                                            if (line.substr(totalEnd, 3) == L" KB") totalUnit = L"KB";
+                                            else if (line.substr(totalEnd, 3) == L" GB") totalUnit = L"GB";
+                                            else if (line.substr(totalEnd, 3) == L" MB") totalUnit = L"MB";
+                                            
+                                            // Convert to MB
+                                            if (currentUnit == L"KB") currentValue /= 1024.0;
+                                            else if (currentUnit == L"GB") currentValue *= 1024.0;
+                                            
+                                            if (totalUnit == L"KB") totalValue /= 1024.0;
+                                            else if (totalUnit == L"GB") totalValue *= 1024.0;
+                                            
+                                            if (totalValue > 0) {
+                                                double percent = (currentValue / totalValue) * 100.0;
                                                 if (percent >= 0 && percent <= 100) {
-                                                    SendMessageW(hProg, PBM_SETPOS, percent, 0);
-                                                    InvalidateRect(hProg, NULL, TRUE);
-                                                    UpdateWindow(hProg);
+                                                    // Update download progress for custom bar
+                                                    g_isDownloading = true;
+                                                    g_downloadProgress = percent;
+                                                    g_currentMB = currentValue;
+                                                    g_totalMB = totalValue;
+                                                    
+                                                    // Invalidate animation window to redraw progress bar
+                                                    if (g_hInstallAnim) {
+                                                        InvalidateRect(g_hInstallAnim, NULL, TRUE);
+                                                    }
+                                                    
+                                                    // Get timestamp
+                                                    SYSTEMTIME st;
+                                                    GetLocalTime(&st);
+                                                    char timeStr[32];
+                                                    sprintf(timeStr, "%02d:%02d:%02d:%03d", st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
+                                                    
+                                                    // Write to MB_debug.txt with simple format
+                                                    std::ofstream mbLog("C:\\Users\\NalleBerg\\Documents\\C++\\Workspace\\WinUpdate\\MB_debug.txt", std::ios::app);
+                                                    if (mbLog.is_open()) {
+                                                        char mbBuf[128];
+                                                        sprintf(mbBuf, "%.0f MB / %.0f MB - %s (%.1f%%)", currentValue, totalValue, timeStr, percent);
+                                                        mbLog << mbBuf << std::endl;
+                                                        mbLog.close();
+                                                    }
                                                 }
                                             }
                                         } catch (...) {}
                                     }
                                 }
                             }
-                        }
                         
                         // Filter and display
                         std::string narrowLine = WideToUtf8(line + L"\n");
@@ -1096,6 +1232,12 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
                             GetLineStyle(trimmedLine, isBold, color);
                             
                             AppendFormattedText(hOut, trimmedLine + L"\n", isBold, color);
+                            
+                            // Force immediate text update and scroll
+                            UpdateWindow(hOut);
+                            InvalidateRect(hOut, NULL, TRUE);
+                            SendMessageW(hOut, WM_VSCROLL, SB_BOTTOM, 0);
+                            SendMessageW(hOut, EM_SCROLLCARET, 0, 0);
                         }
                     }
                     

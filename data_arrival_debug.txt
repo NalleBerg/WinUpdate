@@ -1,0 +1,155 @@
+DATA ARRIVED (45 bytes) at 14:28:49.057: [WinUpdate Helper - Installing 1 package(s)
+]
+DATA ARRIVED (45 bytes) at 14:28:49.059: [========================================
+
+]
+DATA ARRIVED (31 bytes) at 14:28:49.075: [[1/1] Microsoft.AppInstaller
+]
+DATA ARRIVED (7 bytes) at 14:28:49.415: [   - ]
+DATA ARRIVED (255 bytes) at 14:28:49.907: [                                                                                                                        Found App Installer [Microsoft.AppInstaller] Version 1.27.440.0
+This application is licensed to you by its owner.
+Microsoft is not ]
+DATA ARRIVED (76 bytes) at 14:28:49.907: [responsible for, nor does it grant any licenses to, third-party packages.
+]
+DATA ARRIVED (255 bytes) at 14:28:50.064: [This package requires the following dependencies:
+  - Packages
+      Microsoft.VCLibs.Desktop.14 [>= 14.0.33728.0]
+      Microsoft.VCLibs.14 [>= 14.0.33519.0]
+      Microsoft.WindowsAppRuntime.1.8 [>= 1.8.0]
+(1/2) Found Microsoft Visual C++ 2015 UWP ]
+DATA ARRIVED (204 bytes) at 14:28:50.065: [Runtime Package [Microsoft.VCLibs.14] Version 14.0.33519.0
+This application is licensed to you by its owner.
+Microsoft is not responsible for, nor does it grant any licenses to, third-party packages.
+]
+DATA ARRIVED (119 bytes) at 14:28:50.081: [Downloading https://github.com/microsoft/winget-cli/releases/download/v1.12.350/DesktopAppInstaller_Dependencies.zip
+]
+DATA ARRIVED (7 bytes) at 14:28:50.167: [   - ]
+DATA ARRIVED (7 bytes) at 14:28:50.421: [   \ ]
+DATA ARRIVED (7 bytes) at 14:28:50.676: [   | ]
+DATA ARRIVED (7 bytes) at 14:28:50.949: [   / ]
+DATA ARRIVED (7 bytes) at 14:28:51.172: [   - ]
+DATA ARRIVED (7 bytes) at 14:28:51.466: [   \ ]
+DATA ARRIVED (7 bytes) at 14:28:51.707: [   | ]
+DATA ARRIVED (7 bytes) at 14:28:51.977: [   / ]
+DATA ARRIVED (7 bytes) at 14:28:52.215: [   - ]
+DATA ARRIVED (7 bytes) at 14:28:52.485: [   \ ]
+DATA ARRIVED (255 bytes) at 14:29:11.942: [                                                                                                                          ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  1024 KB / 93.2 MB  ██▒▒▒▒]
+DATA ARRIVED (255 bytes) at 14:29:11.943: [▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  9.00 MB / 93.2 MB  █████▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  16.0 MB / 93.2 MB  ███████▒▒▒▒▒▒▒▒▒�]
+DATA ARRIVED (255 bytes) at 14:29:11.943: [��▒▒▒▒▒▒▒▒▒▒▒▒▒  22.0 MB / 93.2 MB  █████████▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  28.0 MB / 93.2 MB  ██████████▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒�]
+DATA ARRIVED (255 bytes) at 14:29:11.943: [�▒▒▒  33.0 MB / 93.2 MB  ███████████▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  37.2 MB / 93.2 MB  ████████████▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  40.2 MB / 93.2 MB ]
+DATA ARRIVED (255 bytes) at 14:29:11.943: [ ██████████████▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  45.2 MB / 93.2 MB  ████████████████▒▒▒▒▒▒▒▒▒▒▒▒▒▒  50.2 MB / 93.2 MB  ██████████]
+DATA ARRIVED (255 bytes) at 14:29:11.943: [████████▒▒▒▒▒▒▒▒▒▒▒▒  56.2 MB / 93.2 MB  ███████████████████▒▒▒▒▒▒▒▒▒▒▒  61.2 MB / 93.2 MB  ████████████████████�]
+DATA ARRIVED (255 bytes) at 14:29:11.943: [��▒▒▒▒▒▒▒▒▒  67.2 MB / 93.2 MB  ███████████████████████▒▒▒▒▒▒▒  73.2 MB / 93.2 MB  █████████████████████████▒▒▒▒▒  ]
+DATA ARRIVED (255 bytes) at 14:29:11.943: [79.2 MB / 93.2 MB  ██████████████████████████▒▒▒▒  83.2 MB / 93.2 MB  ████████████████████████████▒▒  87.2 MB / 93.2 MB  ███�]
+DATA ARRIVED (251 bytes) at 14:29:11.943: [�█████████████████████████▒  92.2 MB / 93.2 MB  ██████████████████████████████  93.2 MB / 93.2 MB
+Successfully verified installer hash
+]
+DATA ARRIVED (24 bytes) at 14:29:12.069: [Extracting archive...
+]
+DATA ARRIVED (62 bytes) at 14:29:12.691: [Successfully extracted archive
+Starting package install...
+]
+DATA ARRIVED (255 bytes) at 14:29:13.243: [                                                                                                                          ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  2%  ▒▒▒▒▒▒▒▒▒▒▒]
+DATA ARRIVED (255 bytes) at 14:29:13.248: [▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  2%  ██████████████▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  48%  ████████████████████████████▒▒  9]
+DATA ARRIVED (177 bytes) at 14:29:13.248: [5%  ████████████████████████████▒▒  95%
+Successfully installed. Restart the application to complete the upgrade.
+]
+DATA ARRIVED (255 bytes) at 14:29:13.275: [
+(2/2) Found Windows App Runtime 1.8 [Microsoft.WindowsAppRuntime.1.8] Version 1.8.3
+This application is licensed to you by its owner.
+Microsoft is not responsible for, nor does it grant any licenses to, third-party packages.
+Downloading https://aka.m]
+DATA ARRIVED (69 bytes) at 14:29:13.275: [s/windowsappsdk/1.8/1.8.251106002/windowsappruntimeinstall-x64.exe
+]
+DATA ARRIVED (7 bytes) at 14:29:13.371: [   - ]
+DATA ARRIVED (7 bytes) at 14:29:13.635: [   \ ]
+DATA ARRIVED (7 bytes) at 14:29:13.905: [   | ]
+DATA ARRIVED (7 bytes) at 14:29:14.145: [   / ]
+DATA ARRIVED (7 bytes) at 14:29:14.401: [   - ]
+DATA ARRIVED (255 bytes) at 14:29:33.875: [                                                                                                                          ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  1024 KB /  101 MB  ██▒▒▒▒]
+DATA ARRIVED (255 bytes) at 14:29:33.875: [▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  7.22 MB /  101 MB  ███▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  13.2 MB /  101 MB  █████▒▒▒▒▒▒▒▒▒▒▒�]
+DATA ARRIVED (255 bytes) at 14:29:33.875: [��▒▒▒▒▒▒▒▒▒▒▒▒▒  19.2 MB /  101 MB  ████████▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  27.2 MB /  101 MB  █████████▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒�]
+DATA ARRIVED (255 bytes) at 14:29:33.875: [�▒▒▒  33.2 MB /  101 MB  ███████████▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  39.2 MB /  101 MB  █████████████▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  45.2 MB /  101 MB ]
+DATA ARRIVED (255 bytes) at 14:29:33.875: [ ██████████████▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  50.2 MB /  101 MB  ████████████████▒▒▒▒▒▒▒▒▒▒▒▒▒▒  56.2 MB /  101 MB  ██████████]
+DATA ARRIVED (255 bytes) at 14:29:33.875: [████████▒▒▒▒▒▒▒▒▒▒▒▒  62.2 MB /  101 MB  ████████████████████▒▒▒▒▒▒▒▒▒▒  68.2 MB /  101 MB  ████████████████████�]
+DATA ARRIVED (255 bytes) at 14:29:33.875: [��▒▒▒▒▒▒▒▒▒  73.2 MB /  101 MB  ███████████████████████▒▒▒▒▒▒▒  79.2 MB /  101 MB  █████████████████████████▒▒▒▒▒  ]
+DATA ARRIVED (255 bytes) at 14:29:33.875: [85.2 MB /  101 MB  ███████████████████████████▒▒▒  91.2 MB /  101 MB  ████████████████████████████▒▒  97.2 MB /  101 MB  ███�]
+DATA ARRIVED (139 bytes) at 14:29:33.875: [�██████████████████████████   101 MB /  101 MB
+Successfully verified installer hash
+]
+DATA ARRIVED (30 bytes) at 14:29:34.028: [Starting package install...
+]
+DATA ARRIVED (7 bytes) at 14:29:34.135: [   - ]
+DATA ARRIVED (7 bytes) at 14:29:34.391: [   \ ]
+DATA ARRIVED (7 bytes) at 14:29:34.662: [   | ]
+DATA ARRIVED (7 bytes) at 14:29:34.918: [   / ]
+DATA ARRIVED (7 bytes) at 14:29:35.157: [   - ]
+DATA ARRIVED (147 bytes) at 14:29:35.408: [                                                                                                                        Successfully installed
+]
+DATA ARRIVED (3 bytes) at 14:29:35.519: [
+]
+DATA ARRIVED (68 bytes) at 14:29:36.386: [Successfully verified installer hash
+Starting package install...
+]
+DATA ARRIVED (7 bytes) at 14:29:36.498: [   - ]
+DATA ARRIVED (7 bytes) at 14:29:36.764: [   \ ]
+DATA ARRIVED (7 bytes) at 14:29:37.039: [   | ]
+DATA ARRIVED (7 bytes) at 14:29:37.297: [   / ]
+DATA ARRIVED (7 bytes) at 14:29:37.537: [   - ]
+DATA ARRIVED (7 bytes) at 14:29:37.818: [   \ ]
+DATA ARRIVED (7 bytes) at 14:29:38.076: [   | ]
+DATA ARRIVED (7 bytes) at 14:29:38.332: [   / ]
+DATA ARRIVED (7 bytes) at 14:29:38.589: [   - ]
+DATA ARRIVED (7 bytes) at 14:29:38.841: [   \ ]
+DATA ARRIVED (255 bytes) at 14:29:44.237: [                                                                                                                          ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  2%  ▒▒▒▒▒▒▒▒▒▒▒]
+DATA ARRIVED (255 bytes) at 14:29:44.237: [▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  2%  ██████████████▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒  48%  ████████████████████████████▒▒  9]
+DATA ARRIVED (214 bytes) at 14:29:44.237: [5%  ████████████████████████████▒▒  95%
+An unexpected error occurred while executing the command: 
+0x800704c7 : Operasjonen ble avbrutt av brukeren.
+]
+DATA ARRIVED (27 bytes) at 14:29:44.248: [⚠️ Cancelled by user
+]
+DATA ARRIVED (255 bytes) at 14:29:44.248: [Exit code: 0x800704C7 (-2147023673)
+⚠️ Recommendation: Exclude this package if you want to stop update prompts.
+   The installation was cancelled (either by you or by the installer itself).
+   If you don't want to install this package, exclude it f]
+DATA ARRIVED (88 bytes) at 14:29:44.248: [rom future updates
+   using the system tray menu: Right-click → Manage Exclusions.
+]
+DATA ARRIVED (3 bytes) at 14:29:44.260: [
+]
+DATA ARRIVED (43 bytes) at 14:29:44.272: [========================================
+]
+DATA ARRIVED (32 bytes) at 14:29:44.284: [=== Installation Complete ===
+]
+DATA ARRIVED (40 bytes) at 14:29:44.284: [⚠️ 1 package(s) cancelled by user
+]
+DATA ARRIVED (3 bytes) at 14:29:44.297: [
+]
+DATA ARRIVED (15 bytes) at 14:29:44.297: [
+Cancelled:
+]
+DATA ARRIVED (81 bytes) at 14:29:44.309: [  ⚠️ Microsoft.AppInstaller (cancelled by user or by the installer itself)
+]
+DATA ARRIVED (28 bytes) at 14:29:44.309: [
+1 package(s) processed.
+]
+DATA ARRIVED (45 bytes) at 14:29:44.322: [
+========================================
+]
+DATA ARRIVED (12 bytes) at 14:29:44.322: [
+Errors:
+]
+DATA ARRIVED (55 bytes) at 14:29:44.322: [
+Appinstallasjonsprogram -- Microsoft.AppInstaller:
+]
+DATA ARRIVED (41 bytes) at 14:29:44.322: [Error number: 0x800704C7 (-2147023673)
+]
+DATA ARRIVED (54 bytes) at 14:29:44.333: [Reason: Installation cancelled by user or installer
+]
+DATA ARRIVED (76 bytes) at 14:29:44.345: [
+Recommendation: Exclude this package if you want to stop update prompts
+]
+DATA ARRIVED (45 bytes) at 14:29:44.357: [----------------------------------------
+
+]
