@@ -80,7 +80,7 @@ static void AddToLog(const std::wstring& text, bool isBold = false, COLORREF col
         if (color == RGB(255, 0, 0)) colorIndex = 2;  // Red
         else if (color == RGB(0, 128, 0)) colorIndex = 3;  // Green
         else if (color == RGB(0, 51, 153)) colorIndex = 4;  // Dark blue (for info/skipped)
-        else if (color == RGB(0, 120, 215)) colorIndex = 5;  // Bright blue (for warnings/recommendations)
+        else if (color == RGB(0, 51, 153)) colorIndex = 5;  // Marine blue (for warnings/recommendations)
         
         if (isBold) g_rtfLog += "\\b ";
         g_rtfLog += "\\cf" + std::to_string(colorIndex) + " ";
@@ -94,17 +94,40 @@ static void DrawProgressBar(HDC hdc, RECT rc, double progress) {
     int width = rc.right - rc.left;
     int height = rc.bottom - rc.top;
     
-    // Calculate filled width based on progress (0-100%)
-    int filledWidth = (int)((progress / 100.0) * width);
-    if (filledWidth < 0) filledWidth = 0;
-    if (filledWidth > width) filledWidth = width;
-    
     // Bar color (same as ball)
     COLORREF barColor = RGB(0, 120, 215);
     
-    // Draw rounded bar if we have any progress
-    if (filledWidth > 0) {
-        // Create rounded bar shape
+    int filledWidth = 0;
+    
+    // For very low progress (0-5%), just show a dot on the left
+    if (progress <= 5.0) {
+        // Draw the same round dot as the bouncing ball
+        int dotSize = height - 6;  // 3px margin on each side
+        
+        HBRUSH hBrush = CreateSolidBrush(barColor);
+        HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, hBrush);
+        HPEN hPen = CreatePen(PS_SOLID, 1, barColor);
+        HPEN hOldPen = (HPEN)SelectObject(hdc, hPen);
+        
+        int centerX = dotSize / 2;
+        int centerY = height / 2;
+        int radius = dotSize / 2;
+        
+        Ellipse(hdc, centerX - radius, centerY - radius, centerX + radius, centerY + radius);
+        
+        SelectObject(hdc, hOldBrush);
+        SelectObject(hdc, hOldPen);
+        DeleteObject(hBrush);
+        DeleteObject(hPen);
+        
+        filledWidth = dotSize;
+    } else {
+        // Calculate filled width based on progress (5-100%)
+        filledWidth = (int)((progress / 100.0) * width);
+        if (filledWidth < 0) filledWidth = 0;
+        if (filledWidth > width) filledWidth = width;
+        
+        // Draw rounded bar
         int radius = height / 2;
         
         HBRUSH hBrush = CreateSolidBrush(barColor);
@@ -162,8 +185,10 @@ static void DrawProgressBar(HDC hdc, RECT rc, double progress) {
 // Animation subclass procedure (draws moving dot overlay on progress bar)
 static LRESULT CALLBACK AnimSubclassProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR) {
     if (uMsg == WM_TIMER && wParam == 0xBEEF) {
-        g_animFrame++;
-        InvalidateRect(hwnd, NULL, TRUE);
+        if (!g_isDownloading) {
+            g_animFrame++;
+            InvalidateRect(hwnd, NULL, TRUE);
+        }
         return 0;
     }
     if (uMsg == WM_PAINT) {
@@ -343,19 +368,19 @@ static std::wstring TranslateSummaryLine(const std::wstring& line) {
         
         // Translate specific recommendation texts
         if (recText.find(L"Skip this package and wait") != std::wstring::npos) {
-            result = t("error_summary_recommendation") + L" " + t("recommend_skip");
+            result = L"\n" + t("error_summary_recommendation") + L" " + t("recommend_skip");
         } else if (recText.find(L"Exclude this package if you want to stop") != std::wstring::npos) {
-            result = t("error_summary_recommendation") + L" " + t("recommend_exclude");
+            result = L"\n" + t("error_summary_recommendation") + L" " + t("recommend_exclude");
         } else if (recText.find(L"Retry the installation when network") != std::wstring::npos) {
-            result = t("error_summary_recommendation") + L" " + t("recommend_retry");
+            result = L"\n" + t("error_summary_recommendation") + L" " + t("recommend_retry");
         } else if (recText.find(L"Exclude this package - it's no longer") != std::wstring::npos) {
-            result = t("error_summary_recommendation") + L" " + t("recommend_exclude_unavailable");
+            result = L"\n" + t("error_summary_recommendation") + L" " + t("recommend_exclude_unavailable");
         } else if (recText.find(L"Check Task Manager") != std::wstring::npos) {
-            result = t("error_summary_recommendation") + L" " + t("recommend_check_taskmanager");
+            result = L"\n" + t("error_summary_recommendation") + L" " + t("recommend_check_taskmanager");
         } else if (recText.find(L"Search online") != std::wstring::npos) {
-            result = t("error_summary_recommendation") + L" " + t("recommend_search_online");
+            result = L"\n" + t("error_summary_recommendation") + L" " + t("recommend_search_online");
         } else {
-            result = t("error_summary_recommendation") + L" " + recText;
+            result = L"\n" + t("error_summary_recommendation") + L" " + recText;
         }
         return result;
     }
@@ -506,7 +531,7 @@ static void GetLineStyle(const std::wstring& line, bool& isBold, COLORREF& color
         isBold = true;
     }
     else if (line.find(L"⚠️") != std::wstring::npos || line.find(L"Cancelled") != std::wstring::npos) {
-        color = RGB(0, 120, 215);  // Bright blue (warnings)
+        color = RGB(0, 51, 153);  // Marine blue (warnings)
         isBold = true;
     }
     else if (line.find(L"❌") != std::wstring::npos || line.find(L"Failed") != std::wstring::npos) {
@@ -529,7 +554,7 @@ static void GetLineStyle(const std::wstring& line, bool& isBold, COLORREF& color
     }
     // Recommendation lines (starts with 💡 or contains "Recommendation:")
     else if (line.find(L"💡") != std::wstring::npos || line.find(L"Recommendation:") != std::wstring::npos) {
-        color = RGB(0, 120, 215);  // Bright blue (recommendations)
+        color = RGB(0, 51, 153);  // Marine blue (recommendations)
         isBold = false;
     }
     // Separator lines
@@ -541,7 +566,6 @@ static void GetLineStyle(const std::wstring& line, bool& isBold, COLORREF& color
 // Dialog window procedure
 static LRESULT CALLBACK InstallDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     static HWND hOut = NULL;
-    static HWND hStatus = NULL;
     static HWND hAnim = NULL;
     static HWND hDone = NULL;
     static HWND hOverallStatus = NULL;
@@ -560,17 +584,9 @@ static LRESULT CALLBACK InstallDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPAR
             DEFAULT_PITCH | FF_SWISS, L"Segoe UI");
         SendMessageW(hOverallStatus, WM_SETFONT, (WPARAM)hFontBold, TRUE);
         
-        // Status label (package-specific, above progress bar)
-        HFONT hFont = CreateFontW(-13, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
-            DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
-            DEFAULT_PITCH | FF_SWISS, L"Segoe UI");
-        hStatus = CreateWindowExW(0, L"Static", L"", WS_CHILD | WS_VISIBLE | SS_LEFT,
-            24, 48, W-48, 20, hwnd, NULL, hInst, NULL);
-        SendMessageW(hStatus, WM_SETFONT, (WPARAM)hFont, TRUE);
-        
         // Custom progress bar / animation window (always visible)
         hAnim = CreateWindowExW(WS_EX_TRANSPARENT, L"STATIC", NULL, WS_CHILD | WS_VISIBLE, 
-            20, 72, W-40, 24, hwnd, (HMENU)2002, hInst, NULL);
+            20, 48, W-40, 24, hwnd, (HMENU)2002, hInst, NULL);
         g_hInstallAnim = hAnim;
         SetWindowSubclass(hAnim, AnimSubclassProc, 0, 0);
         SetTimer(hAnim, 0xBEEF, 1, NULL); // 1ms refresh rate
@@ -579,7 +595,7 @@ static LRESULT CALLBACK InstallDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPAR
         LoadLibraryW(L"Riched20.dll");
         hOut = CreateWindowExW(WS_EX_CLIENTEDGE, L"RichEdit20W", NULL, 
             WS_CHILD | WS_VISIBLE | ES_MULTILINE | ES_READONLY | WS_VSCROLL | ES_DISABLENOSCROLL,
-            20, 110, W-40, H-190, hwnd, NULL, hInst, NULL);
+            20, 86, W-40, H-166, hwnd, NULL, hInst, NULL);
         
         // Set default font FIRST (before enabling RTF mode)
         HFONT hEditFont = CreateFontW(-13, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
@@ -599,11 +615,6 @@ static LRESULT CALLBACK InstallDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPAR
         
         SendMessageW(hOut, EM_SETBKGNDCOLOR, 0, (LPARAM)GetSysColor(COLOR_WINDOW));
         
-        // Initialize second status line with placeholder to ensure it's visible
-        SetWindowTextW(hStatus, L"Klargjør...");
-        ShowWindow(hStatus, SW_SHOW);
-        UpdateWindow(hStatus);
-        
         // Done button (centered, disabled initially)
         hDone = CreateWindowExW(0, L"Button", g_doneButtonText.c_str(), WS_CHILD | WS_VISIBLE | WS_DISABLED | BS_PUSHBUTTON, 
             (W-150)/2, H-70, 150, 32, hwnd, (HMENU)1001, hInst, NULL);
@@ -614,7 +625,7 @@ static LRESULT CALLBACK InstallDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPAR
         HDC hdcStatic = (HDC)wParam;
         HWND hStatic = (HWND)lParam;
         // Make static controls above progress bar have white background
-        if (hStatic == hOverallStatus || hStatic == hStatus) {
+        if (hStatic == hOverallStatus) {
             SetBkColor(hdcStatic, RGB(255, 255, 255));
             return (INT_PTR)GetStockObject(WHITE_BRUSH);
         }
@@ -659,7 +670,7 @@ static LRESULT CALLBACK InstallDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPAR
 }
 
 // Parse winget output line-by-line and detect phases
-static void ProcessWingetOutput(const std::string& line, HWND hwnd, HWND hProg, HWND hAnim, HWND hStatus, HWND hOut,
+static void ProcessWingetOutput(const std::string& line, HWND hwnd, HWND hProg, HWND hAnim, HWND hOut,
                                  std::string& currentPhase, std::string& currentPackage) {
     // Trim whitespace
     std::string trimmed = line;
@@ -688,16 +699,6 @@ static void ProcessWingetOutput(const std::string& line, HWND hwnd, HWND hProg, 
         ShowWindow(hProg, SW_SHOW);
         ShowWindow(hAnim, SW_HIDE);
         
-        // Use translation key with package name
-        if (!currentPackage.empty()) {
-            wchar_t pkgBuf[512];
-            std::wstring pkgWide = Utf8ToWide(currentPackage);
-            swprintf(pkgBuf, 512, t("downloading_package").c_str(), pkgWide.c_str());
-            SetWindowTextW(hStatus, pkgBuf);
-        } else {
-            SetWindowTextW(hStatus, L"Downloading...");
-        }
-        
         // Reset progress bar for download (0-100%)
         SendMessageW(hProg, PBM_SETRANGE, 0, MAKELPARAM(0, 100));
         SendMessageW(hProg, PBM_SETPOS, 0, 0);
@@ -712,12 +713,6 @@ static void ProcessWingetOutput(const std::string& line, HWND hwnd, HWND hProg, 
             
             // Reset animation to start position
             g_animFrame = 0;
-            
-            wchar_t pkgBuf[512];
-            std::wstring pkgWide = Utf8ToWide(currentPackage);
-            swprintf(pkgBuf, 512, t("installing_package").c_str(), pkgWide.c_str());
-            std::wstring statusText = pkgBuf;
-            SetWindowTextW(hStatus, statusText.c_str());
         }
     }
     
@@ -879,7 +874,6 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
     
     // Get dialog controls
     HWND hOverallStatus = GetDlgItem(hwnd, 1002);
-    HWND hStatus = NULL;
     HWND hProg = NULL;
     HWND hAnim = NULL;
     HWND hOut = NULL;
@@ -890,10 +884,9 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
         HWND* hProg;
         HWND* hOut;
         HWND* hAnim;
-        HWND* hStatus;
     };
     
-    ControlHandles handles{&hProg, &hOut, &hAnim, &hStatus};
+    ControlHandles handles{&hProg, &hOut, &hAnim};
     
     EnumChildWindows(hwnd, [](HWND hChild, LPARAM lParam) -> BOOL {
         wchar_t className[256];
@@ -912,8 +905,6 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
             // Animation overlay is about 28px high
             if (height >= 20 && height <= 35) {
                 *handles->hAnim = hChild;
-            } else if (height < 25 && *handles->hStatus == NULL) {
-                *handles->hStatus = hChild;
             }
         }
         return TRUE;
@@ -929,7 +920,7 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
     SendMessageW(hOverallStatus, WM_SETTEXT, 0, (LPARAM)initialStatus.c_str());
     
     // Start winget_helper in background thread with UAC elevation
-    auto installFunc = [hwnd, hOut, hProg, hStatus, hDone, hAnim, hOverallStatus, packageIds]() {
+    auto installFunc = [hwnd, hOut, hProg, hDone, hAnim, hOverallStatus, packageIds]() {
         // Reset RTF tracking for new installation
         g_displayedRtfContent.clear();
         g_isFirstRtfAppend = true;
@@ -964,7 +955,6 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
         
         if (hPipe == INVALID_HANDLE_VALUE) {
             std::wstring errMsg = t("install_error_pipe") + L"\r\n";
-            SendMessageW(hStatus, WM_SETTEXT, 0, (LPARAM)errMsg.c_str());
             AppendFormattedText(hOut, errMsg, true, RGB(255, 0, 0));
             EnableWindow(hDone, TRUE);
             return;
@@ -1027,7 +1017,6 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
             // User cancelled UAC or elevation failed
             DWORD err = GetLastError();
             std::wstring errMsg = t("install_error_elevate") + L" (" + std::to_wstring(err) + L")";
-            SendMessageW(hStatus, WM_SETTEXT, 0, (LPARAM)errMsg.c_str());
             AppendFormattedText(hOut, errMsg + L"\r\n", true, RGB(255, 0, 0));
             EnableWindow(hDone, TRUE);
             CloseHandle(hPipe);
@@ -1134,10 +1123,15 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
                         if (mbPos != std::wstring::npos || kbPos != std::wstring::npos || gbPos != std::wstring::npos) {
                             size_t slashPos = line.rfind(L" / ");
                             if (slashPos != std::wstring::npos) {
-                                    // Find the total after the slash (look for next space after number)
+                                    // Find the total after the slash (skip leading spaces first)
                                     size_t totalStart = slashPos + 3;
+                                    // Skip any leading spaces after " / "
+                                    while (totalStart < line.length() && line[totalStart] == L' ') {
+                                        totalStart++;
+                                    }
+                                    // Find the next space after the number
                                     size_t totalEnd = line.find_first_of(L" ", totalStart);
-                                    if (totalEnd != std::wstring::npos) {
+                                    if (totalEnd != std::wstring::npos && totalEnd > totalStart) {
                                         // Find the current before the slash
                                         size_t currentStart = slashPos;
                                         while (currentStart > 0 && (iswdigit(line[currentStart - 1]) || line[currentStart - 1] == L'.' || line[currentStart - 1] == L' ')) {
@@ -1196,6 +1190,7 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
                                                     // Invalidate animation window to redraw progress bar
                                                     if (g_hInstallAnim) {
                                                         InvalidateRect(g_hInstallAnim, NULL, TRUE);
+                                                        UpdateWindow(g_hInstallAnim);
                                                     }
                                                     
                                                     // Get timestamp
@@ -1280,25 +1275,29 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
                         wtext.find(L"Download started") != std::wstring::npos) {
                         if (currentPhase != L"download") {
                             currentPhase = L"download";
-                            // Show progress bar, hide animation
-                            ShowWindow(hProg, SW_SHOW);
-                            ShowWindow(hAnim, SW_HIDE);
+                            
+                            // Initialize progress bar at 0%
+                            g_isDownloading = true;
+                            g_downloadProgress = 0.0;
+                            g_currentMB = 0.0;
+                            g_totalMB = 0.0;
+                            
+                            // Show animation window (will show progress bar), hide old progress control
+                            ShowWindow(hProg, SW_HIDE);
+                            ShowWindow(hAnim, SW_SHOW);
+                            
+                            // Force redraw
+                            if (g_hInstallAnim) {
+                                InvalidateRect(g_hInstallAnim, NULL, TRUE);
+                                UpdateWindow(g_hInstallAnim);
+                            }
+                            
                             // Reset progress bar
                             SendMessageW(hProg, PBM_SETRANGE, 0, MAKELPARAM(0, 100));
                             SendMessageW(hProg, PBM_SETPOS, 0, 0);
-                            // Update status text
-                            if (!currentAppName.empty()) {
-                                wchar_t statusBuf[512];
-                                swprintf(statusBuf, 512, t("downloading_package").c_str(), currentAppName.c_str());
-                                SetWindowTextW(hStatus, statusBuf);
-                            } else {
-                                SetWindowTextW(hStatus, L"Downloading...");
-                            }
                             // Force immediate update
                             UpdateWindow(hProg);
-                            UpdateWindow(hStatus);
                             InvalidateRect(hProg, NULL, TRUE);
-                            InvalidateRect(hStatus, NULL, TRUE);
                         }
                     }
                     
@@ -1307,20 +1306,25 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
                         (wtext.find(L"Installing") != std::wstring::npos && wtext.find(L"Successfully installed") == std::wstring::npos)) {
                         if (currentPhase != L"install") {
                             currentPhase = L"install";
+                            
+                            // End download phase - switch back to bouncing ball
+                            g_isDownloading = false;
+                            g_downloadProgress = 0.0;
+                            g_currentMB = 0.0;
+                            g_totalMB = 0.0;
+                            
+                            // Force redraw to show bouncing ball
+                            if (g_hInstallAnim) {
+                                InvalidateRect(g_hInstallAnim, NULL, TRUE);
+                                UpdateWindow(g_hInstallAnim);
+                            }
+                            
                             // Show animation overlay (progress bar stays visible underneath)
                             ShowWindow(hAnim, SW_SHOW);
                             // Reset animation
                             g_animFrame = 0;
-                            // Update status text
-                            if (!currentAppName.empty()) {
-                                wchar_t statusBuf[512];
-                                swprintf(statusBuf, 512, t("installing_package").c_str(), currentAppName.c_str());
-                                SetWindowTextW(hStatus, statusBuf);
-                            }
                             // Force immediate update
                             UpdateWindow(hAnim);
-                            UpdateWindow(hStatus);
-                            InvalidateRect(hStatus, NULL, TRUE);
                         }
                     }
                     
@@ -1333,7 +1337,6 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
                         currentPhase = L"";
                         currentAppName = L"";
                         ShowWindow(hAnim, SW_HIDE);
-                        SetWindowTextW(hStatus, L"");
                     }
                 }
             }
@@ -1347,7 +1350,6 @@ bool ShowInstallDialog(HWND hParent, const std::vector<std::string>& packageIds,
         // Hide animation, show completion
         ShowWindow(hAnim, SW_HIDE);
         SendMessageW(hProg, PBM_SETPOS, 100, 0);
-        SetWindowTextW(hStatus, t("install_complete").c_str());
         EnableWindow(hDone, TRUE);
         
         // Update overall status to show completion
