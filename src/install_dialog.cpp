@@ -578,20 +578,25 @@ static LRESULT CALLBACK InstallDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPAR
         // Output edit (larger area) - using RichEdit for selective formatting
         LoadLibraryW(L"Riched20.dll");
         hOut = CreateWindowExW(WS_EX_CLIENTEDGE, L"RichEdit20W", NULL, 
-            WS_CHILD | WS_VISIBLE | ES_MULTILINE | ES_READONLY | WS_VSCROLL | ES_AUTOVSCROLL | ES_WANTRETURN,
+            WS_CHILD | WS_VISIBLE | ES_MULTILINE | ES_READONLY | WS_VSCROLL | ES_DISABLENOSCROLL,
             20, 110, W-40, H-190, hwnd, NULL, hInst, NULL);
         
-        // Enable RTF mode for proper RTF generation
-        SendMessageW(hOut, EM_SETTEXTMODE, TM_RICHTEXT, 0);
-        
-        // Enable word wrap
-        SendMessageW(hOut, EM_SETTARGETDEVICE, 0, 0);
-        
-        // Set default font
+        // Set default font FIRST (before enabling RTF mode)
         HFONT hEditFont = CreateFontW(-13, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
             DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
             FIXED_PITCH | FF_MODERN, L"Consolas");
         SendMessageW(hOut, WM_SETFONT, (WPARAM)hEditFont, TRUE);
+        
+        // Enable RTF mode for proper RTF generation
+        SendMessageW(hOut, EM_SETTEXTMODE, TM_RICHTEXT, 0);
+        
+        // Explicitly disable horizontal scrolling using EM_SETOPTIONS
+        SendMessageW(hOut, EM_SETOPTIONS, ECOOP_OR, ECO_AUTOHSCROLL);
+        SendMessageW(hOut, EM_SETOPTIONS, ECOOP_XOR, ECO_AUTOHSCROLL);
+        
+        // Enable word wrap by setting target device to NULL (no horizontal scroll)
+        SendMessageW(hOut, EM_SETTARGETDEVICE, (WPARAM)NULL, 0);
+        
         SendMessageW(hOut, EM_SETBKGNDCOLOR, 0, (LPARAM)GetSysColor(COLOR_WINDOW));
         
         // Initialize second status line with placeholder to ensure it's visible

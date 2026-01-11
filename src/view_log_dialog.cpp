@@ -123,11 +123,14 @@ bool ShowInstallLogDialog(HWND parent, const std::string &locale) {
     
     // Create RichEdit control for RTF display
     HWND hEdit = CreateWindowExW(WS_EX_CLIENTEDGE, L"RichEdit20W", NULL, 
-        WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_HSCROLL | ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL | ES_AUTOHSCROLL, 
-        12, 12, W-24, H-70, hDlg, NULL, GetModuleHandleW(NULL), NULL);
+        WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL, 
+        12, 12, W-24, H-105, hDlg, NULL, GetModuleHandleW(NULL), NULL);
     
     // Enable RTF mode
     SendMessageW(hEdit, EM_SETTEXTMODE, TM_RICHTEXT, 0);
+    
+    // Enable word wrap by setting target device to NULL
+    SendMessageW(hEdit, EM_SETTARGETDEVICE, (WPARAM)NULL, 0);
     
     // Display log as RTF
     struct StreamData {
@@ -157,14 +160,15 @@ bool ShowInstallLogDialog(HWND parent, const std::string &locale) {
     ctx->hEdit = hEdit;
     SetWindowLongPtrW(hDlg, GWLP_USERDATA, (LONG_PTR)ctx);
     
-    // Close button (centered)
+    // Close button (positioned with proper spacing)
     std::string txtClose = LoadI18nValue(locale, "btn_cancel");
     if (txtClose.empty()) txtClose = "Close";
     std::wstring wclose = Utf8ToWide(txtClose);
     int btnWidth = 100;
     int btnHeight = 30;
     int btnX = (W - btnWidth) / 2;  // Center horizontally
-    int btnY = H - 55;  // Near bottom
+    int spaceForButton = 85;  // Space between edit control bottom and dialog bottom
+    int btnY = H - spaceForButton + 6;  // Position 6 pixels below edit control
     HWND hBtnClose = CreateWindowExW(0, L"BUTTON", wclose.c_str(), 
         WS_CHILD | WS_VISIBLE | BS_DEFPUSHBUTTON, 
         btnX, btnY, btnWidth, btnHeight, hDlg, (HMENU)1001, GetModuleHandleW(NULL), NULL);
