@@ -1,2 +1,0 @@
-﻿backup created: 20251220_101639
-files: src/main.cpp, CMakeLists.txt

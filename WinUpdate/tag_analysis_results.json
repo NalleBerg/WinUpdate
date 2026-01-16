@@ -1,0 +1,1811 @@
+{
+  "PackageTags": {
+    "WinDirStat.WinDirStat": [
+      "cleanup",
+      "disk-space-analyzer",
+      "disk-usage-analyzer",
+      "duplicate-detection",
+      "treemap",
+      "treemaps",
+      "windows"
+    ],
+    "Microsoft.PowerToys": [
+      "colorpicker",
+      "fancyzones",
+      "fileexplorer",
+      "imageresizer",
+      "keyboardmanager",
+      "power-toys",
+      "powerrename",
+      "powertoys",
+      "powertoys-run",
+      "windows-key-shortcut-guide"
+    ],
+    "MongoDB.Server": [
+      "database",
+      "mongo",
+      "server"
+    ],
+    "Brave.Brave": [
+      "browser",
+      "chromium",
+      "internet",
+      "privacy",
+      "web",
+      "webpage"
+    ],
+    "VB-Audio.Voicemeeter": [
+      "asio",
+      "audio",
+      "mixer",
+      "voicemeeter",
+      "wasapi"
+    ],
+    "7zip.7zip": [
+      "archive",
+      "archiver",
+      "compress",
+      "compression",
+      "decompress",
+      "decompression",
+      "extract",
+      "extractor",
+      "unarchive",
+      "unarchiver",
+      "unzip",
+      "zip",
+      "7zfiles",
+      "rarfiles",
+      "targzfiles"
+    ],
+    "Valve.Steam": [
+      "community",
+      "content-delivery",
+      "distribution",
+      "game",
+      "games",
+      "games-store",
+      "gaming",
+      "marketplace",
+      "platform",
+      "purchase",
+      "store",
+      "video-games"
+    ],
+    "Rufus.Rufus": [
+      "boot",
+      "formatting",
+      "foss",
+      "uefi",
+      "unetbootin",
+      "usb",
+      "utility"
+    ],
+    "Mozilla.Firefox": "nettleser",
+    "SumatraPDF.SumatraPDF": [
+      "cbr",
+      "cbz",
+      "chm",
+      "djvu",
+      "ebook",
+      "epub",
+      "fb2",
+      "mobi",
+      "pdf",
+      "reader",
+      "viewer",
+      "xps"
+    ],
+    "CrystalDewWorld.CrystalDiskMark": [
+      "benchmark",
+      "disk",
+      "drive",
+      "hdd",
+      "speed",
+      "ssd",
+      "storage",
+      "utility"
+    ],
+    "PuTTY.PuTTY": [
+      "ssh",
+      "telnet",
+      "tty",
+      "xterm"
+    ],
+    "Paint.NET": [
+      "edit",
+      "editing",
+      "editor",
+      "image",
+      "paint",
+      "painting",
+      "photo",
+      "photo-editing",
+      "picture"
+    ],
+    "Redis.Redis": [
+      "redis",
+      "cache",
+      "database",
+      "nosql",
+      "key-value",
+      "in-memory"
+    ],
+    "OBSProject.OBSStudio": [
+      "foss",
+      "live",
+      "live-streaming",
+      "recording",
+      "screen-capture",
+      "screen-recording",
+      "streaming",
+      "video-recording"
+    ],
+    "ShareX.ShareX": [
+      "annotate",
+      "annotation",
+      "capture",
+      "color-picker",
+      "gif",
+      "ocr",
+      "record",
+      "recorder",
+      "region-capture",
+      "screen-capture",
+      "screen-recorder",
+      "screenshot",
+      "share",
+      "upload"
+    ],
+    "Anaconda.Miniconda3": [
+      "conda",
+      "miniconda",
+      "miniconda3",
+      "python"
+    ],
+    "MariaDB.Server": [
+      "database",
+      "db",
+      "mysql",
+      "rdbms",
+      "sql"
+    ],
+    "Discord.Discord": [
+      "chat",
+      "community",
+      "gaming",
+      "hang-out",
+      "talk",
+      "video",
+      "voice",
+      "voice-chat"
+    ],
+    "Calibre.Calibre": [
+      "ebook",
+      "epub",
+      "kindle",
+      "mobi",
+      "reader",
+      "viewer"
+    ],
+    "WireGuard.WireGuard": [
+      "network",
+      "secure",
+      "security",
+      "tunnel",
+      "vpn"
+    ],
+    "AnyDesk.AnyDesk": [
+      "rdp",
+      "remote-control",
+      "remote-desktop"
+    ],
+    "OpenVPNTechnologies.OpenVPN": [
+      "network",
+      "vpn"
+    ],
+    "Spotify.Spotify": [
+      "9ncbcszsjrsb",
+      "album",
+      "artist",
+      "audio",
+      "episode",
+      "music",
+      "playlist",
+      "podcast",
+      "radio",
+      "song",
+      "sound",
+      "streaming"
+    ],
+    "Microsoft.Edge": "nettleser",
+    "Postman.Postman": [
+      "api",
+      "automation",
+      "debug",
+      "develop",
+      "development",
+      "interface",
+      "internet",
+      "network",
+      "request",
+      "response"
+    ],
+    "WinSCP.WinSCP": [
+      "file",
+      "ftp",
+      "ftps",
+      "s3",
+      "scp",
+      "sftp",
+      "transfer",
+      "webdav"
+    ],
+    "EpicGames.EpicGamesLauncher": [
+      "distribute",
+      "epic",
+      "epic-games-launcher",
+      "epic-games-store",
+      "epic-online-services",
+      "fortnite",
+      "game",
+      "game-store",
+      "games",
+      "games-store",
+      "gaming",
+      "launcher",
+      "marketplace",
+      "store",
+      "unreal",
+      "unreal-engine"
+    ],
+    "Tableau.Desktop": [
+      "analytics",
+      "business-intelligence",
+      "dashboarding",
+      "data",
+      "data-analysis",
+      "data-visualization",
+      "reporting",
+      "visualization"
+    ],
+    "Greenshot.Greenshot": [
+      "capture",
+      "screenshot"
+    ],
+    "Notepad++.Notepad++": [
+      "development",
+      "editor",
+      "foss",
+      "notepad",
+      "open-source",
+      "text",
+      "text-editor"
+    ],
+    "RProject.R": [
+      "data",
+      "datascience",
+      "diagram",
+      "graph",
+      "graphics",
+      "plot",
+      "rstats",
+      "statistics",
+      "stats"
+    ],
+    "JetBrains.PyCharm.Community": [
+      "code",
+      "coding",
+      "develop",
+      "development",
+      "django",
+      "programming",
+      "python"
+    ],
+    "Inkscape.Inkscape": [
+      "9pd9bhglfc7h",
+      "art",
+      "draw",
+      "drawing",
+      "editor",
+      "graphics",
+      "svg",
+      "vector-graphics"
+    ],
+    "Adobe.Acrobat.Reader.64-bit": [
+      "adobe-acrobat-reader-dc",
+      "adobe-reader",
+      "adobeacrobatreaderdc",
+      "adobereader",
+      "annotate",
+      "annotation",
+      "comment",
+      "e-books",
+      "ebooks",
+      "pdf",
+      "read",
+      "reader",
+      "viewer",
+      "xpdp273c0xhqh2"
+    ],
+    "Vivaldi.Vivaldi": [
+      "browser",
+      "chromium",
+      "internet",
+      "manifestv2",
+      "mv2",
+      "pdfreader",
+      "protonvpn",
+      "rssreader",
+      "web",
+      "webbrowser",
+      "webpage",
+      "xp99gvqdx7jpr4"
+    ],
+    "HandBrake.HandBrake": [
+      "audio",
+      "convert",
+      "decode",
+      "encode",
+      "filter",
+      "media",
+      "multimedia",
+      "rip",
+      "video"
+    ],
+    "JetBrains.IntelliJIDEA.Community": [
+      "code",
+      "coding",
+      "develop",
+      "development",
+      "java",
+      "kotlin",
+      "programming"
+    ],
+    "Microsoft.WindowsTerminal": [
+      "cli",
+      "cmd",
+      "command-line",
+      "command-prompt",
+      "console",
+      "developer-tools",
+      "powershell",
+      "ps",
+      "shell",
+      "terminal",
+      "utilities",
+      "wsl"
+    ],
+    "VideoLAN.VLC": [
+      "audio",
+      "cross-platform",
+      "dvd",
+      "foss",
+      "media-player",
+      "multimedia",
+      "open-source",
+      "video",
+      "video-player"
+    ],
+    "Oracle.VirtualBox": [
+      "cross-platform",
+      "foss",
+      "virtual-machine",
+      "virtualization"
+    ],
+    "Foxit.FoxitReader": [
+      "annotate",
+      "annotation",
+      "comment",
+      "pdf",
+      "read",
+      "reader",
+      "viewer"
+    ],
+    "MediaArea.MediaInfo": [
+      "audio",
+      "media",
+      "metadata",
+      "multimedia",
+      "video"
+    ],
+    "Audacity.Audacity": [
+      "audio",
+      "audio-editor",
+      "musegroup",
+      "musicstudio",
+      "recording",
+      "soundediting",
+      "xp8k0j757hhrdw"
+    ],
+    "Plex.Plex": [
+      "audio",
+      "cross-platform",
+      "media",
+      "media-streamer",
+      "music-streamer",
+      "streaming",
+      "video",
+      "video-streamer",
+      "plexforwindows",
+      "plex-for-windows",
+      "xp9cdqw6ml4nqn"
+    ],
+    "Git.Git": [
+      "git",
+      "vcs"
+    ],
+    "Amazon.Kindle": [
+      "amazon",
+      "books",
+      "e-book",
+      "e-reader",
+      "ebook",
+      "epub",
+      "ereader",
+      "kindle",
+      "library",
+      "reader",
+      "reading"
+    ],
+    "Bitwarden.Bitwarden": [
+      "9pjsdv0vpk04",
+      "cardstorage",
+      "credentials",
+      "passphrases",
+      "passwordmanager",
+      "protect",
+      "protection",
+      "security",
+      "sshkeys",
+      "vault"
+    ],
+    "TheDocumentFoundation.LibreOffice": [
+      "docs",
+      "document",
+      "editor",
+      "excel",
+      "odf",
+      "office",
+      "openoffice",
+      "powerpoint",
+      "presentation",
+      "sheet",
+      "slide",
+      "spreadsheet",
+      "word",
+      "work"
+    ],
+    "TeamViewer.TeamViewer": [
+      "conference",
+      "conferencing",
+      "control",
+      "meeting",
+      "remote",
+      "remote-access",
+      "remote-assistance",
+      "remote-control",
+      "remote-desktop",
+      "remote-support",
+      "web-conferencing"
+    ],
+    "CrystalDewWorld.CrystalDiskInfo": [
+      "diagnostic",
+      "diskhealth",
+      "disk-diagnostics",
+      "disk-utility",
+      "harddrive",
+      "hard-drive",
+      "harddisk",
+      "hard-disk",
+      "hdd",
+      "nvmexpress",
+      "smart",
+      "ssd",
+      "m.2",
+      "utility",
+      "raid",
+      "solidstatedrive"
+    ],
+    "qBittorrent.qBittorrent": [
+      "bittorrent",
+      "bt",
+      "download",
+      "magnet",
+      "p2p",
+      "share",
+      "sharing",
+      "torrent",
+      "upload"
+    ],
+    "Insomnia.Insomnia": [
+      "insomnia",
+      "insomnia-core"
+    ],
+    "Microsoft.PowerShell": [
+      "command-line",
+      "cross-platform",
+      "open-source",
+      "powershell",
+      "pwsh",
+      "shell"
+    ],
+    "Google.Chrome": [
+      "chromium",
+      "internett",
+      "nettet",
+      "nettleser",
+      "rask",
+      "s├©k",
+      "trygg"
+    ],
+    "Docker.DockerDesktop": [
+      "container",
+      "containerization",
+      "develop",
+      "virtualization"
+    ],
+    "Ventoy.Ventoy": [
+      "auto-install",
+      "bootable-usb",
+      "bsd",
+      "chromeos",
+      "iso-files",
+      "legacy",
+      "linux",
+      "multiboot",
+      "persistence",
+      "secure-boot",
+      "uefi",
+      "unattended",
+      "unix",
+      "usb",
+      "windows"
+    ],
+    "Alacritty.Alacritty": "terminal",
+    "KeePassXCTeam.KeePassXC": [
+      "credential",
+      "password",
+      "protect",
+      "protection",
+      "security",
+      "vault"
+    ],
+    "Opera.Opera": "nettleser",
+    "Microsoft.VisualStudioCode": [
+      "developer-tools",
+      "editor"
+    ],
+    "Jellyfin.JellyfinMediaPlayer": [
+      "jellyfin",
+      "jellyfin-client"
+    ],
+    "Zoom.Zoom": [
+      "chat",
+      "collaborate",
+      "collaboration",
+      "conference",
+      "conferencing",
+      "meeting",
+      "video-conferencing",
+      "voice-conferencing",
+      "webinar"
+    ],
+    "Python.Python.3.12": [
+      "language",
+      "programming",
+      "programming-language",
+      "python",
+      "python3",
+      "script"
+    ]
+  },
+  "TagMap": {
+    "server": [
+      "MongoDB.Server"
+    ],
+    "editing": [
+      "Paint.NET"
+    ],
+    "conda": [
+      "Anaconda.Miniconda3"
+    ],
+    "git": [
+      "Git.Git"
+    ],
+    "internett": [
+      "Google.Chrome"
+    ],
+    "comment": [
+      "Adobe.Acrobat.Reader.64-bit",
+      "Foxit.FoxitReader"
+    ],
+    "voicemeeter": [
+      "VB-Audio.Voicemeeter"
+    ],
+    "podcast": [
+      "Spotify.Spotify"
+    ],
+    "archiver": [
+      "7zip.7zip"
+    ],
+    "rdp": [
+      "AnyDesk.AnyDesk"
+    ],
+    "unzip": [
+      "7zip.7zip"
+    ],
+    "containerization": [
+      "Docker.DockerDesktop"
+    ],
+    "kotlin": [
+      "JetBrains.IntelliJIDEA.Community"
+    ],
+    "credential": [
+      "KeePassXCTeam.KeePassXC"
+    ],
+    "gaming": [
+      "Discord.Discord",
+      "Valve.Steam",
+      "EpicGames.EpicGamesLauncher"
+    ],
+    "tunnel": [
+      "WireGuard.WireGuard"
+    ],
+    "distribute": [
+      "EpicGames.EpicGamesLauncher"
+    ],
+    "purchase": [
+      "Valve.Steam"
+    ],
+    "annotate": [
+      "Adobe.Acrobat.Reader.64-bit",
+      "ShareX.ShareX",
+      "Foxit.FoxitReader"
+    ],
+    "db": [
+      "MariaDB.Server"
+    ],
+    "live": [
+      "OBSProject.OBSStudio"
+    ],
+    "screen-capture": [
+      "OBSProject.OBSStudio",
+      "ShareX.ShareX"
+    ],
+    "p2p": [
+      "qBittorrent.qBittorrent"
+    ],
+    "playlist": [
+      "Spotify.Spotify"
+    ],
+    "powershell": [
+      "Microsoft.WindowsTerminal",
+      "Microsoft.PowerShell"
+    ],
+    "musicstudio": [
+      "Audacity.Audacity"
+    ],
+    "decode": [
+      "HandBrake.HandBrake"
+    ],
+    "edit": [
+      "Paint.NET"
+    ],
+    "extract": [
+      "7zip.7zip"
+    ],
+    "debug": [
+      "Postman.Postman"
+    ],
+    "passwordmanager": [
+      "Bitwarden.Bitwarden"
+    ],
+    "mobi": [
+      "SumatraPDF.SumatraPDF",
+      "Calibre.Calibre"
+    ],
+    "screenshot": [
+      "Greenshot.Greenshot",
+      "ShareX.ShareX"
+    ],
+    "formatting": [
+      "Rufus.Rufus"
+    ],
+    "disk-usage-analyzer": [
+      "WinDirStat.WinDirStat"
+    ],
+    "screen-recorder": [
+      "ShareX.ShareX"
+    ],
+    "read": [
+      "Adobe.Acrobat.Reader.64-bit",
+      "Foxit.FoxitReader"
+    ],
+    "hard-drive": [
+      "CrystalDewWorld.CrystalDiskInfo"
+    ],
+    "secure-boot": [
+      "Ventoy.Ventoy"
+    ],
+    "video": [
+      "VideoLAN.VLC",
+      "Discord.Discord",
+      "HandBrake.HandBrake",
+      "MediaArea.MediaInfo",
+      "Plex.Plex"
+    ],
+    "launcher": [
+      "EpicGames.EpicGamesLauncher"
+    ],
+    "song": [
+      "Spotify.Spotify"
+    ],
+    "pdf": [
+      "Adobe.Acrobat.Reader.64-bit",
+      "SumatraPDF.SumatraPDF",
+      "Foxit.FoxitReader"
+    ],
+    "internet": [
+      "Brave.Brave",
+      "Vivaldi.Vivaldi",
+      "Postman.Postman"
+    ],
+    "multiboot": [
+      "Ventoy.Ventoy"
+    ],
+    "miniconda3": [
+      "Anaconda.Miniconda3"
+    ],
+    "scp": [
+      "WinSCP.WinSCP"
+    ],
+    "ssd": [
+      "CrystalDewWorld.CrystalDiskInfo",
+      "CrystalDewWorld.CrystalDiskMark"
+    ],
+    "metadata": [
+      "MediaArea.MediaInfo"
+    ],
+    "telnet": [
+      "PuTTY.PuTTY"
+    ],
+    "colorpicker": [
+      "Microsoft.PowerToys"
+    ],
+    "cleanup": [
+      "WinDirStat.WinDirStat"
+    ],
+    "protection": [
+      "KeePassXCTeam.KeePassXC",
+      "Bitwarden.Bitwarden"
+    ],
+    "epic-online-services": [
+      "EpicGames.EpicGamesLauncher"
+    ],
+    "s3": [
+      "WinSCP.WinSCP"
+    ],
+    "docs": [
+      "TheDocumentFoundation.LibreOffice"
+    ],
+    "marketplace": [
+      "Valve.Steam",
+      "EpicGames.EpicGamesLauncher"
+    ],
+    "remote-access": [
+      "TeamViewer.TeamViewer"
+    ],
+    "pwsh": [
+      "Microsoft.PowerShell"
+    ],
+    "nosql": [
+      "Redis.Redis"
+    ],
+    "security": [
+      "WireGuard.WireGuard",
+      "KeePassXCTeam.KeePassXC",
+      "Bitwarden.Bitwarden"
+    ],
+    "disk": [
+      "CrystalDewWorld.CrystalDiskMark"
+    ],
+    "web": [
+      "Brave.Brave",
+      "Vivaldi.Vivaldi"
+    ],
+    "manifestv2": [
+      "Vivaldi.Vivaldi"
+    ],
+    "e-reader": [
+      "Amazon.Kindle"
+    ],
+    "password": [
+      "KeePassXCTeam.KeePassXC"
+    ],
+    "disk-space-analyzer": [
+      "WinDirStat.WinDirStat"
+    ],
+    "recording": [
+      "OBSProject.OBSStudio",
+      "Audacity.Audacity"
+    ],
+    "powerrename": [
+      "Microsoft.PowerToys"
+    ],
+    "developer-tools": [
+      "Microsoft.VisualStudioCode",
+      "Microsoft.WindowsTerminal"
+    ],
+    "sshkeys": [
+      "Bitwarden.Bitwarden"
+    ],
+    "adobeacrobatreaderdc": [
+      "Adobe.Acrobat.Reader.64-bit"
+    ],
+    "store": [
+      "Valve.Steam",
+      "EpicGames.EpicGamesLauncher"
+    ],
+    "draw": [
+      "Inkscape.Inkscape"
+    ],
+    "unreal": [
+      "EpicGames.EpicGamesLauncher"
+    ],
+    "mixer": [
+      "VB-Audio.Voicemeeter"
+    ],
+    "usb": [
+      "Rufus.Rufus",
+      "Ventoy.Ventoy"
+    ],
+    "xps": [
+      "SumatraPDF.SumatraPDF"
+    ],
+    "jellyfin-client": [
+      "Jellyfin.JellyfinMediaPlayer"
+    ],
+    "windows-key-shortcut-guide": [
+      "Microsoft.PowerToys"
+    ],
+    "privacy": [
+      "Brave.Brave"
+    ],
+    "unetbootin": [
+      "Rufus.Rufus"
+    ],
+    "radio": [
+      "Spotify.Spotify"
+    ],
+    "jellyfin": [
+      "Jellyfin.JellyfinMediaPlayer"
+    ],
+    "bt": [
+      "qBittorrent.qBittorrent"
+    ],
+    "vpn": [
+      "OpenVPNTechnologies.OpenVPN",
+      "WireGuard.WireGuard"
+    ],
+    "capture": [
+      "Greenshot.Greenshot",
+      "ShareX.ShareX"
+    ],
+    "chromium": [
+      "Google.Chrome",
+      "Brave.Brave",
+      "Vivaldi.Vivaldi"
+    ],
+    "photo": [
+      "Paint.NET"
+    ],
+    "disk-utility": [
+      "CrystalDewWorld.CrystalDiskInfo"
+    ],
+    "distribution": [
+      "Valve.Steam"
+    ],
+    "container": [
+      "Docker.DockerDesktop"
+    ],
+    "wsl": [
+      "Microsoft.WindowsTerminal"
+    ],
+    "compress": [
+      "7zip.7zip"
+    ],
+    "diagram": [
+      "RProject.R"
+    ],
+    "odf": [
+      "TheDocumentFoundation.LibreOffice"
+    ],
+    "xp99gvqdx7jpr4": [
+      "Vivaldi.Vivaldi"
+    ],
+    "transfer": [
+      "WinSCP.WinSCP"
+    ],
+    "data": [
+      "RProject.R",
+      "Tableau.Desktop"
+    ],
+    "games-store": [
+      "Valve.Steam",
+      "EpicGames.EpicGamesLauncher"
+    ],
+    "legacy": [
+      "Ventoy.Ventoy"
+    ],
+    "powerpoint": [
+      "TheDocumentFoundation.LibreOffice"
+    ],
+    "conference": [
+      "Zoom.Zoom",
+      "TeamViewer.TeamViewer"
+    ],
+    "data-analysis": [
+      "Tableau.Desktop"
+    ],
+    "rip": [
+      "HandBrake.HandBrake"
+    ],
+    "ssh": [
+      "PuTTY.PuTTY"
+    ],
+    "screen-recording": [
+      "OBSProject.OBSStudio"
+    ],
+    "hang-out": [
+      "Discord.Discord"
+    ],
+    "powertoys": [
+      "Microsoft.PowerToys"
+    ],
+    "rask": [
+      "Google.Chrome"
+    ],
+    "adobe-reader": [
+      "Adobe.Acrobat.Reader.64-bit"
+    ],
+    "treemap": [
+      "WinDirStat.WinDirStat"
+    ],
+    "xpdp273c0xhqh2": [
+      "Adobe.Acrobat.Reader.64-bit"
+    ],
+    "virtual-machine": [
+      "Oracle.VirtualBox"
+    ],
+    "cbz": [
+      "SumatraPDF.SumatraPDF"
+    ],
+    "chat": [
+      "Discord.Discord",
+      "Zoom.Zoom"
+    ],
+    "media-player": [
+      "VideoLAN.VLC"
+    ],
+    "sound": [
+      "Spotify.Spotify"
+    ],
+    "solidstatedrive": [
+      "CrystalDewWorld.CrystalDiskInfo"
+    ],
+    "video-player": [
+      "VideoLAN.VLC"
+    ],
+    "conferencing": [
+      "Zoom.Zoom",
+      "TeamViewer.TeamViewer"
+    ],
+    "pdfreader": [
+      "Vivaldi.Vivaldi"
+    ],
+    "graphics": [
+      "Inkscape.Inkscape",
+      "RProject.R"
+    ],
+    "talk": [
+      "Discord.Discord"
+    ],
+    "drawing": [
+      "Inkscape.Inkscape"
+    ],
+    "presentation": [
+      "TheDocumentFoundation.LibreOffice"
+    ],
+    "musegroup": [
+      "Audacity.Audacity"
+    ],
+    "cmd": [
+      "Microsoft.WindowsTerminal"
+    ],
+    "remote-support": [
+      "TeamViewer.TeamViewer"
+    ],
+    "coding": [
+      "JetBrains.PyCharm.Community",
+      "JetBrains.IntelliJIDEA.Community"
+    ],
+    "code": [
+      "JetBrains.PyCharm.Community",
+      "JetBrains.IntelliJIDEA.Community"
+    ],
+    "control": [
+      "TeamViewer.TeamViewer"
+    ],
+    "benchmark": [
+      "CrystalDewWorld.CrystalDiskMark"
+    ],
+    "virtualization": [
+      "Docker.DockerDesktop",
+      "Oracle.VirtualBox"
+    ],
+    "plexforwindows": [
+      "Plex.Plex"
+    ],
+    "python": [
+      "Python.Python.3.12",
+      "JetBrains.PyCharm.Community",
+      "Anaconda.Miniconda3"
+    ],
+    "develop": [
+      "Docker.DockerDesktop",
+      "Postman.Postman",
+      "JetBrains.PyCharm.Community",
+      "JetBrains.IntelliJIDEA.Community"
+    ],
+    "smart": [
+      "CrystalDewWorld.CrystalDiskInfo"
+    ],
+    "m.2": [
+      "CrystalDewWorld.CrystalDiskInfo"
+    ],
+    "reader": [
+      "Adobe.Acrobat.Reader.64-bit",
+      "SumatraPDF.SumatraPDF",
+      "Calibre.Calibre",
+      "Amazon.Kindle",
+      "Foxit.FoxitReader"
+    ],
+    "epub": [
+      "SumatraPDF.SumatraPDF",
+      "Calibre.Calibre",
+      "Amazon.Kindle"
+    ],
+    "bittorrent": [
+      "qBittorrent.qBittorrent"
+    ],
+    "text-editor": [
+      "Notepad++.Notepad++"
+    ],
+    "duplicate-detection": [
+      "WinDirStat.WinDirStat"
+    ],
+    "fortnite": [
+      "EpicGames.EpicGamesLauncher"
+    ],
+    "art": [
+      "Inkscape.Inkscape"
+    ],
+    "excel": [
+      "TheDocumentFoundation.LibreOffice"
+    ],
+    "targzfiles": [
+      "7zip.7zip"
+    ],
+    "speed": [
+      "CrystalDewWorld.CrystalDiskMark"
+    ],
+    "web-conferencing": [
+      "TeamViewer.TeamViewer"
+    ],
+    "protect": [
+      "KeePassXCTeam.KeePassXC",
+      "Bitwarden.Bitwarden"
+    ],
+    "unattended": [
+      "Ventoy.Ventoy"
+    ],
+    "audio-editor": [
+      "Audacity.Audacity"
+    ],
+    "remote": [
+      "TeamViewer.TeamViewer"
+    ],
+    "protonvpn": [
+      "Vivaldi.Vivaldi"
+    ],
+    "utilities": [
+      "Microsoft.WindowsTerminal"
+    ],
+    "programming": [
+      "Python.Python.3.12",
+      "JetBrains.PyCharm.Community",
+      "JetBrains.IntelliJIDEA.Community"
+    ],
+    "document": [
+      "TheDocumentFoundation.LibreOffice"
+    ],
+    "drive": [
+      "CrystalDewWorld.CrystalDiskMark"
+    ],
+    "stats": [
+      "RProject.R"
+    ],
+    "game": [
+      "Valve.Steam",
+      "EpicGames.EpicGamesLauncher"
+    ],
+    "treemaps": [
+      "WinDirStat.WinDirStat"
+    ],
+    "database": [
+      "MongoDB.Server",
+      "Redis.Redis",
+      "MariaDB.Server"
+    ],
+    "kindle": [
+      "Calibre.Calibre",
+      "Amazon.Kindle"
+    ],
+    "extractor": [
+      "7zip.7zip"
+    ],
+    "dvd": [
+      "VideoLAN.VLC"
+    ],
+    "magnet": [
+      "qBittorrent.qBittorrent"
+    ],
+    "9ncbcszsjrsb": [
+      "Spotify.Spotify"
+    ],
+    "meeting": [
+      "Zoom.Zoom",
+      "TeamViewer.TeamViewer"
+    ],
+    "file": [
+      "WinSCP.WinSCP"
+    ],
+    "cbr": [
+      "SumatraPDF.SumatraPDF"
+    ],
+    "bootable-usb": [
+      "Ventoy.Ventoy"
+    ],
+    "remote-control": [
+      "TeamViewer.TeamViewer",
+      "AnyDesk.AnyDesk"
+    ],
+    "dashboarding": [
+      "Tableau.Desktop"
+    ],
+    "upload": [
+      "qBittorrent.qBittorrent",
+      "ShareX.ShareX"
+    ],
+    "diagnostic": [
+      "CrystalDewWorld.CrystalDiskInfo"
+    ],
+    "webpage": [
+      "Brave.Brave",
+      "Vivaldi.Vivaldi"
+    ],
+    "xterm": [
+      "PuTTY.PuTTY"
+    ],
+    "vault": [
+      "KeePassXCTeam.KeePassXC",
+      "Bitwarden.Bitwarden"
+    ],
+    "browser": [
+      "Brave.Brave",
+      "Vivaldi.Vivaldi"
+    ],
+    "sftp": [
+      "WinSCP.WinSCP"
+    ],
+    "painting": [
+      "Paint.NET"
+    ],
+    "record": [
+      "ShareX.ShareX"
+    ],
+    "unreal-engine": [
+      "EpicGames.EpicGamesLauncher"
+    ],
+    "9pd9bhglfc7h": [
+      "Inkscape.Inkscape"
+    ],
+    "editor": [
+      "Microsoft.VisualStudioCode",
+      "TheDocumentFoundation.LibreOffice",
+      "Notepad++.Notepad++",
+      "Inkscape.Inkscape",
+      "Paint.NET"
+    ],
+    "hard-disk": [
+      "CrystalDewWorld.CrystalDiskInfo"
+    ],
+    "fb2": [
+      "SumatraPDF.SumatraPDF"
+    ],
+    "passphrases": [
+      "Bitwarden.Bitwarden"
+    ],
+    "artist": [
+      "Spotify.Spotify"
+    ],
+    "music-streamer": [
+      "Plex.Plex"
+    ],
+    "books": [
+      "Amazon.Kindle"
+    ],
+    "image": [
+      "Paint.NET"
+    ],
+    "collaboration": [
+      "Zoom.Zoom"
+    ],
+    "remote-desktop": [
+      "TeamViewer.TeamViewer",
+      "AnyDesk.AnyDesk"
+    ],
+    "data-visualization": [
+      "Tableau.Desktop"
+    ],
+    "filter": [
+      "HandBrake.HandBrake"
+    ],
+    "persistence": [
+      "Ventoy.Ventoy"
+    ],
+    "gif": [
+      "ShareX.ShareX"
+    ],
+    "webdav": [
+      "WinSCP.WinSCP"
+    ],
+    "remote-assistance": [
+      "TeamViewer.TeamViewer"
+    ],
+    "cache": [
+      "Redis.Redis"
+    ],
+    "ps": [
+      "Microsoft.WindowsTerminal"
+    ],
+    "9pjsdv0vpk04": [
+      "Bitwarden.Bitwarden"
+    ],
+    "content-delivery": [
+      "Valve.Steam"
+    ],
+    "convert": [
+      "HandBrake.HandBrake"
+    ],
+    "programming-language": [
+      "Python.Python.3.12"
+    ],
+    "compression": [
+      "7zip.7zip"
+    ],
+    "visualization": [
+      "Tableau.Desktop"
+    ],
+    "statistics": [
+      "RProject.R"
+    ],
+    "rstats": [
+      "RProject.R"
+    ],
+    "rdbms": [
+      "MariaDB.Server"
+    ],
+    "video-games": [
+      "Valve.Steam"
+    ],
+    "sheet": [
+      "TheDocumentFoundation.LibreOffice"
+    ],
+    "iso-files": [
+      "Ventoy.Ventoy"
+    ],
+    "chm": [
+      "SumatraPDF.SumatraPDF"
+    ],
+    "torrent": [
+      "qBittorrent.qBittorrent"
+    ],
+    "sharing": [
+      "qBittorrent.qBittorrent"
+    ],
+    "wasapi": [
+      "VB-Audio.Voicemeeter"
+    ],
+    "fancyzones": [
+      "Microsoft.PowerToys"
+    ],
+    "spreadsheet": [
+      "TheDocumentFoundation.LibreOffice"
+    ],
+    "library": [
+      "Amazon.Kindle"
+    ],
+    "powertoys-run": [
+      "Microsoft.PowerToys"
+    ],
+    "ftps": [
+      "WinSCP.WinSCP"
+    ],
+    "insomnia-core": [
+      "Insomnia.Insomnia"
+    ],
+    "api": [
+      "Postman.Postman"
+    ],
+    "voice": [
+      "Discord.Discord"
+    ],
+    "asio": [
+      "VB-Audio.Voicemeeter"
+    ],
+    "django": [
+      "JetBrains.PyCharm.Community"
+    ],
+    "epic-games-launcher": [
+      "EpicGames.EpicGamesLauncher"
+    ],
+    "photo-editing": [
+      "Paint.NET"
+    ],
+    "s├©k": [
+      "Google.Chrome"
+    ],
+    "business-intelligence": [
+      "Tableau.Desktop"
+    ],
+    "notepad": [
+      "Notepad++.Notepad++"
+    ],
+    "platform": [
+      "Valve.Steam"
+    ],
+    "slide": [
+      "TheDocumentFoundation.LibreOffice"
+    ],
+    "mv2": [
+      "Vivaldi.Vivaldi"
+    ],
+    "djvu": [
+      "SumatraPDF.SumatraPDF"
+    ],
+    "annotation": [
+      "Adobe.Acrobat.Reader.64-bit",
+      "ShareX.ShareX",
+      "Foxit.FoxitReader"
+    ],
+    "openoffice": [
+      "TheDocumentFoundation.LibreOffice"
+    ],
+    "raid": [
+      "CrystalDewWorld.CrystalDiskInfo"
+    ],
+    "datascience": [
+      "RProject.R"
+    ],
+    "java": [
+      "JetBrains.IntelliJIDEA.Community"
+    ],
+    "collaborate": [
+      "Zoom.Zoom"
+    ],
+    "analytics": [
+      "Tableau.Desktop"
+    ],
+    "rarfiles": [
+      "7zip.7zip"
+    ],
+    "network": [
+      "OpenVPNTechnologies.OpenVPN",
+      "WireGuard.WireGuard",
+      "Postman.Postman"
+    ],
+    "streaming": [
+      "Spotify.Spotify",
+      "OBSProject.OBSStudio",
+      "Plex.Plex"
+    ],
+    "ebook": [
+      "SumatraPDF.SumatraPDF",
+      "Calibre.Calibre",
+      "Amazon.Kindle"
+    ],
+    "games": [
+      "Valve.Steam",
+      "EpicGames.EpicGamesLauncher"
+    ],
+    "paint": [
+      "Paint.NET"
+    ],
+    "boot": [
+      "Rufus.Rufus"
+    ],
+    "terminal": [
+      "Microsoft.WindowsTerminal",
+      "Alacritty.Alacritty"
+    ],
+    "adobereader": [
+      "Adobe.Acrobat.Reader.64-bit"
+    ],
+    "picture": [
+      "Paint.NET"
+    ],
+    "command-prompt": [
+      "Microsoft.WindowsTerminal"
+    ],
+    "xp9cdqw6ml4nqn": [
+      "Plex.Plex"
+    ],
+    "word": [
+      "TheDocumentFoundation.LibreOffice"
+    ],
+    "share": [
+      "qBittorrent.qBittorrent",
+      "ShareX.ShareX"
+    ],
+    "epic-games-store": [
+      "EpicGames.EpicGamesLauncher"
+    ],
+    "decompression": [
+      "7zip.7zip"
+    ],
+    "voice-conferencing": [
+      "Zoom.Zoom"
+    ],
+    "shell": [
+      "Microsoft.WindowsTerminal",
+      "Microsoft.PowerShell"
+    ],
+    "video-conferencing": [
+      "Zoom.Zoom"
+    ],
+    "work": [
+      "TheDocumentFoundation.LibreOffice"
+    ],
+    "linux": [
+      "Ventoy.Ventoy"
+    ],
+    "adobe-acrobat-reader-dc": [
+      "Adobe.Acrobat.Reader.64-bit"
+    ],
+    "reading": [
+      "Amazon.Kindle"
+    ],
+    "rssreader": [
+      "Vivaldi.Vivaldi"
+    ],
+    "reporting": [
+      "Tableau.Desktop"
+    ],
+    "ocr": [
+      "ShareX.ShareX"
+    ],
+    "diskhealth": [
+      "CrystalDewWorld.CrystalDiskInfo"
+    ],
+    "ebooks": [
+      "Adobe.Acrobat.Reader.64-bit"
+    ],
+    "soundediting": [
+      "Audacity.Audacity"
+    ],
+    "ereader": [
+      "Amazon.Kindle"
+    ],
+    "development": [
+      "Notepad++.Notepad++",
+      "Postman.Postman",
+      "JetBrains.PyCharm.Community",
+      "JetBrains.IntelliJIDEA.Community"
+    ],
+    "imageresizer": [
+      "Microsoft.PowerToys"
+    ],
+    "cross-platform": [
+      "VideoLAN.VLC",
+      "Oracle.VirtualBox",
+      "Plex.Plex",
+      "Microsoft.PowerShell"
+    ],
+    "foss": [
+      "VideoLAN.VLC",
+      "Notepad++.Notepad++",
+      "OBSProject.OBSStudio",
+      "Oracle.VirtualBox",
+      "Rufus.Rufus"
+    ],
+    "amazon": [
+      "Amazon.Kindle"
+    ],
+    "community": [
+      "Discord.Discord",
+      "Valve.Steam"
+    ],
+    "encode": [
+      "HandBrake.HandBrake"
+    ],
+    "album": [
+      "Spotify.Spotify"
+    ],
+    "interface": [
+      "Postman.Postman"
+    ],
+    "office": [
+      "TheDocumentFoundation.LibreOffice"
+    ],
+    "nettet": [
+      "Google.Chrome"
+    ],
+    "storage": [
+      "CrystalDewWorld.CrystalDiskMark"
+    ],
+    "keyboardmanager": [
+      "Microsoft.PowerToys"
+    ],
+    "sql": [
+      "MariaDB.Server"
+    ],
+    "svg": [
+      "Inkscape.Inkscape"
+    ],
+    "vcs": [
+      "Git.Git"
+    ],
+    "zip": [
+      "7zip.7zip"
+    ],
+    "command-line": [
+      "Microsoft.WindowsTerminal",
+      "Microsoft.PowerShell"
+    ],
+    "script": [
+      "Python.Python.3.12"
+    ],
+    "nettleser": [
+      "Mozilla.Firefox",
+      "Google.Chrome",
+      "Microsoft.Edge",
+      "Opera.Opera"
+    ],
+    "episode": [
+      "Spotify.Spotify"
+    ],
+    "xp8k0j757hhrdw": [
+      "Audacity.Audacity"
+    ],
+    "redis": [
+      "Redis.Redis"
+    ],
+    "mysql": [
+      "MariaDB.Server"
+    ],
+    "in-memory": [
+      "Redis.Redis"
+    ],
+    "voice-chat": [
+      "Discord.Discord"
+    ],
+    "unarchive": [
+      "7zip.7zip"
+    ],
+    "audio": [
+      "VideoLAN.VLC",
+      "Spotify.Spotify",
+      "Audacity.Audacity",
+      "HandBrake.HandBrake",
+      "VB-Audio.Voicemeeter",
+      "MediaArea.MediaInfo",
+      "Plex.Plex"
+    ],
+    "7zfiles": [
+      "7zip.7zip"
+    ],
+    "vector-graphics": [
+      "Inkscape.Inkscape"
+    ],
+    "webinar": [
+      "Zoom.Zoom"
+    ],
+    "archive": [
+      "7zip.7zip"
+    ],
+    "e-book": [
+      "Amazon.Kindle"
+    ],
+    "key-value": [
+      "Redis.Redis"
+    ],
+    "windows": [
+      "WinDirStat.WinDirStat",
+      "Ventoy.Ventoy"
+    ],
+    "bsd": [
+      "Ventoy.Ventoy"
+    ],
+    "harddrive": [
+      "CrystalDewWorld.CrystalDiskInfo"
+    ],
+    "recorder": [
+      "ShareX.ShareX"
+    ],
+    "live-streaming": [
+      "OBSProject.OBSStudio"
+    ],
+    "multimedia": [
+      "VideoLAN.VLC",
+      "HandBrake.HandBrake",
+      "MediaArea.MediaInfo"
+    ],
+    "media-streamer": [
+      "Plex.Plex"
+    ],
+    "ftp": [
+      "WinSCP.WinSCP"
+    ],
+    "response": [
+      "Postman.Postman"
+    ],
+    "epic": [
+      "EpicGames.EpicGamesLauncher"
+    ],
+    "region-capture": [
+      "ShareX.ShareX"
+    ],
+    "webbrowser": [
+      "Vivaldi.Vivaldi"
+    ],
+    "music": [
+      "Spotify.Spotify"
+    ],
+    "fileexplorer": [
+      "Microsoft.PowerToys"
+    ],
+    "automation": [
+      "Postman.Postman"
+    ],
+    "secure": [
+      "WireGuard.WireGuard"
+    ],
+    "credentials": [
+      "Bitwarden.Bitwarden"
+    ],
+    "video-streamer": [
+      "Plex.Plex"
+    ],
+    "utility": [
+      "CrystalDewWorld.CrystalDiskInfo",
+      "CrystalDewWorld.CrystalDiskMark",
+      "Rufus.Rufus"
+    ],
+    "nvmexpress": [
+      "CrystalDewWorld.CrystalDiskInfo"
+    ],
+    "plot": [
+      "RProject.R"
+    ],
+    "cli": [
+      "Microsoft.WindowsTerminal"
+    ],
+    "cardstorage": [
+      "Bitwarden.Bitwarden"
+    ],
+    "media": [
+      "HandBrake.HandBrake",
+      "MediaArea.MediaInfo",
+      "Plex.Plex"
+    ],
+    "request": [
+      "Postman.Postman"
+    ],
+    "mongo": [
+      "MongoDB.Server"
+    ],
+    "console": [
+      "Microsoft.WindowsTerminal"
+    ],
+    "harddisk": [
+      "CrystalDewWorld.CrystalDiskInfo"
+    ],
+    "unix": [
+      "Ventoy.Ventoy"
+    ],
+    "tty": [
+      "PuTTY.PuTTY"
+    ],
+    "e-books": [
+      "Adobe.Acrobat.Reader.64-bit"
+    ],
+    "python3": [
+      "Python.Python.3.12"
+    ],
+    "language": [
+      "Python.Python.3.12"
+    ],
+    "video-recording": [
+      "OBSProject.OBSStudio"
+    ],
+    "power-toys": [
+      "Microsoft.PowerToys"
+    ],
+    "open-source": [
+      "VideoLAN.VLC",
+      "Notepad++.Notepad++",
+      "Microsoft.PowerShell"
+    ],
+    "download": [
+      "qBittorrent.qBittorrent"
+    ],
+    "auto-install": [
+      "Ventoy.Ventoy"
+    ],
+    "trygg": [
+      "Google.Chrome"
+    ],
+    "insomnia": [
+      "Insomnia.Insomnia"
+    ],
+    "plex-for-windows": [
+      "Plex.Plex"
+    ],
+    "hdd": [
+      "CrystalDewWorld.CrystalDiskInfo",
+      "CrystalDewWorld.CrystalDiskMark"
+    ],
+    "decompress": [
+      "7zip.7zip"
+    ],
+    "miniconda": [
+      "Anaconda.Miniconda3"
+    ],
+    "graph": [
+      "RProject.R"
+    ],
+    "unarchiver": [
+      "7zip.7zip"
+    ],
+    "text": [
+      "Notepad++.Notepad++"
+    ],
+    "uefi": [
+      "Rufus.Rufus",
+      "Ventoy.Ventoy"
+    ],
+    "color-picker": [
+      "ShareX.ShareX"
+    ],
+    "chromeos": [
+      "Ventoy.Ventoy"
+    ],
+    "viewer": [
+      "Adobe.Acrobat.Reader.64-bit",
+      "SumatraPDF.SumatraPDF",
+      "Calibre.Calibre",
+      "Foxit.FoxitReader"
+    ],
+    "disk-diagnostics": [
+      "CrystalDewWorld.CrystalDiskInfo"
+    ],
+    "game-store": [
+      "EpicGames.EpicGamesLauncher"
+    ]
+  },
+  "PackagesWithTags": 64,
+  "UniqueTags": 362,
+  "TotalPackages": 94
+}

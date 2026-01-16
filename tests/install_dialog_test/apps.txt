@@ -1,4 +1,0 @@
-Mozilla Thunderbird - 146.0 -> 146.0.1
-Notepad++ (64-bit) - 8.8.9 -> 8.9
-Vulkan SDK - 1.4.328.1 -> 1.4.335.0
-Microsoft Teams - 25306.804.4102 -> 25332.1210.4188.1171

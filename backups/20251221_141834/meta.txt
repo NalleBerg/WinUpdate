@@ -1,2 +1,0 @@
-﻿backup created: 20251221_141834
-files: src\main.cpp, src\winget_versions.cpp, src\parsing.cpp, src\winget_versions.h, src\parsing.h

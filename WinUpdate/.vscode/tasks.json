@@ -1,0 +1,63 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Backup files (prompt)",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}\\scripts\\backup_and_prune.ps1",
+				"-FilesToBackupString",
+				"${input:filesToBackup}",
+				"-Keep",
+				"5"
+			],
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "Backup files (auto)",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}\\scripts\\backup_and_prune.ps1",
+				"-FilesToBackupString",
+				"${env:FILES_TO_BACKUP}",
+				"-Keep",
+				"5"
+			],
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared",
+				"echo": true
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "Build WinUpdate",
+			"type": "shell",
+			"command": "cmd /c makeit.bat",
+			"problemMatcher": [],
+			"group": "build"
+		}
+	],
+	"inputs": [
+		{
+			"id": "filesToBackup",
+			"type": "promptString",
+			"description": "Semicolon-separated files to backup (e.g. src\\main.cpp;CMakeLists.txt)",
+			"default": "src\\main.cpp"
+		}
+	]
+}

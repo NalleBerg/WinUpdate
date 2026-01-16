@@ -1,0 +1,18 @@
+# Database files (too large for git)
+*.db
+
+# Log files
+*.log
+
+# Build artifacts
+build/
+*.exe
+*.dll
+*.o
+*.obj
+*.a
+
+# Backup files
+*.backup
+*.broken
+*.bak
