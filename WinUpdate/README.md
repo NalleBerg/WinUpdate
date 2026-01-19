@@ -1,6 +1,6 @@
 # WinUpdate — Friendly winget GUI
 
-**Version 2026.01.11.18** | **Published:** 11 January 2026 18:00 GMT+1
+**Version 2026.01.19.10** | **Published:** 19 January 2026 10:00 GMT+1
 
 **WinUpdate** is a lightweight, native Windows GUI application that makes managing software updates easy through Microsoft's `winget` package manager. No more cryptic command lines — just a clean interface to keep your Windows applications up to date.
 

@@ -125,7 +125,7 @@ std::unordered_map<std::string,std::string> MapInstalledVersions() {
     std::unordered_map<std::string,std::string> out;
     try {
         // Fast approach: winget upgrade contains both installed and available versions
-        auto r = RunProcessCaptureExitCodeLocal(L"cmd.exe /C winget upgrade");
+        auto r = RunProcessCaptureExitCodeLocal(L"cmd.exe /C winget upgrade --accept-source-agreements");
         std::string txt = r.second;
         
         // Simple table parsing with right-to-left tokenization
@@ -182,7 +182,7 @@ std::unordered_map<std::string,std::string> MapAvailableVersions() {
     std::unordered_map<std::string,std::string> out;
     try {
         // Fast approach: use same winget upgrade output
-        auto r = RunProcessCaptureExitCodeLocal(L"cmd.exe /C winget upgrade");
+        auto r = RunProcessCaptureExitCodeLocal(L"cmd.exe /C winget upgrade --accept-source-agreements");
         std::string txt = r.second;
         
         // Simple table parsing with right-to-left tokenization

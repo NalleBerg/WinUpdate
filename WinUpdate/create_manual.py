@@ -86,11 +86,11 @@ def create_manual(filename, language='no'):
         
         # Version info
         p = P(stylename=normal_style)
-        p.addText("Versjon: 2026.01.11")
+        p.addText("Versjon: 2026.01.19")
         doc.text.addElement(p)
         
         p = P(stylename=normal_style)
-        p.addText("Sist oppdatert: 11. januar 2026")
+        p.addText("Sist oppdatert: 19. januar 2026")
         doc.text.addElement(p)
         
         doc.text.addElement(P(stylename=normal_style))

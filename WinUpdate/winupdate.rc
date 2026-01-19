@@ -2,8 +2,8 @@
 #include "resource.h"
 
 1 VERSIONINFO
- FILEVERSION 2026,1,11,18
- PRODUCTVERSION 2026,1,11,18
+ FILEVERSION 2026,1,19,10
+ PRODUCTVERSION 2026,1,19,10
  FILEFLAGSMASK 0x3fL
  FILEFLAGS 0x0L
  FILEOS 0x40004L
@@ -16,12 +16,12 @@
     BEGIN
       VALUE "CompanyName", "NalleBerg\0"
       VALUE "FileDescription", "WinUpdate - Windows Update Manager for winget\0"
-      VALUE "FileVersion", "2026.1.11.18\0"
+      VALUE "FileVersion", "2026.1.19.10\0"
       VALUE "InternalName", "WinUpdate\0"
       VALUE "LegalCopyright", "Copyright (C) 2025-2026 NalleBerg. Licensed under GPLv2.\0"
       VALUE "OriginalFilename", "WinUpdate.exe\0"
       VALUE "ProductName", "WinUpdate\0"
-      VALUE "ProductVersion", "2026.1.11.18\0"
+      VALUE "ProductVersion", "2026.1.19.10\0"
     END
   END
   BLOCK "VarFileInfo"

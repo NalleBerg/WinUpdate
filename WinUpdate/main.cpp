@@ -1830,7 +1830,7 @@ static void CaptureStartupVersions(const std::string &rawOut,
         } catch(...) {}
         if (localRaw.empty()) {
             try {
-                auto fresh = RunProcessCaptureExitCode(L"winget upgrade", 15000);
+                auto fresh = RunProcessCaptureExitCode(L"winget upgrade --accept-source-agreements", 90000);
                 if (!fresh.second.empty()) localRaw = fresh.second;
             } catch(...) {}
         }
@@ -2159,13 +2159,15 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         std::thread([hwnd, manual]() {
             std::vector<std::pair<std::string,std::string>> results;
 
-            // Run winget upgrade with a 5s timeout (fast). If it returns quickly, parse it; if it times out/empty, try longer.
-            auto rup = RunProcessCaptureExitCode(L"winget upgrade", 5000);
+            // Run winget upgrade with increased timeout to ensure complete output capture
+            // Winget can take 50-60+ seconds when checking msstore source with agreements
+            // Using 90s/110s timeouts for background reliability
+            auto rup = RunProcessCaptureExitCode(L"winget upgrade --accept-source-agreements", 90000);
             std::string out = rup.second;
             bool timedOut = (rup.first == -2);
-            // If initial fast attempt timed out or returned empty, try a longer attempt once
+            // If initial attempt timed out or returned empty, try once more with extended timeout
             if (timedOut || out.empty()) {
-                auto rup2 = RunProcessCaptureExitCode(L"winget upgrade", 15000);
+                auto rup2 = RunProcessCaptureExitCode(L"winget upgrade --accept-source-agreements", 110000);
                 if (!rup2.second.empty()) {
                     out = rup2.second;
                     timedOut = false;
