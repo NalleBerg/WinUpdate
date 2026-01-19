@@ -1,0 +1,35 @@
+<h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+<span style="color: #0066cc;">📦 WinProgramManager — Databashanteringskomponent</span>
+</h2>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;">
+<strong>Senaste uppdatering:</strong> 19 januari 2026 | <strong>Första utgåvan</strong><br/>
+Denna ändringslogg omfattar <strong>WinProgramManager</strong>, databashanteringskomponenten av WinProgramSuite.<br/>
+För GUI-applikationen, se <strong>WinUpdate</strong> dokumentation.
+</p>
+
+<h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Version 2026.01.19</span></h3>
+<p><strong>Nytt i denna version (19 januari 2026, 09:00 GMT+1):</strong></p>
+<ul>
+<li><strong>Första utgåvan:</strong> Första publika utgåvan av databashanteringskomponenten</li>
+<li><strong>Automatiserade databasuppdateringar:</strong> WinProgramUpdater synkroniserar automatiskt paketdatabas med winget-repositoriet</li>
+<li><strong>Tyst bakgrundsoperation:</strong> Uppdateringar körs utan synliga fönster, lämplig för schemalagda uppgifter</li>
+<li><strong>Komplett uppdateringspipeline:</strong> Hämtar paket, hanterar tillägg/borttagningar, filtrerar ogiltiga ID:n, frågar efter taggar</li>
+<li><strong>Tagginferenssystem:</strong> 45 namnbaserade mönster för automatisk kategorisering av paket</li>
+<li><strong>Korrelationsanalys:</strong> Smart taggförslag baserat på 66,67% likhetströskel</li>
+<li><strong>Automatiskt säkerhetskopieringssystem:</strong> Rullande 10-säkerhetskopieringssystem med tidsstämplade databasfiler</li>
+<li><strong>Konfigurerbar loggning:</strong> Aktivera/inaktivera loggning via ENABLE_LOGGING-flagga i header-filen</li>
+<li><strong>Relativ loggmapp:</strong> Loggar skrivna till ..\log-mapp relativt till körbar plats</li>
+<li><strong>90-dagars loggbevarande:</strong> Automatisk beskärning av gamla loggposter för att upprätthålla hanterbar filstorlek</li>
+<li><strong>Konsoltestläge:</strong> WinProgramUpdaterTest.exe ger detaljerad utmatning för felsökning</li>
+<li><strong>Dolt produktionsläge:</strong> WinProgramUpdater.exe körs tyst för schemalagda uppgifter</li>
+<li><strong>PowerShell-byggskript:</strong> Komplett databasåteruppbyggnad och inkrementella återställningsskript</li>
+<li><strong>SQLite3-integration:</strong> Full SQLite3-databas med omfattande paketmetadataschema</li>
+<li><strong>Ignorera tagg-databas:</strong> Separat databas för filtrering av oönskade generiska taggar</li>
+</ul>
+
+<h3 style="text-align: center;">&nbsp;</h3>
+<p style="text-align: center; font-size: 12px; color: #888; margin-top: 30px;">
+Del av <strong>WinProgramSuite</strong> — Ett omfattande Windows-pakethanteringssystem<br/>
+Komponenter: WinUpdate (GUI) | WinProgramManager (Databas) | WinProgramUpdater (Automatisering)
+</p>

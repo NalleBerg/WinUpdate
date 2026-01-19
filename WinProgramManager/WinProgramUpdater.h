@@ -4,6 +4,9 @@
 #include <map>
 #include <memory>
 
+// Configuration
+#define ENABLE_LOGGING true  // Set to false to disable all logging
+
 // Forward declaration for SQLite
 typedef struct sqlite3 sqlite3;
 
@@ -58,6 +61,7 @@ private:
     std::vector<std::string> QueryPackageIds();
     bool HasTags(const std::string& packageId);
     void AddPackage(const PackageInfo& pkg);
+    std::string GetLogPath();
     void RemovePackage(const std::string& packageId);
     void AddTag(const std::string& packageId, const std::string& tag);
     int GetCategoryId(const std::string& category);

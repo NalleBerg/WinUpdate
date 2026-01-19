@@ -860,22 +860,32 @@ bool WinProgramUpdater::UpdateDatabase(UpdateStats& stats) {
     return true;
 }
 
-std::string WinProgramUpdater::GetAppDataPath() {
-    wchar_t* pathPtr = nullptr;
-    std::string result;
+std::string WinProgramUpdater::GetLogPath() {
+    // Get executable path
+    wchar_t exePath[MAX_PATH];
+    GetModuleFileNameW(nullptr, exePath, MAX_PATH);
     
-    if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_RoamingAppData, 0, nullptr, &pathPtr))) {
-        // Convert wchar_t* to std::wstring first
-        std::wstring wpath(pathPtr);
-        CoTaskMemFree(pathPtr);
-        
-        // Convert to UTF-8 string
-        std::string roaming = WStringToString(wpath);
-        result = roaming + "\\WinUpdate";
-        
-        // Create directory if it doesn't exist
-        CreateDirectoryA(result.c_str(), nullptr);
+    std::wstring wExePath(exePath);
+    size_t lastSlash = wExePath.find_last_of(L"\\/");
+    if (lastSlash == std::wstring::npos) {
+        return "";  // Should never happen
     }
+    
+    // Get parent directory (go up one level)
+    std::wstring exeDir = wExePath.substr(0, lastSlash);
+    lastSlash = exeDir.find_last_of(L"\\/");
+    if (lastSlash == std::wstring::npos) {
+        return "";  // Should never happen
+    }
+    
+    std::wstring parentDir = exeDir.substr(0, lastSlash);
+    std::wstring logDir = parentDir + L"\\log";
+    
+    // Convert to UTF-8
+    std::string result = WStringToString(logDir);
+    
+    // Create directory if it doesn't exist
+    CreateDirectoryA(result.c_str(), nullptr);
     
     return result;
 }
@@ -932,10 +942,14 @@ void WinProgramUpdater::PruneOldLogEntries(const std::string& logPath) {
 }
 
 void WinProgramUpdater::WriteLog(const UpdateStats& stats) {
-    std::string logDir = GetAppDataPath();
+#if !ENABLE_LOGGING
+    return;  // Logging disabled
+#endif
+    
+    std::string logDir = GetLogPath();
     if (logDir.empty()) {
 #ifdef _CONSOLE
-        std::wcout << L"ERROR: GetAppDataPath returned empty!" << std::endl;
+        std::wcout << L"ERROR: GetLogPath returned empty!" << std::endl;
 #endif
         return;
     }

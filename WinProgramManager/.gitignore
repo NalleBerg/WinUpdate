@@ -1,18 +1,31 @@
 # Database files (too large for git)
 *.db
 
+# Database backups
+DB/
+
 # Log files
 *.log
 
 # Build artifacts
 build/
+build_updater/
+WinProgramManager/
 *.exe
 *.dll
 *.o
 *.obj
 *.a
 
-# Backup files
+# Temporary/test files
 *.backup
 *.broken
 *.bak
+test_packages.txt
+name_inference_output.txt
+temp_*.txt
+
+# SQLite utilities (can be downloaded separately)
+sqlite3_analyzer.exe
+sqlite3_rsync.exe
+sqldiff.exe

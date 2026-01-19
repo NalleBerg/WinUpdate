@@ -45,9 +45,11 @@ add_executable(WinProgramUpdater WIN32
 )
 
 # Include SQLite3 headers
-target_include_directories(WinProgramUpdater PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/sqlite3)
+target_include_directories(WinProgramUpdater PRIVATE 
+    ${CMAKE_CURRENT_SOURCE_DIR}/sqlite3
+)
 
-# Link SQLite3 and Windows libraries
+# Link SQLite3 DLL and Windows libraries
 target_link_libraries(WinProgramUpdater
     ${CMAKE_CURRENT_SOURCE_DIR}/sqlite3/sqlite3.dll
     shell32
@@ -77,9 +79,11 @@ add_executable(WinProgramUpdaterTest
 )
 
 # Include SQLite3 headers
-target_include_directories(WinProgramUpdaterTest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/sqlite3)
+target_include_directories(WinProgramUpdaterTest PRIVATE 
+    ${CMAKE_CURRENT_SOURCE_DIR}/sqlite3
+)
 
-# Link SQLite3 and Windows libraries
+# Link SQLite3 DLL and Windows libraries
 target_link_libraries(WinProgramUpdaterTest
     ${CMAKE_CURRENT_SOURCE_DIR}/sqlite3/sqlite3.dll
     shell32

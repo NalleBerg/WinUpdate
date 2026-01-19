@@ -1,0 +1,35 @@
+<h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+<span style="color: #0066cc;">📦 WinProgramManager — Database Management Component</span>
+</h2>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;">
+<strong>Latest Update:</strong> 19 January 2026 | <strong>Initial Release</strong><br/>
+This changelog covers <strong>WinProgramManager</strong>, the database management component of WinProgramSuite.<br/>
+For the GUI application, see <strong>WinUpdate</strong> documentation.
+</p>
+
+<h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Version 2026.01.19</span></h3>
+<p><strong>New in this version (19 January 2026, 09:00 GMT+1):</strong></p>
+<ul>
+<li><strong>Initial Release:</strong> First public release of the database management component</li>
+<li><strong>Automated Database Updates:</strong> WinProgramUpdater automatically synchronizes package database with winget repository</li>
+<li><strong>Silent Background Operation:</strong> Updates run without visible windows, suitable for scheduled tasks</li>
+<li><strong>Complete Update Pipeline:</strong> Fetches packages, manages additions/removals, filters invalid IDs, queries tags</li>
+<li><strong>Tag Inference System:</strong> 45 name-based patterns for automatic categorization of packages</li>
+<li><strong>Correlation Analysis:</strong> Smart tag suggestion based on 66.67% similarity threshold</li>
+<li><strong>Automatic Backup System:</strong> Rolling 10-backup system with timestamped database files</li>
+<li><strong>Configurable Logging:</strong> Enable/disable logging via ENABLE_LOGGING flag in header file</li>
+<li><strong>Relative Log Directory:</strong> Logs written to ..\log directory relative to executable location</li>
+<li><strong>90-Day Log Retention:</strong> Automatic pruning of old log entries to maintain manageable file size</li>
+<li><strong>Console Test Mode:</strong> WinProgramUpdaterTest.exe provides verbose output for debugging</li>
+<li><strong>Hidden Production Mode:</strong> WinProgramUpdater.exe runs silently for scheduled tasks</li>
+<li><strong>PowerShell Build Scripts:</strong> Complete database rebuild and incremental restore scripts</li>
+<li><strong>SQLite3 Integration:</strong> Full SQLite3 database with comprehensive package metadata schema</li>
+<li><strong>Ignore Tag Database:</strong> Separate database for filtering unwanted generic tags</li>
+</ul>
+
+<h3 style="text-align: center;">&nbsp;</h3>
+<p style="text-align: center; font-size: 12px; color: #888; margin-top: 30px;">
+Part of <strong>WinProgramSuite</strong> — A comprehensive Windows package management system<br/>
+Components: WinUpdate (GUI) | WinProgramManager (Database) | WinProgramUpdater (Automation)
+</p>
