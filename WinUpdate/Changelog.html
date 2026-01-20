@@ -1,0 +1,160 @@
+<h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+<span style="color: #0066cc;">📦 WinProgramSuite — Complete Windows Package Management System</span>
+</h2>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;">
+<strong>Latest Update:</strong> 20 January 2026 | <strong>Database-Driven Architecture</strong><br/>
+This changelog covers <strong>WinUpdate</strong>, the GUI application component of the WinProgramSuite.<br/>
+For database management features, see <strong>WinProgramManager</strong> documentation.
+</p>
+
+<h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">WinUpdate Version 2026.01.20.08</span></h3>
+<p><strong>New in this version (20 January 2026, 08:00 GMT+1):</strong></p>
+<ul>
+<li><strong>Installation Dialog Output Fix:</strong> Fixed winget_helper.cpp to display installation progress in real-time using non-blocking PeekNamedPipe instead of blocking ReadFile</li>
+<li><strong>Real-Time Progress Display:</strong> Installation dialog now properly shows winget output during package installation with immediate status updates</li>
+<li><strong>Improved Reliability:</strong> Non-blocking pipe reading ensures all installation output is captured without hanging or missing data</li>
+</ul>
+
+<h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">WinUpdate Version 2026.01.19.10</span></h3>
+<p><strong>New in this version (19 January 2026, 10:00 GMT+1):</strong></p>
+<ul>
+<li><strong>Microsoft Store Source Agreement:</strong> Added --accept-source-agreements flag to all winget upgrade commands to automatically accept geographic region data requirements for msstore source</li>
+<li><strong>Non-Interactive winget Execution:</strong> Eliminated interactive prompts during automatic update checks by accepting source agreements in advance</li>
+<li><strong>Improved Reliability:</strong> All winget commands now execute without requiring user interaction for source agreements</li>
+</ul>
+
+<h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">WinUpdate Version 2026.01.11.18</span></h3>
+<p><strong>New in this version (11 January 2026, 18:00 GMT+1):</strong></p>
+<ul>
+<li><strong>Dialog Icon Consistency:</strong> All application dialogs now display the WinUpdate icon in the title bar for consistent branding</li>
+<li><strong>Color-Changing Download Indicator:</strong> Bouncing ball animation changes from blue (preparing/installing) to green (downloading) for clear visual feedback during package downloads</li>
+<li><strong>Error Message Formatting:</strong> Fixed text formatting in error summaries to ensure Norwegian and English text appear on separate lines</li>
+<li><strong>Main Window Restoration:</strong> Improved main window bring-to-front behavior after installation dialog closes</li>
+</ul>
+
+<h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">Version 2026.01.09</span></h3>
+<p><strong>New in this version (09 January 2026, 18:00 GMT+1):</strong></p>
+<ul>
+<li><strong>UI Alignment Refinement:</strong> Adjusted Log button vertical positioning for improved visual alignment with other buttons</li>
+</ul>
+
+<h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">Version 2026.01.08</span></h3>
+<p><strong>New in this version (08 January 2026, 20:00 GMT+1):</strong></p>
+<ul>
+<li><strong>Windows Defender False Positive Mitigation:</strong> Added security compiler flags (ASLR, DEP, high-entropy ASLR) to reduce false positive detections</li>
+<li><strong>Enhanced Executable Metadata:</strong> Comprehensive version information with company name, copyright, and product details embedded in executable</li>
+<li><strong>Fixed English Unskip Button:</strong> Corrected variable name display issue in English locale (en_GB.txt)</li>
+<li><strong>Descriptive Polling Interval Text:</strong> English and Norwegian dropdown now match Swedish clarity: "Scan for updates every X hours"</li>
+<li><strong>False Positive Submission Scripts:</strong> Added helper scripts for adding Windows Defender exclusions and submitting false positive reports to Microsoft</li>
+<li><strong>Comprehensive Security Documentation:</strong> Created DEFENDER_SOLUTIONS.md with detailed instructions for handling antivirus false positives</li>
+<li><strong>Installation Dialog Repair:</strong> Created winget_helper.exe that captures all winget output including progress bars, download percentages, and status information in real-time</li>
+<li><strong>Single UAC Elevation:</strong> One UAC prompt installs all selected packages via helper architecture (restored from previous working implementation)</li>
+<li><strong>Installation Progress Tracking:</strong> Progress bar updates from 0% to 100% as packages are processed, status text shows current package name</li>
+<li><strong>Installation Status Workflow:</strong> Clear status transitions: "Preparing..." → package names → "Installation complete!" with progress percentage</li>
+<li><strong>"System Updated" Dialog Fix:</strong> Now correctly shows when all available updates are skipped (counts non-skipped packages instead of total)</li>
+<li><strong>System Tray Visibility Fix:</strong> "Your system is updated" dialog now appears when window is visible, regardless of system tray mode</li>
+<li><strong>Version Update:</strong> Application version updated to 2026.01.08.08</li>
+</ul>
+
+<h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">Version 2026.01.07</span></h3>
+<p><strong>New in this version (07 January 2026, 12:00 GMT+1):</strong></p>
+<ul>
+<li><strong>Swedish Language Support:</strong> Complete Swedish (sv_SE) localization with 106 translation keys added to locale/sv_SE.txt</li>
+<li><strong>Three-Language Support:</strong> Application now supports English (GB), Norwegian (Bokmål), and Swedish with proper language selection in Config dialog</li>
+<li><strong>Natural Swedish Terminology:</strong> User-preferred Swedish terms: "Skippa/Oskippa" for Skip/Unskip, "Ladda om" for Refresh, "Avboka" for Cancel</li>
+<li><strong>UI Clarity Improvements:</strong> Changed Refresh button from "Uppdatera" to "Ladda om" in Swedish to differentiate from "Uppdatera nu" (Update Now) button</li>
+<li><strong>Descriptive Config Text:</strong> Expanded Swedish polling interval text from "Var 2e timme" to "Sök efter uppdateringar varje 2e timme" for better clarity</li>
+<li><strong>Unified Settings Architecture:</strong> Consolidated to single settings file (%APPDATA%\WinUpdate\wup_settings.ini) with proper [language] section handling</li>
+<li><strong>Full Locale Code Support:</strong> All components now handle full ISO locale codes (sv_SE, nb_NO, en_GB) instead of short codes</li>
+<li><strong>Centralized Translation Loading:</strong> Unified all translation loading to locale/ folder (was split between i18n/ and locale/)</li>
+<li><strong>Complete Translation Coverage:</strong> All dialogs, tooltips, buttons, and status messages now properly translated in all three languages</li>
+<li><strong>Settings File Cleanup:</strong> Removed obsolete wup_settings.txt from project root, all settings now in APPDATA location</li>
+</ul>
+
+<h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">Version 2026.01.04.A</span></h3>
+<p><strong>New in this version (04 January 2026, 22:00 GMT+1):</strong></p>
+<ul>
+<li><strong>Install Dialog with Animation:</strong> New modal dialog for package installation with animated progress indicator (1px moving dot, 1ms timer)</li>
+<li><strong>Select All Button:</strong> Fixed button functionality - changed from checkbox (ID 2001) to pushbutton (ID 2099) to avoid control conflicts</li>
+<li><strong>UAC Elevation with PowerShell:</strong> Package installation now uses PowerShell instead of batch files for single UAC prompt and cleaner output</li>
+<li><strong>Startup Shortcut Management:</strong> Automatic verification and correction of Windows startup shortcuts based on configuration mode</li>
+<li><strong>Startup Verification on Launch:</strong> Application checks startup shortcut matches configuration mode and fixes discrepancies automatically</li>
+<li><strong>Config Dialog Layout Improvements:</strong> Widened dialog to 600px with consistent 10px button spacing for better visual layout</li>
+<li><strong>"Add to systray now" Button Positioning:</strong> Moved button to bottom row alongside other buttons for cleaner UI</li>
+<li><strong>Mode-Specific Shortcut Handling:</strong> Mode 0 (Manual) removes shortcut, Mode 1 (Startup) creates with --hidden, Mode 2 (SysTray) creates with --systray</li>
+<li><strong>Install Dialog i18n:</strong> Added translations for "no_packages_selected" and "install_done" messages in English and Norwegian</li>
+<li><strong>Temporary File Cleanup:</strong> Guaranteed cleanup of installation output files in all execution paths</li>
+<li><strong>Done Button Sizing:</strong> Install dialog Done button now 150px wide positioned at H-70 for proper visibility</li>
+<li><strong>Apply/OK Button Consistency:</strong> Both buttons now use VerifyStartupShortcut() function for reliable shortcut management</li>
+</ul>
+
+<h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">Version 2026.01.04</span></h3>
+<p><strong>New in this version (04 January 2026, 18:30 GMT+1):</strong></p>
+<ul>
+<li><strong>System Tray Mode 2 Implementation:</strong> Complete system tray functionality with configurable automatic scanning</li>
+<li><strong>Three Configuration Modes:</strong> Manual mode (default), Hidden scan at startup, or System tray with periodic polling</li>
+<li><strong>Right-Click Context Menu:</strong> ⚡ Scan now!, 🪟 Open main window, ❌ Exit options with emoji icons</li>
+<li><strong>Dynamic Tooltip:</strong> Displays "WinUpdate - Next scan: HH:MM" showing the actual clock time of next scheduled scan</li>
+<li><strong>Smart Balloon Notifications:</strong> Shows update count when updates found, "You are updated!" only for manual scans (automatic scans are silent when no updates)</li>
+<li><strong>"Add to systray now" Button:</strong> Instantly adds app to system tray from config dialog (only visible when Mode 2 selected)</li>
+<li><strong>Automatic Startup Shortcuts:</strong> Mode 1 creates shortcut with --hidden parameter, Mode 2 with --systray parameter</li>
+<li><strong>Single Instance Handling:</strong> Starting app again activates existing window instead of creating duplicate instance</li>
+<li><strong>Window Hide to Tray:</strong> Clicking X in tray mode hides window instead of closing application</li>
+<li><strong>Tooltip Updates:</strong> Countdown refreshes every 60 seconds to keep time accurate</li>
+<li><strong>NIF_SHOWTIP Flag:</strong> Required for NOTIFYICON_VERSION_4 to properly display tooltips on Windows</li>
+<li><strong>closetray.exe Utility:</strong> Standalone CLI tool to cleanly close system tray instance</li>
+</ul>
+
+<h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">Version 2026.01.03</span></h3>
+<p><strong>New in this version (03 January 2026, 12:00 GMT+1):</strong></p>
+<ul>
+<li><strong>Config Dialog:</strong> Added configuration dialog for system tray settings (preparation for future tray integration)</li>
+<li><strong>Custom Tooltips:</strong> Implemented custom tooltip system for About button using same architecture as Skip column tooltips</li>
+<li><strong>Complete i18n System:</strong> Migrated from en_US/no to ISO-standard en_GB/nb_NO locale codes throughout the application</li>
+<li><strong>Full Translation Coverage:</strong> Added translations for all UI elements including Config dialog, tooltips, and status messages</li>
+<li><strong>Norwegian Localization Fixes:</strong> Fixed "Uskippe" prefix issue, corrected About button translation to "Om"</li>
+<li><strong>Button Spacing:</strong> Precise 2-pixel gap between Config and About buttons (Config at x=468, About at x=590)</li>
+<li><strong>Config Dialog UX:</strong> Checkbox enables/disables dropdown; status updates only after Apply/OK; Cancel properly discards changes</li>
+</ul>
+
+<h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">Version 2026.01.02</span></h3>
+<p><strong>New in this version (02 January 2026, 10:30 GMT+1):</strong></p>
+<ul>
+<li><strong>Fixed Application Freeze After Skip Confirmation:</strong> Changed synchronous SendMessageW calls to asynchronous PostMessageW to prevent deadlock</li>
+<li><strong>Fixed Unskip Dialog Freeze:</strong> Removed slow winget list call (30-second timeout) and replaced with in-memory parsing of cached winget output</li>
+<li><strong>Fixed Display Name Truncation:</strong> Resolved issue where skip dialog and unskip list showed abbreviated names like "VLC" instead of full names like "VLC media player"</li>
+<li><strong>Fixed INI Key Matching:</strong> Added whitespace trimming for INI keys to correctly match parsed package IDs that had trailing spaces</li>
+<li><strong>In-Memory Display Name Cache:</strong> Introduced g_id_to_displayname map with mutex protection to store full package names in memory</li>
+<li><strong>Optimized Unskip Dialog Performance:</strong> Now opens instantly by parsing in-memory data instead of spawning external processes</li>
+<li><strong>Enhanced Display Name Resolution:</strong> Cascading lookup strategy: memory cache → in-memory winget output → g_packages → prettified fallback</li>
+</ul>
+
+<h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">Version 2025.12.20</span></h3>
+<p><strong>New in this version (20 December 2025, 15:00 GMT+1):</strong></p>
+<ul>
+<li><strong>Core Functionality:</strong> Initial release with basic winget wrapper capabilities</li>
+<li><strong>Skip Package Updates:</strong> Ability to skip specific package versions</li>
+<li><strong>ListView Display:</strong> Shows available updates in a sortable list</li>
+<li><strong>Settings Persistence:</strong> Saves skipped packages to INI file in %APPDATA%\WinUpdate</li>
+<li><strong>Multi-Language Support:</strong> English and Norwegian translations via INI files</li>
+<li><strong>About Dialog:</strong> Displays version information and license details</li>
+<li><strong>Hyperlink Controls:</strong> Custom ListView subclassing for clickable skip links</li>
+<li><strong>Resource Management:</strong> Icon and resource file integration</li>
+<li><strong>Architecture:</strong> Built with C++ and Win32 API (native Windows application), CMake build system with MinGW GCC 15.2.0</li>
+<li><strong>Modular Code Structure:</strong> Separate files for parsing, logging, hyperlinks, dialogs</li>
+<li><strong>Thread Safety:</strong> Mutex-protected global state for thread-safe operations</li>
+</ul>
+
+<hr>
+<br><br>

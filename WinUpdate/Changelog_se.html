@@ -1,0 +1,160 @@
+<h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+<span style="color: #0066cc;">📦 WinProgramSuite — Komplett Windows Pakethanteringssystem</span>
+</h2>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;">
+<strong>Senaste uppdatering:</strong> 20 januari 2026 | <strong>Databasdriven arkitektur</strong><br/>
+Denna ändringslogg täcker <strong>WinUpdate</strong>, GUI-applikationskomponenten i WinProgramSuite.<br/>
+För databashanteringsfunktioner, se <strong>WinProgramManager</strong> dokumentation.
+</p>
+
+<h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">WinUpdate Version 2026.01.20.08</span></h3>
+<p><strong>Nytt i denna version (20 januari 2026, 08:00 GMT+1):</strong></p>
+<ul>
+<li><strong>Installationsdialog utdata-fix:</strong> Fixade winget_helper.cpp för att visa installationsframsteg i realtid med icke-blockerande PeekNamedPipe istället för blockerande ReadFile</li>
+<li><strong>Realtidsvisning av framsteg:</strong> Installationsdialogen visar nu winget-utdata ordentligt under paketinstallation med omedelbara statusuppdateringar</li>
+<li><strong>Förbättrad tillförlitlighet:</strong> Icke-blockerande rörläsning säkerställer att all installationsutdata fångas utan att hänga eller förlora data</li>
+</ul>
+
+<h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">WinUpdate Version 2026.01.19.10</span></h3>
+<p><strong>Nytt i denna version (19 januari 2026, 10:00 GMT+1):</strong></p>
+<ul>
+<li><strong>Microsoft Store källavtal:</strong> Lade till --accept-source-agreements flagga till alla winget upgrade-kommandon för att automatiskt acceptera geografiska regiondatakrav för msstore-källa</li>
+<li><strong>Icke-interaktiv winget-körning:</strong> Eliminerade interaktiva prompter under automatiska uppdateringskontroller genom att acceptera källavtal i förväg</li>
+<li><strong>Förbättrad tillförlitlighet:</strong> Alla winget-kommandon körs nu utan att kräva användarinteraktion för källavtal</li>
+</ul>
+
+<h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">WinUpdate Version 2026.01.11.18</span></h3>
+<p><strong>Nytt i denna version (11 januari 2026, 18:00 GMT+1):</strong></p>
+<ul>
+<li><strong>Dialogikon-konsekvens:</strong> Alla applikationsdialoger visar nu WinUpdate-ikonen i titelraden för konsekvent varumärkesbyggande</li>
+<li><strong>Färgväxlande nedladdningsindikator:</strong> Hoppande boll-animation byter färg från blå (förbereder/installerar) till grön (laddar ner) för tydlig visuell återkoppling under paketnedladdningar</li>
+<li><strong>Felmeddelandeformatering:</strong> Fixade textformatering i felsammanfattningar för att säkerställa att norsk och engelsk text visas på separata rader</li>
+<li><strong>Huvudfönster-återställning:</strong> Förbättrad huvudfönstrets bring-till-framsida-beteende efter att installationsdialogen stängs</li>
+</ul>
+
+<h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">Version 2026.01.09</span></h3>
+<p><strong>Nytt i denna version (09 januari 2026, 18:00 GMT+1):</strong></p>
+<ul>
+<li><strong>UI-justeringsförfining:</strong> Justerade Logg-knappens vertikala positionering för förbättrad visuell justering med andra knappar</li>
+</ul>
+
+<h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">Version 2026.01.08</span></h3>
+<p><strong>Nytt i denna version (08 januari 2026, 20:00 GMT+1):</strong></p>
+<ul>
+<li><strong>Windows Defender falsk positiv-reducering:</strong> Lade till säkerhetskompileringsflaggor (ASLR, DEP, hög-entropi ASLR) för att minska falska positiva detektioner</li>
+<li><strong>Förbättrad körbar metadata:</strong> Omfattande versionsinformation med företagsnamn, upphovsrätt och produktdetaljer inbäddad i körbar fil</li>
+<li><strong>Fixade engelsk Oskippa-knapp:</strong> Korrigerade variabelnamnvisningsproblem i engelsk lokal (en_GB.txt)</li>
+<li><strong>Beskrivande pollningsintervalltext:</strong> Engelsk och norsk rullgardinsmeny matchar nu svensk klarhet: "Sök efter uppdateringar varje X:e timme"</li>
+<li><strong>Skript för falsk positiv-inlämning:</strong> Lade till hjälpskript för att lägga till Windows Defender-undantag och skicka in falska positiva rapporter till Microsoft</li>
+<li><strong>Omfattande säkerhetsdokumentation:</strong> Skapade DEFENDER_SOLUTIONS.md med detaljerade instruktioner för hantering av antivirusfalska positiver</li>
+<li><strong>Installationsdialogreparation:</strong> Skapade winget_helper.exe som fångar all winget-utmatning inklusive förloppsindikator, nedladdningsprocent och statusinformation i realtid</li>
+<li><strong>Enkel UAC-upphöjning:</strong> En enda UAC-prompt installerar alla valda paket via hjälparkitekturen (återställd från tidigare fungerande implementation)</li>
+<li><strong>Installationsförloppsspårning:</strong> Förloppsindikator uppdateras från 0% till 100% när paket bearbetas, statustext visar aktuellt paketnamn</li>
+<li><strong>Installationsstatusarbetsflöde:</strong> Tydliga statusövergångar: "Förbereder..." → paketnamn → "Installation slutförd!" med förloppsprocent</li>
+<li><strong>"System uppdaterat" dialogfixering:</strong> Visar nu korrekt när alla tillgängliga uppdateringar är skippade (räknar icke-skippade paket istället för totalt)</li>
+<li><strong>Systemfältsynlighetsfix:</strong> "Ditt system är uppdaterat" dialog visas nu när fönstret är synligt, oavsett systemfältläge</li>
+<li><strong>Versionsuppdatering:</strong> Applikationsversion uppdaterad till 2026.01.08.08</li>
+</ul>
+
+<h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">Version 2026.01.07</span></h3>
+<p><strong>Nytt i denna version (07 januari 2026, 12:00 GMT+1):</strong></p>
+<ul>
+<li><strong>Svenskt språkstöd:</strong> Komplett svensk (sv_SE) lokalisering med 106 översättningsnycklar tillagda i locale/sv_SE.txt</li>
+<li><strong>Tre-språksstöd:</strong> Applikationen stöder nu engelska (GB), norska (bokmål) och svenska med korrekt språkval i konfigurationsdialogen</li>
+<li><strong>Naturlig svensk terminologi:</strong> Användarprefererade svenska termer: "Skippa/Oskippa" för Skip/Unskip, "Ladda om" för Refresh, "Avboka" för Cancel</li>
+<li><strong>Förbättrad UI-klarhet:</strong> Ändrade Refresh-knappen från "Uppdatera" till "Ladda om" på svenska för att särskilja från "Uppdatera nu"-knappen (Update Now)</li>
+<li><strong>Beskrivande konfigurationstext:</strong> Utökade svensk pollningsintervalltexten från "Var 2e timme" till "Sök efter uppdateringar varje 2e timme" för bättre tydlighet</li>
+<li><strong>Enhetlig inställningsarkitektur:</strong> Konsoliderade till en enda inställningsfil (%APPDATA%\WinUpdate\wup_settings.ini) med korrekt hantering av [language]-sektion</li>
+<li><strong>Fullt stöd för lokalekoder:</strong> Alla komponenter hanterar nu fullständiga ISO-lokalekoder (sv_SE, nb_NO, en_GB) istället för korta koder</li>
+<li><strong>Centraliserad översättningsladdning:</strong> Enhetliggjorde all översättningsladdning till locale/-mappen (var tidigare uppdelat mellan i18n/ och locale/)</li>
+<li><strong>Komplett översättningstäckning:</strong> Alla dialoger, verktygstips, knappar och statusmeddelanden är nu korrekt översatta på alla tre språken</li>
+<li><strong>Städning av inställningsfil:</strong> Tog bort föråldrad wup_settings.txt från projektroten, alla inställningar finns nu i APPDATA-platsen</li>
+</ul>
+
+<h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">Version 2026.01.04.A</span></h3>
+<p><strong>Nytt i denna version (04 januari 2026, 22:00 GMT+1):</strong></p>
+<ul>
+<li><strong>Installationsdialog med animation:</strong> Ny modal dialog för paketinstallation med animerad förloppsindikator (1px rörlig punkt, 1ms timer)</li>
+<li><strong>Markera alla-knapp:</strong> Fixade knappfunktionalitet - ändrade från kryssruta (ID 2001) till tryckknapp (ID 2099) för att undvika kontrollkonflikter</li>
+<li><strong>UAC-upphöjning med PowerShell:</strong> Paketinstallation använder nu PowerShell istället för batch-filer för enskild UAC-prompt och renare utmatning</li>
+<li><strong>Hantering av uppstartsgenvägar:</strong> Automatisk verifiering och korrigering av Windows-uppstartsgenvägar baserat på konfigurationsläge</li>
+<li><strong>Uppstartsverifiering vid start:</strong> Applikationen kontrollerar att uppstartsgenvägen matchar konfigurationsläget och fixar avvikelser automatiskt</li>
+<li><strong>Förbättringar av konfigurationsdialoglayout:</strong> Breddade dialog till 600px med konsekvent 10px knappavstånd för bättre visuell layout</li>
+<li><strong>"Lägg till i systemfältet nu"-knappplacering:</strong> Flyttade knapp till nedersta raden tillsammans med andra knappar för renare UI</li>
+<li><strong>Lägesspecifik genväghantering:</strong> Läge 0 (Manuell) tar bort genväg, Läge 1 (Uppstart) skapar med --hidden, Läge 2 (Systemfält) skapar med --systray</li>
+<li><strong>Installationsdialog i18n:</strong> Lade till översättningar för "no_packages_selected" och "install_done"-meddelanden på engelska och norska</li>
+<li><strong>Rensning av temporära filer:</strong> Garanterad rensning av installationsutdatafiler i alla exekveringsvägar</li>
+<li><strong>Storlek på Klar-knapp:</strong> Installationsdialogs Klar-knapp är nu 150px bred placerad vid H-70 för korrekt synlighet</li>
+<li><strong>Konsistens för Verkställ/OK-knappar:</strong> Båda knapparna använder nu VerifyStartupShortcut()-funktionen för pålitlig genväghantering</li>
+</ul>
+
+<h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">Version 2026.01.04</span></h3>
+<p><strong>Nytt i denna version (04 januari 2026, 18:30 GMT+1):</strong></p>
+<ul>
+<li><strong>Systemfältläge 2-implementering:</strong> Komplett systemfältfunktionalitet med konfigurerbar automatisk skanning</li>
+<li><strong>Tre konfigurationslägen:</strong> Manuellt läge (standard), Dold skanning vid uppstart, eller Systemfält med periodisk pollning</li>
+<li><strong>Högerklick-kontextmeny:</strong> ⚡ Skanna nu!, 🪟 Öppna huvudfönster, ❌ Avsluta-alternativ med emoji-ikoner</li>
+<li><strong>Dynamiskt verktygstips:</strong> Visar "WinUpdate - Nästa skanning: HH:MM" som visar den faktiska klocktiden för nästa schemalagda skanning</li>
+<li><strong>Smarta ballongnotifieringar:</strong> Visar uppdateringsantal när uppdateringar hittas, "Du är uppdaterad!" endast för manuella skanningar (automatiska skanningar är tysta när inga uppdateringar finns)</li>
+<li><strong>"Lägg till i systemfältet nu"-knapp:</strong> Lägger omedelbart till app i systemfältet från konfigurationsdialog (endast synlig när Läge 2 är valt)</li>
+<li><strong>Automatiska uppstartsgenvägar:</strong> Läge 1 skapar genväg med --hidden-parameter, Läge 2 med --systray-parameter</li>
+<li><strong>Hantering av enkelinstans:</strong> Att starta appen igen aktiverar befintligt fönster istället för att skapa dubblettinstans</li>
+<li><strong>Dölj fönster till systemfält:</strong> Att klicka på X i systemfältläge döljer fönstret istället för att stänga applikationen</li>
+<li><strong>Uppdateringar av verktygstips:</strong> Nedräkning uppdateras var 60:e sekund för att hålla tiden korrekt</li>
+<li><strong>NIF_SHOWTIP-flagga:</strong> Krävs för NOTIFYICON_VERSION_4 för att korrekt visa verktygstips i Windows</li>
+<li><strong>closetray.exe-verktyg:</strong> Fristående CLI-verktyg för att rent stänga systemfältinstansen</li>
+</ul>
+
+<h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">Version 2026.01.03</span></h3>
+<p><strong>Nytt i denna version (03 januari 2026, 12:00 GMT+1):</strong></p>
+<ul>
+<li><strong>Konfigurationsdialog:</strong> Lade till konfigurationsdialog för systemfältinställningar (förberedelse för framtida systemfältintegration)</li>
+<li><strong>Anpassade verktygstips:</strong> Implementerade anpassat verktygstipssystem för Om-knapp med samma arkitektur som Skippa-kolumnens verktygstips</li>
+<li><strong>Komplett i18n-system:</strong> Migrerade från en_US/no till ISO-standard en_GB/nb_NO lokalekoder genom hela applikationen</li>
+<li><strong>Fullständig översättningstäckning:</strong> Lade till översättningar för alla UI-element inklusive konfigurationsdialog, verktygstips och statusmeddelanden</li>
+<li><strong>Norska lokaliseringskorrigeringar:</strong> Fixade "Uskippe"-prefixproblem, korrigerade Om-knappens översättning till "Om"</li>
+<li><strong>Knappavstånd:</strong> Exakt 2-pixlars gap mellan Konfig- och Om-knappar (Konfig vid x=468, Om vid x=590)</li>
+<li><strong>Konfigurationsdialog UX:</strong> Kryssrutan aktiverar/inaktiverar dropdown; status uppdateras endast efter Verkställ/OK; Avboka kasserar korrekt ändringar</li>
+</ul>
+
+<h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">Version 2026.01.02</span></h3>
+<p><strong>Nytt i denna version (02 januari 2026, 10:30 GMT+1):</strong></p>
+<ul>
+<li><strong>Fixade applikationsfrysning efter skippa-bekräftelse:</strong> Ändrade synkrona SendMessageW-anrop till asynkrona PostMessageW för att förhindra dödläge</li>
+<li><strong>Fixade Oskippa-dialogfrysning:</strong> Tog bort långsamt winget list-anrop (30-sekunders timeout) och ersatte med in-memory-parsning av cachad winget-utmatning</li>
+<li><strong>Fixade trunkning av visningsnamn:</strong> Löste problem där skippa-dialog och oskippa-lista visade förkortade namn som "VLC" istället för fullständiga namn som "VLC media player"</li>
+<li><strong>Fixade INI-nyckelmatchning:</strong> Lade till trimmning av blanksteg för INI-nycklar för att korrekt matcha parsade paket-ID:n som hade efterföljande blanksteg</li>
+<li><strong>Cache för visningsnamn i minnet:</strong> Introducerade g_id_to_displayname-mappning med mutex-skydd för att lagra fullständiga paketnamn i minnet</li>
+<li><strong>Optimerad Oskippa-dialogprestanda:</strong> Öppnas nu omedelbart genom att parsa data i minnet istället för att starta externa processer</li>
+<li><strong>Förbättrad upplösning av visningsnamn:</strong> Kaskaderad uppslagsstrategi: minnescache → winget-utmatning i minnet → g_packages → förskönande fallback</li>
+</ul>
+
+<h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">Version 2025.12.20</span></h3>
+<p><strong>Nytt i denna version (20 december 2025, 15:00 GMT+1):</strong></p>
+<ul>
+<li><strong>Kärnfunktionalitet:</strong> Initial release med grundläggande winget-wrapper-kapacitet</li>
+<li><strong>Skippa paketuppdateringar:</strong> Möjlighet att skippa specifika paketversioner</li>
+<li><strong>ListView-visning:</strong> Visar tillgängliga uppdateringar i en sorterbar lista</li>
+<li><strong>Inställningspersistens:</strong> Sparar skippade paket till INI-fil i %APPDATA%\WinUpdate</li>
+<li><strong>Flerspråksstöd:</strong> Engelska och norska översättningar via INI-filer</li>
+<li><strong>Om-dialog:</strong> Visar versionsinformation och licensdetaljer</li>
+<li><strong>Hyperlänkkontroller:</strong> Anpassad ListView-subklassning för klickbara skippa-länkar</li>
+<li><strong>Resurshantering:</strong> Ikon- och resursfil-integration</li>
+<li><strong>Arkitektur:</strong> Byggd med C++ och Win32 API (nativ Windows-applikation), CMake-byggsystem med MinGW GCC 15.2.0</li>
+<li><strong>Modulär kodstruktur:</strong> Separata filer för parsning, loggning, hyperlänkar, dialoger</li>
+<li><strong>Trådsäkerhet:</strong> Mutex-skyddat globalt tillstånd för trådsäkra operationer</li>
+</ul>
+
+<hr>
+<br><br>
