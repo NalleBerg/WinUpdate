@@ -1,0 +1,17 @@
+# Norsk (Bokmål) locale
+lang_name=Norsk (NB)
+thousands_sep= 
+decimal_sep=,
+
+# UI Labels
+categories=kategorier
+apps=apper
+search_tags=Søk i emneord...
+search_apps=Søk i programmer...
+all=Alle
+
+# Window title
+title=WinProgram Manager
+
+# Loading dialog
+processing_database=Behandler database...

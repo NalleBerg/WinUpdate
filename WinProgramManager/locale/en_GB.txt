@@ -1,0 +1,17 @@
+# English (UK) locale
+lang_name=English (UK)
+thousands_sep=,
+decimal_sep=.
+
+# UI Labels
+categories=categories
+apps=apps
+search_tags=Search tags...
+search_apps=Search applications...
+all=All
+
+# Window title
+title=WinProgram Manager
+
+# Loading dialog
+processing_database=Processing database...

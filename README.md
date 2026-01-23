@@ -1,8 +1,10 @@
 # WinProgramSuite — Complete Windows Package Management System
 
-**Latest Update:** 16 January 2026 | **Database-Driven Architecture**
+**Latest Update:** 23 January 2026 | **Database-Driven Architecture**
 
 **WinProgramSuite** is a comprehensive package management system for Windows, combining database-driven package metadata management with a friendly GUI for updates. Built on Microsoft's `winget` package manager with advanced categorization, search, and analysis capabilities.
+
+> **Note:** Currently only **WinUpdate** (the GUI component) is published and available. WinProgramManager (database management) is under development.
 
 ## 🏗️ Suite Components
 
@@ -17,6 +19,7 @@ Database builder and metadata management system for Windows packages.
 - Tag restoration and correlation analysis
 - Full-text search ready (FTS5 compatible)
 - Automatic tag inference from co-occurrence patterns
+- Professional startup dialog with animated spinner and i18n support
 
 **Scripts:**
 - `build_everything.ps1` — Single-pass database creation with all metadata
@@ -174,7 +177,7 @@ WinProgramSuite/
 ### 🚧 In Progress
 - Category inference from correlations
 - "Uncategorized" category for packages with no tags
-- C++ GUI application for database browsing
+- C++ GUI application for database browsing (startup dialog complete)
 - Chocolatey package support
 - Code signing for Windows Defender whitelisting
 
@@ -219,6 +222,7 @@ Developed by [NalleBerg](https://github.com/NalleBerg)
 - **PowerShell execution policy:** You may need to run `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser` to execute scripts.
 - **Winget dependency:** All tools rely on Microsoft's `winget` package manager. Keep App Installer updated for best results.
 - **Long build times:** Initial database creation takes ~35 hours due to winget query limits (~12-13 seconds per package). This is a one-time operation.
+- **Unicode support:** Scripts dynamically switch console encoding to UTF-8 when querying package details to properly handle Chinese and other non-ASCII characters. Corrupted IDs are automatically detected and skipped.
 
 ---
 

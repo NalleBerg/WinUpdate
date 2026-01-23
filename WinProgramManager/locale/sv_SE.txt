@@ -1,0 +1,17 @@
+# Svenska locale
+lang_name=Svenska
+thousands_sep= 
+decimal_sep=,
+
+# UI Labels
+categories=kategorier
+apps=appar
+search_tags=Sök taggar...
+search_apps=Sök program...
+all=Alla
+
+# Window title
+title=WinProgram Manager
+
+# Loading dialog
+processing_database=Bearbetar databas...

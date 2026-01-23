@@ -1,0 +1,58 @@
+=== WinProgramSuite Change Log ===
+Notes for future versioned changelog
+
+=====================================
+Date: 2026-01-23
+Component: WinProgramManager
+
+FEATURE: Professional Startup Loading Dialog
+--------------------------------------------
+- Implemented threaded loading dialog with continuous animated spinner
+- Loading dialog runs in independent thread with own message loop
+- Spinner animation never freezes during database loading operations
+- White background design matching Windows design language
+- Blue spinner (RGB 0, 120, 215) for visual consistency
+- Internationalization support for loading text
+
+TECHNICAL DETAILS:
+- Loading dialog created in separate thread using LoadingDialogThread()
+- Independent message loop prevents UI freezing during main window operations
+- Timer-based spinner animation (60ms intervals) with Unicode characters (◐ ◓ ◑ ◒)
+- WM_CTLCOLORSTATIC handler for white backgrounds and blue text coloring
+- Background thread handles database opening and data loading
+- Main window brought to foreground after loading completes (SetForegroundWindow)
+
+INTERNATIONALIZATION:
+- Added "processing_database" field to Locale structure
+- Updated locale files:
+  * en_GB.txt: "Processing database..."
+  * nb_NO.txt: "Behandler database..."
+  * sv_SE.txt: "Bearbetar databas..."
+- Loading text dynamically loaded from locale files
+
+USER EXPERIENCE IMPROVEMENTS:
+- Continuous spinner animation from start to finish
+- No UI freezing during expensive operations (control creation, database loading)
+- Professional appearance with clean white backgrounds
+- Immediate visual feedback that application is loading
+- Main window automatically activated and brought to front when ready
+
+FILES MODIFIED:
+- WinProgramManager/main.cpp
+  * Added LoadingDialogThread() function
+  * Added LoadingDialogProc() with WM_CTLCOLORSTATIC handler
+  * Modified WM_CREATE to be non-blocking
+  * Added background thread for database loading
+  * Added foreground window activation
+- WinProgramManager/locale/en_GB.txt
+- WinProgramManager/locale/nb_NO.txt
+- WinProgramManager/locale/sv_SE.txt
+
+KNOWN ISSUES RESOLVED:
+- Fixed spinner freezing during control creation
+- Fixed gray backgrounds on static controls
+- Fixed black spinner (now blue as intended)
+- Fixed dialog closing too early
+- Fixed main window not coming to foreground
+
+=====================================
