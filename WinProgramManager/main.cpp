@@ -44,9 +44,11 @@ HWND g_hTagCountLabel = NULL;
 HWND g_hAppSearch = NULL;
 HWND g_hAppList = NULL;
 HWND g_hAppCountLabel = NULL;
+HWND g_hCategoryLabel = NULL;  // Category name label
 HWND g_hLangCombo = NULL;
 HWND g_hSplitter = NULL;
 HFONT g_hFont = NULL;
+HFONT g_hBoldFont = NULL;  // Bold font for category name
 HIMAGELIST g_hImageList = NULL;
 HIMAGELIST g_hTreeImageList = NULL;
 sqlite3* g_db = NULL;
@@ -173,6 +175,7 @@ int g_splitterPos = 300;  // Initial splitter position
 bool g_draggingSplitter = false;
 std::wstring g_selectedTag = L"All";
 std::map<int, std::vector<unsigned char>> g_iconCache;
+std::vector<std::wstring*> g_tagTextBuffers;  // Persistent storage for TreeView text
 
 // Structures
 struct AppInfo {
@@ -259,14 +262,21 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     }
     Sleep(100); // Give it time to show
 
-    // Create window
+    // Create window with 80% screen height and centered with top margin
+    int screenWidth = GetSystemMetrics(SM_CXSCREEN);
+    int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+    int windowWidth = 1000;  // Narrower window
+    int windowHeight = (int)(screenHeight * 0.8);
+    int windowX = (screenWidth - windowWidth) / 2;
+    int windowY = (int)(screenHeight * 0.05);  // Start 5% from top to avoid taskbar at bottom
+    
     HWND hwnd = CreateWindowExW(
         0,
         CLASS_NAME,
         g_locale.title.c_str(),
         WS_OVERLAPPEDWINDOW,
-        CW_USEDEFAULT, CW_USEDEFAULT,
-        1200, 800,
+        windowX, windowY,
+        windowWidth, windowHeight,
         NULL,
         NULL,
         hInstance,
@@ -295,8 +305,13 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     switch (uMsg) {
         case WM_CREATE: {
-            // Create font
-            g_hFont = CreateFontW(16, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+            // Create font (19pt = 16pt * 1.20)
+            g_hFont = CreateFontW(19, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+                DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+                CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
+            
+            // Create bold font for category name
+            g_hBoldFont = CreateFontW(19, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
                 DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
                 CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
 
@@ -327,7 +342,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                 
                 // Load data
                 LoadTags();
-                // LoadApps is called by TreeView_SelectItem in LoadTags via OnTagSelectionChanged
+                OnTagSelectionChanged();  // Ensure initial selection state is correct
                 // Wait a bit for LoadApps to complete
                 Sleep(100);
                 
@@ -345,8 +360,11 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             
             // Bring window to foreground
             SetForegroundWindow(hwnd);
-            SetFocus(hwnd);
             BringWindowToTop(hwnd);
+            
+            // Set focus to category list for blue selection and reload apps
+            SetFocus(g_hTagTree);
+            OnTagSelectionChanged();  // Reload apps with focus set
             
             // Signal loading thread to stop and destroy dialog
             g_loadingThreadRunning = false;
@@ -388,8 +406,35 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         case WM_NOTIFY: {
             LPNMHDR nmhdr = (LPNMHDR)lParam;
             
-            if (nmhdr->idFrom == ID_TAG_TREE && nmhdr->code == TVN_SELCHANGED) {
-                OnTagSelectionChanged();
+            // Handle custom draw for both ListViews to add 3px text spacing
+            if ((nmhdr->idFrom == ID_TAG_TREE || nmhdr->idFrom == ID_APP_LIST) && nmhdr->code == NM_CUSTOMDRAW) {
+                LPNMLVCUSTOMDRAW lplvcd = (LPNMLVCUSTOMDRAW)lParam;
+                
+                switch (lplvcd->nmcd.dwDrawStage) {
+                    case CDDS_PREPAINT:
+                        return CDRF_NOTIFYITEMDRAW | CDRF_NOTIFYSUBITEMDRAW;
+                    
+                    case CDDS_ITEMPREPAINT:
+                        return CDRF_NOTIFYSUBITEMDRAW;
+                    
+                    case CDDS_SUBITEM | CDDS_ITEMPREPAINT:
+                        // Add spacing before text - more for first column with icons
+                        if (lplvcd->iSubItem == 0) {
+                            lplvcd->nmcd.rc.left += 6;  // More space after icon
+                        } else {
+                            lplvcd->nmcd.rc.left += 3;  // Standard spacing for other columns
+                        }
+                        return CDRF_DODEFAULT;
+                }
+            }
+            
+            // Handle category list selection (now ListView instead of TreeView)
+            if (nmhdr->idFrom == ID_TAG_TREE && nmhdr->code == LVN_ITEMCHANGED) {
+                LPNMLISTVIEW pnmv = (LPNMLISTVIEW)lParam;
+                // Only respond to state changes that involve selection
+                if ((pnmv->uChanged & LVIF_STATE) && (pnmv->uNewState & LVIS_SELECTED)) {
+                    OnTagSelectionChanged();
+                }
             }
             else if (nmhdr->idFrom == ID_APP_LIST && nmhdr->code == NM_DBLCLK) {
                 OnAppDoubleClick();
@@ -459,11 +504,20 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             HDC hdcStatic = (HDC)wParam;
             HWND hStatic = (HWND)lParam;
             
-            // Make count labels blue
+            // Make count labels blue with proper background
             if (hStatic == g_hTagCountLabel || hStatic == g_hAppCountLabel) {
                 SetTextColor(hdcStatic, RGB(0, 102, 204)); // Blue color
-                SetBkMode(hdcStatic, TRANSPARENT);
-                return (LRESULT)GetStockObject(NULL_BRUSH);
+                SetBkMode(hdcStatic, OPAQUE);
+                SetBkColor(hdcStatic, GetSysColor(COLOR_WINDOW));
+                return (LRESULT)GetSysColorBrush(COLOR_WINDOW);
+            }
+            
+            // Make category label navy blue with proper background
+            if (hStatic == g_hCategoryLabel) {
+                SetTextColor(hdcStatic, RGB(0, 0, 128)); // Navy blue
+                SetBkMode(hdcStatic, OPAQUE);
+                SetBkColor(hdcStatic, GetSysColor(COLOR_WINDOW));
+                return (LRESULT)GetSysColorBrush(COLOR_WINDOW);
             }
             return DefWindowProc(hwnd, uMsg, wParam, lParam);
         }
@@ -486,6 +540,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         case WM_DESTROY:
             CloseDatabase();
             if (g_hFont) DeleteObject(g_hFont);
+            if (g_hBoldFont) DeleteObject(g_hBoldFont);
             if (g_hImageList) ImageList_Destroy(g_hImageList);
             if (g_hTreeImageList) ImageList_Destroy(g_hTreeImageList);
             PostQuitMessage(0);
@@ -557,12 +612,12 @@ void CreateControls(HWND hwnd) {
     );
     SendMessageW(g_hTagCountLabel, WM_SETFONT, (WPARAM)g_hFont, TRUE);
     
-    // Left panel - Tag tree
+    // Left panel - Category list (using ListView for full icon control)
     g_hTagTree = CreateWindowExW(
         WS_EX_CLIENTEDGE,
-        WC_TREEVIEW,
+        WC_LISTVIEW,
         L"",
-        WS_CHILD | WS_VISIBLE | TVS_HASLINES | TVS_LINESATROOT | TVS_HASBUTTONS | TVS_SHOWSELALWAYS,
+        WS_CHILD | WS_VISIBLE | LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_NOCOLUMNHEADER,
         0, 0, 0, 0,
         hwnd,
         (HMENU)ID_TAG_TREE,
@@ -571,29 +626,86 @@ void CreateControls(HWND hwnd) {
     );
     SendMessageW(g_hTagTree, WM_SETFONT, (WPARAM)g_hFont, TRUE);
     
-    // Create tree view image list with real folder icons from shell
-    g_hTreeImageList = ImageList_Create(16, 16, ILC_COLOR32 | ILC_MASK, 2, 2);
+    // Create image list with yellow folder icons (25x19 for open, 21x19 for closed)
+    g_hTreeImageList = ImageList_Create(25, 19, ILC_COLOR32 | ILC_MASK, 2, 2);
     
-    HMODULE hShell32 = LoadLibraryW(L"shell32.dll");
-    if (hShell32) {
-        // Extract yellow closed folder icon (index 3 in shell32.dll)
-        HICON hClosedIcon = (HICON)LoadImageW(hShell32, MAKEINTRESOURCEW(4), IMAGE_ICON, 16, 16, LR_DEFAULTCOLOR);
-        if (hClosedIcon) {
-            ImageList_AddIcon(g_hTreeImageList, hClosedIcon);
-            DestroyIcon(hClosedIcon);
+    HICON hClosedIcon = NULL;
+    HICON hOpenIcon = NULL;
+    
+    // Try to load custom folder icons first (both at 25x19 - closed will have empty space on right)
+    hClosedIcon = (HICON)LoadImageW(NULL, L"gr_folder.icon_closed.ico", IMAGE_ICON, 25, 19, LR_LOADFROMFILE);
+    hOpenIcon = (HICON)LoadImageW(NULL, L"gr_folder.icon_open.ico", IMAGE_ICON, 25, 19, LR_LOADFROMFILE);
+    
+    // If custom icons not found, extract yellow folders from shell32.dll
+    if (!hClosedIcon || !hOpenIcon) {
+        // Get the shell32.dll path
+        wchar_t shell32Path[MAX_PATH];
+        GetSystemDirectoryW(shell32Path, MAX_PATH);
+        wcscat_s(shell32Path, L"\\shell32.dll");
+        
+        // Try multiple icon indices to find yellow folders
+        // In Windows, the classic yellow folder is usually at index 3 or 4
+        if (!hClosedIcon) {
+            HICON hLarge = NULL, hSmall = NULL;
+            // Try index 3 first (classic closed folder) - 25x19 to match open folder
+            if (ExtractIconExW(shell32Path, 3, &hLarge, &hSmall, 1) > 0 && hSmall) {
+                hClosedIcon = (HICON)CopyImage(hSmall, IMAGE_ICON, 25, 19, 0);
+                DestroyIcon(hSmall);
+                if (hLarge) DestroyIcon(hLarge);
+            }
         }
         
-        // Extract yellow open folder icon (index 5 in shell32.dll)
-        HICON hOpenIcon = (HICON)LoadImageW(hShell32, MAKEINTRESOURCEW(5), IMAGE_ICON, 16, 16, LR_DEFAULTCOLOR);
-        if (hOpenIcon) {
-            ImageList_AddIcon(g_hTreeImageList, hOpenIcon);
-            DestroyIcon(hOpenIcon);
+        if (!hOpenIcon) {
+            HICON hLarge = NULL, hSmall = NULL;
+            // Try index 4 (classic open folder) - 25x19 for open flap
+            if (ExtractIconExW(shell32Path, 4, &hLarge, &hSmall, 1) > 0 && hSmall) {
+                hOpenIcon = (HICON)CopyImage(hSmall, IMAGE_ICON, 25, 19, 0);
+                DestroyIcon(hSmall);
+                if (hLarge) DestroyIcon(hLarge);
+            }
         }
-        
-        FreeLibrary(hShell32);
     }
     
-    TreeView_SetImageList(g_hTagTree, g_hTreeImageList, TVSIL_NORMAL);
+    // Add icons to image list - ensure BOTH icons are added at same size
+    // If one is missing, use the available one for both
+    if (!hClosedIcon && hOpenIcon) {
+        hClosedIcon = (HICON)CopyImage(hOpenIcon, IMAGE_ICON, 25, 19, 0);
+    }
+    if (!hOpenIcon && hClosedIcon) {
+        hOpenIcon = (HICON)CopyImage(hClosedIcon, IMAGE_ICON, 25, 19, 0);
+    }
+    
+    if (hClosedIcon) {
+        ImageList_AddIcon(g_hTreeImageList, hClosedIcon);  // Index 0: closed folder
+        DestroyIcon(hClosedIcon);
+    }
+    
+    if (hOpenIcon) {
+        ImageList_AddIcon(g_hTreeImageList, hOpenIcon);  // Index 1: open folder
+        DestroyIcon(hOpenIcon);
+    }
+    
+    ListView_SetImageList(g_hTagTree, g_hTreeImageList, LVSIL_SMALL);
+    
+    // Add a single column that will take the full width
+    LVCOLUMNW col = {};
+    col.mask = LVCF_WIDTH | LVCF_FMT | LVCF_MINWIDTH;
+    col.cx = 10000;  // Very wide to fill available space
+    col.cxMin = 50;  // Minimum width to ensure spacing
+    col.fmt = LVCFMT_LEFT | LVCFMT_FIXED_WIDTH;  // Left align with fixed width
+    ListView_InsertColumn(g_hTagTree, 0, &col);
+    
+    // Set left margin for items (4px padding)
+    RECT rcItem;
+    ListView_GetItemRect(g_hTagTree, 0, &rcItem, LVIR_BOUNDS);
+    ListView_SetColumnWidth(g_hTagTree, 0, 10000);
+    
+    // Set extended styles to add some spacing
+    DWORD dwExStyle = ListView_GetExtendedListViewStyle(g_hTagTree);
+    ListView_SetExtendedListViewStyle(g_hTagTree, dwExStyle | LVS_EX_DOUBLEBUFFER);
+    
+    // Manually adjust icon position by setting item indent
+    // We'll do this when inserting items
     
     // Pump messages to keep spinner alive
     while (PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE)) {
@@ -616,12 +728,26 @@ void CreateControls(HWND hwnd) {
     SendMessageW(g_hAppSearch, WM_SETFONT, (WPARAM)g_hFont, TRUE);
     SendMessageW(g_hAppSearch, EM_SETCUEBANNER, TRUE, (LPARAM)g_locale.search_apps.c_str());
     
+    // Category name label (bold navy blue)
+    g_hCategoryLabel = CreateWindowExW(
+        0,
+        L"STATIC",
+        L"All",
+        WS_CHILD | WS_VISIBLE | SS_LEFT,
+        0, 0, 0, 0,
+        hwnd,
+        NULL,
+        hInst,
+        NULL
+    );
+    SendMessageW(g_hCategoryLabel, WM_SETFONT, (WPARAM)g_hBoldFont, TRUE);
+    
     // App count label
     g_hAppCountLabel = CreateWindowExW(
         0,
         L"STATIC",
         L"0 apps",
-        WS_CHILD | WS_VISIBLE | SS_LEFT,
+        WS_CHILD | WS_VISIBLE | SS_RIGHT,
         0, 0, 0, 0,
         hwnd,
         NULL,
@@ -646,30 +772,56 @@ void CreateControls(HWND hwnd) {
     ListView_SetExtendedListViewStyle(g_hAppList, LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER);
     
     // Create image list for icons and add a default application icon
-    g_hImageList = ImageList_Create(16, 16, ILC_COLOR32 | ILC_MASK, 100, 100);
+    g_hImageList = ImageList_Create(21, 19, ILC_COLOR32 | ILC_MASK, 100, 100);
     
     // Create a blue dot icon as default (for apps without icons)
     HDC hdc = GetDC(NULL);
     HDC hdcMem = CreateCompatibleDC(hdc);
-    HBITMAP hBitmap = CreateCompatibleBitmap(hdc, 16, 16);
+    HBITMAP hBitmap = CreateCompatibleBitmap(hdc, 19, 19);
     HBITMAP hOldBitmap = (HBITMAP)SelectObject(hdcMem, hBitmap);
     
     // Fill with transparent background
     HBRUSH hBrushBg = CreateSolidBrush(RGB(240, 240, 240));
-    RECT rect = {0, 0, 16, 16};
+    RECT rect = {0, 0, 19, 19};
     FillRect(hdcMem, &rect, hBrushBg);
     DeleteObject(hBrushBg);
     
-    // Draw blue circle
-    HBRUSH hBrush = CreateSolidBrush(RGB(0, 120, 215)); // Windows blue
-    HPEN hPen = CreatePen(PS_SOLID, 1, RGB(0, 120, 215));
-    HPEN hOldPen = (HPEN)SelectObject(hdcMem, hPen);
-    HBRUSH hOldBrush = (HBRUSH)SelectObject(hdcMem, hBrush);
-    Ellipse(hdcMem, 2, 2, 14, 14); // Bigger dot (12x12)
+    // Draw 3D brown package/box icon (scaled to 19x19)
+    // Front face (main brown)
+    HBRUSH hBrownFront = CreateSolidBrush(RGB(139, 90, 43));
+    HPEN hPenBrown = CreatePen(PS_SOLID, 1, RGB(101, 67, 33));
+    HPEN hOldPen = (HPEN)SelectObject(hdcMem, hPenBrown);
+    HBRUSH hOldBrush = (HBRUSH)SelectObject(hdcMem, hBrownFront);
+    
+    // Draw front face (coordinates scaled by 1.2)
+    POINT frontFace[] = {{4, 7}, {4, 16}, {12, 16}, {12, 7}};
+    Polygon(hdcMem, frontFace, 4);
+    
+    // Top face (lighter brown for highlight)
+    HBRUSH hBrownTop = CreateSolidBrush(RGB(180, 120, 60));
+    SelectObject(hdcMem, hBrownTop);
+    POINT topFace[] = {{4, 7}, {7, 4}, {15, 4}, {12, 7}};
+    Polygon(hdcMem, topFace, 4);
+    
+    // Right side face (darker brown for shadow)
+    HBRUSH hBrownSide = CreateSolidBrush(RGB(101, 67, 33));
+    SelectObject(hdcMem, hBrownSide);
+    POINT sideFace[] = {{12, 7}, {15, 4}, {15, 12}, {12, 16}};
+    Polygon(hdcMem, sideFace, 4);
+    
+    // Draw tape line across top
+    HPEN hPenTape = CreatePen(PS_SOLID, 1, RGB(210, 180, 140));
+    SelectObject(hdcMem, hPenTape);
+    MoveToEx(hdcMem, 5, 5, NULL);
+    LineTo(hdcMem, 14, 5);
+    
     SelectObject(hdcMem, hOldBrush);
     SelectObject(hdcMem, hOldPen);
-    DeleteObject(hBrush);
-    DeleteObject(hPen);
+    DeleteObject(hBrownFront);
+    DeleteObject(hBrownTop);
+    DeleteObject(hBrownSide);
+    DeleteObject(hPenBrown);
+    DeleteObject(hPenTape);
     
     SelectObject(hdcMem, hOldBitmap);
     DeleteDC(hdcMem);
@@ -686,21 +838,21 @@ void CreateControls(HWND hwnd) {
         DispatchMessageW(&msg);
     }
     
-    LVCOLUMNW col = {};
-    col.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_FMT;
-    col.fmt = LVCFMT_LEFT;
+    LVCOLUMNW appCol = {};
+    appCol.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_FMT;
+    appCol.fmt = LVCFMT_LEFT;
     
-    col.pszText = (LPWSTR)L"Name";
-    col.cx = 300;
-    ListView_InsertColumn(g_hAppList, 0, &col);
+    appCol.pszText = (LPWSTR)L"Name";
+    appCol.cx = 310;
+    ListView_InsertColumn(g_hAppList, 0, &appCol);
     
-    col.pszText = (LPWSTR)L"Version";
-    col.cx = 100;
-    ListView_InsertColumn(g_hAppList, 1, &col);
+    appCol.pszText = (LPWSTR)L"Version";
+    appCol.cx = 150;
+    ListView_InsertColumn(g_hAppList, 1, &appCol);
     
-    col.pszText = (LPWSTR)L"Publisher";
-    col.cx = 200;
-    ListView_InsertColumn(g_hAppList, 2, &col);
+    appCol.pszText = (LPWSTR)L"Publisher";
+    appCol.cx = 260;  // 5% wider
+    ListView_InsertColumn(g_hAppList, 2, &appCol);
 }
 
 void ResizeControls(HWND hwnd) {
@@ -708,8 +860,8 @@ void ResizeControls(HWND hwnd) {
     GetClientRect(hwnd, &rc);
     
     const int margin = 8;
-    const int searchHeight = 28;
-    const int labelHeight = 20;
+    const int searchHeight = 34;  // 28 * 1.20
+    const int labelHeight = 24;   // 20 * 1.20
     const int spacing = 4;
     const int langComboWidth = 150;
     
@@ -726,8 +878,15 @@ void ResizeControls(HWND hwnd) {
     // Right panel
     int rightX = g_splitterPos + 4;
     int rightWidth = rc.right - rightX - margin - langComboWidth - spacing;
+    
+    // Reserve space for count (e.g., "14,109 apps" = ~100px)
+    const int countWidth = 100;
+    const int categoryPadding = 5;  // 5px padding before category name
+    int categoryWidth = rightWidth - countWidth - spacing - categoryPadding;
+    
     MoveWindow(g_hAppSearch, rightX, margin, rightWidth, searchHeight, TRUE);
-    MoveWindow(g_hAppCountLabel, rightX, margin + searchHeight + spacing, rightWidth, labelHeight, TRUE);
+    MoveWindow(g_hCategoryLabel, rightX + categoryPadding, margin + searchHeight + spacing, categoryWidth, labelHeight, TRUE);
+    MoveWindow(g_hAppCountLabel, rightX + categoryWidth + spacing, margin + searchHeight + spacing, countWidth, labelHeight, TRUE);
     MoveWindow(g_hAppList, rightX, margin + searchHeight + spacing + labelHeight + spacing,
                rc.right - rightX - margin, rc.bottom - margin * 2 - searchHeight - labelHeight - spacing * 2, TRUE);
 }
@@ -797,26 +956,31 @@ std::wstring CapitalizeFirst(const std::wstring& str) {
 }
 
 void LoadTags(const std::wstring& filter) {
-    TreeView_DeleteAllItems(g_hTagTree);
+    ListView_DeleteAllItems(g_hTagTree);
+    
+    // Clear old text buffers
+    for (auto* buf : g_tagTextBuffers) {
+        delete buf;
+    }
+    g_tagTextBuffers.clear();
     
     if (!g_db) return;
     
     sqlite3_stmt* stmt;
     
-    // Add "All" item - store as static buffer for tree view
-    static wchar_t allTextBuffer[256];
-    swprintf(allTextBuffer, 256, L"%s", g_locale.all.c_str());
+    // Add "All" item - use persistent storage
+    std::wstring* allText = new std::wstring(L"   " + g_locale.all);
+    g_tagTextBuffers.push_back(allText);
     
-    TVINSERTSTRUCTW tvi = {};
-    tvi.hParent = TVI_ROOT;
-    tvi.hInsertAfter = TVI_LAST;
-    tvi.item.mask = TVIF_TEXT | TVIF_PARAM | TVIF_IMAGE | TVIF_SELECTEDIMAGE;
-    tvi.item.pszText = allTextBuffer;
-    tvi.item.lParam = 0; // 0 = All
-    tvi.item.iImage = 0;          // Closed folder
-    tvi.item.iSelectedImage = 1;  // Open folder when selected
-    HTREEITEM hAll = TreeView_InsertItem(g_hTagTree, &tvi);
-    TreeView_SelectItem(g_hTagTree, hAll);
+    LVITEMW lvi = {};
+    lvi.mask = LVIF_TEXT | LVIF_PARAM | LVIF_IMAGE;
+    lvi.iItem = 0;
+    lvi.iSubItem = 0;
+    lvi.pszText = (LPWSTR)allText->c_str();
+    lvi.lParam = 0; // 0 = All
+    lvi.iImage = 1; // Open folder (since it will be selected)
+    int allIndex = ListView_InsertItem(g_hTagTree, &lvi);
+    ListView_SetItemState(g_hTagTree, allIndex, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
     
     // Load categories - show all with 4+ apps, or 1-3 apps if any app would be orphaned without this category
     std::string sql = "SELECT c.category_name, COUNT(DISTINCT ac.app_id) as cnt "
@@ -831,6 +995,7 @@ void LoadTags(const std::wstring& filter) {
                       "   )) "
                       "ORDER BY c.category_name;";
     
+    int itemIndex = 1;
     if (sqlite3_prepare_v2(g_db, sql.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
         while (sqlite3_step(stmt) == SQLITE_ROW) {
             const char* name = (const char*)sqlite3_column_text(stmt, 0);
@@ -863,27 +1028,30 @@ void LoadTags(const std::wstring& filter) {
                 }
             }
             
-            // Allocate permanent string for tree view text and tag name (no count)
-            wchar_t* displayText = new wchar_t[512];
-            swprintf(displayText, 512, L"%s", tagName.c_str());
-            std::wstring* storedTag = new std::wstring(tagName);
+            // Store in persistent buffer for ListView to reference
+            std::wstring* displayText = new std::wstring(L"   " + tagName);
+            g_tagTextBuffers.push_back(displayText);
             
-            tvi.item.mask = TVIF_TEXT | TVIF_PARAM | TVIF_IMAGE | TVIF_SELECTEDIMAGE;
-            tvi.item.pszText = displayText;
-            tvi.item.lParam = (LPARAM)storedTag; // Store pointer to tag name
-            tvi.item.iImage = 0;          // Closed folder
-            tvi.item.iSelectedImage = 1;  // Open folder when selected
-            TreeView_InsertItem(g_hTagTree, &tvi);
+            lvi.mask = LVIF_TEXT | LVIF_PARAM | LVIF_IMAGE;
+            lvi.iItem = itemIndex++;
+            lvi.iSubItem = 0;
+            lvi.pszText = (LPWSTR)displayText->c_str();
+            lvi.lParam = (LPARAM)displayText; // Store pointer to tag name
+            lvi.iImage = 0; // Closed folder
+            ListView_InsertItem(g_hTagTree, &lvi);
         }
         sqlite3_finalize(stmt);
     }
     
     // Update category count label
-    int categoryCount = TreeView_GetCount(g_hTagTree) - 1; // -1 for "All"
+    int categoryCount = ListView_GetItemCount(g_hTagTree) - 1; // -1 for "All"
+    // First clear with spaces
+    SetWindowTextW(g_hTagCountLabel, L"                                        ");
+    // Then set actual text
     std::wstring countText = FormatNumber(categoryCount) + L" " + g_locale.categories;
     SetWindowTextW(g_hTagCountLabel, countText.c_str());
     
-    TreeView_SelectItem(g_hTagTree, hAll);
+    ListView_SetItemState(g_hTagTree, allIndex, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
 }
 
 void LoadApps(const std::wstring& tag, const std::wstring& filter) {
@@ -1031,7 +1199,7 @@ void LoadApps(const std::wstring& tag, const std::wstring& filter) {
             lvi.mask = LVIF_TEXT | LVIF_PARAM | LVIF_IMAGE;
             lvi.iItem = index++;
             lvi.iSubItem = 0;
-            // Add 3 spaces before name for spacing from icon
+            // Add spaces before name for spacing from icon
             std::wstring displayName = L"   " + app->name;
             lvi.pszText = (LPWSTR)displayName.c_str();
             lvi.lParam = (LPARAM)app;
@@ -1047,43 +1215,54 @@ void LoadApps(const std::wstring& tag, const std::wstring& filter) {
     }
     
     // Update app count label
+    // First clear with spaces
+    SetWindowTextW(g_hAppCountLabel, L"                                        ");
+    // Then set actual text
     std::wstring countText = FormatNumber(appCount) + L" " + g_locale.apps;
     SetWindowTextW(g_hAppCountLabel, countText.c_str());
 }
 
 void OnTagSelectionChanged() {
-    static HTREEITEM hPrevSelection = NULL;
+    int selectedIndex = ListView_GetNextItem(g_hTagTree, -1, LVNI_SELECTED);
+    if (selectedIndex == -1) return;
     
-    HTREEITEM hItem = TreeView_GetSelection(g_hTagTree);
-    if (!hItem) return;
-    
-    // Close previous folder icon
-    if (hPrevSelection) {
-        TVITEMW prevItem = {};
-        prevItem.mask = TVIF_HANDLE | TVIF_IMAGE;
-        prevItem.hItem = hPrevSelection;
-        prevItem.iImage = 0; // Closed folder
-        TreeView_SetItem(g_hTagTree, &prevItem);
+    // Set ALL items to closed folder icon
+    int itemCount = ListView_GetItemCount(g_hTagTree);
+    for (int i = 0; i < itemCount; i++) {
+        LVITEMW item = {};
+        item.mask = LVIF_IMAGE;
+        item.iItem = i;
+        item.iImage = 0; // Closed folder
+        ListView_SetItem(g_hTagTree, &item);
     }
     
-    // Open current folder icon
-    TVITEMW currItem = {};
-    currItem.mask = TVIF_HANDLE | TVIF_IMAGE;
-    currItem.hItem = hItem;
-    currItem.iImage = 1; // Open folder
-    TreeView_SetItem(g_hTagTree, &currItem);
+    // Set selected item to open folder icon AND get category name
+    LVITEMW item = {};
+    item.mask = LVIF_IMAGE | LVIF_PARAM;
+    item.iItem = selectedIndex;
+    ListView_GetItem(g_hTagTree, &item);  // First GET the item to retrieve lParam
     
-    hPrevSelection = hItem;
+    item.iImage = 1; // Open folder
+    ListView_SetItem(g_hTagTree, &item);  // Then SET the icon
     
-    TVITEMW item = {};
-    item.mask = TVIF_PARAM;
-    item.hItem = hItem;
-    TreeView_GetItem(g_hTagTree, &item);
-    
+    // Determine category name
     if (item.lParam == 0) {
         g_selectedTag = L"All";
     } else {
-        g_selectedTag = *(std::wstring*)item.lParam;
+        // Get the category name and trim the leading spaces added for display
+        std::wstring displayName = *(std::wstring*)item.lParam;
+        g_selectedTag = displayName;
+        // Remove the 3 leading spaces we added for display
+        if (g_selectedTag.length() >= 3 && g_selectedTag.substr(0, 3) == L"   ") {
+            g_selectedTag = g_selectedTag.substr(3);
+        }
+    }
+    
+    // Update category label (show with spaces)
+    if (item.lParam == 0) {
+        SetWindowTextW(g_hCategoryLabel, L"All");
+    } else {
+        SetWindowTextW(g_hCategoryLabel, (*(std::wstring*)item.lParam).c_str());
     }
     
     // Get app search filter

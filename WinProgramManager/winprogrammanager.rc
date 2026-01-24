@@ -1,8 +1,11 @@
 #include <windows.h>
 #include "resource.h"
 
-// Application icon (you can add an icon file later)
-// IDI_APP_ICON ICON "app_icon.ico"
+// Application icon
+IDI_APP_ICON ICON "wpm_logo.ico"
+
+// Logo bitmap (PNG)
+IDB_PNG1 RCDATA "wpm_logo.png"
 
 // Version information
 VS_VERSION_INFO VERSIONINFO

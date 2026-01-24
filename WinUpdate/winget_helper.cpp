@@ -140,42 +140,75 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR lpCmdLine, int) {
         
         CloseHandle(hWritePipe);
         
-        // Read and forward output to pipe
+        // Read and forward output to pipe with non-blocking check
         char buffer[4096];
         DWORD bytesRead;
-        while (ReadFile(hReadPipe, buffer, sizeof(buffer)-1, &bytesRead, NULL) && bytesRead > 0) {
-            buffer[bytesRead] = '\0';
-            // Convert UTF-8 to wide and write to pipe
-            int needed = MultiByteToWideChar(CP_UTF8, 0, buffer, bytesRead, NULL, 0);
-            if (needed > 0) {
-                std::wstring wbuffer(needed, L'\0');
-                MultiByteToWideChar(CP_UTF8, 0, buffer, bytesRead, &wbuffer[0], needed);
-                
-                // Parse app name from "Found AppName [PackageID]" lines
-                if (currentAppName.empty()) {
-                    size_t foundPos = wbuffer.find(L"Found ");
-                    if (foundPos != std::wstring::npos) {
-                        size_t nameStart = foundPos + 6;
-                        size_t bracketPos = wbuffer.find(L"[", nameStart);
-                        if (bracketPos != std::wstring::npos) {
-                            currentAppName = wbuffer.substr(nameStart, bracketPos - nameStart);
-                            // Trim leading whitespace
-                            while (!currentAppName.empty() && iswspace(currentAppName.front())) {
-                                currentAppName.erase(0, 1);
-                            }
-                            // Trim trailing whitespace
-                            while (!currentAppName.empty() && iswspace(currentAppName.back())) {
-                                currentAppName.pop_back();
+        DWORD totalBytesAvail;
+        
+        // Keep reading until process ends AND no more data available
+        bool processRunning = true;
+        while (processRunning) {
+            // Check if data is available without blocking
+            if (PeekNamedPipe(hReadPipe, NULL, 0, NULL, &totalBytesAvail, NULL) && totalBytesAvail > 0) {
+                if (ReadFile(hReadPipe, buffer, sizeof(buffer)-1, &bytesRead, NULL) && bytesRead > 0) {
+                    buffer[bytesRead] = '\0';
+                    // Convert UTF-8 to wide and write to pipe
+                    int needed = MultiByteToWideChar(CP_UTF8, 0, buffer, bytesRead, NULL, 0);
+                    if (needed > 0) {
+                        std::wstring wbuffer(needed, L'\0');
+                        MultiByteToWideChar(CP_UTF8, 0, buffer, bytesRead, &wbuffer[0], needed);
+                        
+                        // Parse app name from "Found AppName [PackageID]" lines
+                        if (currentAppName.empty()) {
+                            size_t foundPos = wbuffer.find(L"Found ");
+                            if (foundPos != std::wstring::npos) {
+                                size_t nameStart = foundPos + 6;
+                                size_t bracketPos = wbuffer.find(L"[", nameStart);
+                                if (bracketPos != std::wstring::npos) {
+                                    currentAppName = wbuffer.substr(nameStart, bracketPos - nameStart);
+                                    // Trim leading whitespace
+                                    while (!currentAppName.empty() && iswspace(currentAppName.front())) {
+                                        currentAppName.erase(0, 1);
+                                    }
+                                    // Trim trailing whitespace
+                                    while (!currentAppName.empty() && iswspace(currentAppName.back())) {
+                                        currentAppName.pop_back();
+                                    }
+                                }
                             }
                         }
+                        
+                        WriteToPipe(hPipe, wbuffer);
                     }
                 }
-                
-                WriteToPipe(hPipe, wbuffer);
+            }
+            
+            // Check if process is still running
+            DWORD waitResult = WaitForSingleObject(pi.hProcess, 100); // 100ms timeout
+            if (waitResult == WAIT_OBJECT_0) {
+                processRunning = false;
+                // Process ended, do one final read to get any remaining data
+                while (PeekNamedPipe(hReadPipe, NULL, 0, NULL, &totalBytesAvail, NULL) && totalBytesAvail > 0) {
+                    if (ReadFile(hReadPipe, buffer, sizeof(buffer)-1, &bytesRead, NULL) && bytesRead > 0) {
+                        buffer[bytesRead] = '\0';
+                        int needed = MultiByteToWideChar(CP_UTF8, 0, buffer, bytesRead, NULL, 0);
+                        if (needed > 0) {
+                            std::wstring wbuffer(needed, L'\0');
+                            MultiByteToWideChar(CP_UTF8, 0, buffer, bytesRead, &wbuffer[0], needed);
+                            WriteToPipe(hPipe, wbuffer);
+                        }
+                    } else {
+                        break;
+                    }
+                }
+            } else if (waitResult == WAIT_FAILED) {
+                processRunning = false;
+            }
+            // If still running and no data, sleep briefly to avoid busy-waiting
+            if (processRunning && totalBytesAvail == 0) {
+                Sleep(50);
             }
         }
-        
-        WaitForSingleObject(pi.hProcess, INFINITE);
         
         DWORD exitCode = 0;
         GetExitCodeProcess(pi.hProcess, &exitCode);

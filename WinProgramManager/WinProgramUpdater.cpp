@@ -99,6 +99,7 @@ bool WinProgramUpdater::OpenDatabase() {
         CloseDatabase();
         return false;
     }
+    
     return true;
 }
 
@@ -234,9 +235,15 @@ int WinProgramUpdater::GetCategoryId(const std::string& category) {
 }
 
 void WinProgramUpdater::AddPackage(const PackageInfo& pkg) {
+    // Validate package has a name (allow all characters including international ones)
+    if (pkg.name.empty()) {
+        // Skip packages with missing names
+        return;
+    }
+    
     std::string sql = "INSERT OR REPLACE INTO apps (package_id, name, version, publisher, moniker, "
-                      "description, short_description, homepage, license, author, copyright, "
-                      "license_url, privacy_url, package_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+                      "description, homepage, license, author, copyright, "
+                      "license_url, privacy_url, icon_data, icon_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
     
     sqlite3_stmt* stmt;
     if (sqlite3_prepare_v2(db_, sql.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
@@ -246,14 +253,21 @@ void WinProgramUpdater::AddPackage(const PackageInfo& pkg) {
         sqlite3_bind_text(stmt, 4, pkg.publisher.c_str(), -1, SQLITE_STATIC);
         sqlite3_bind_text(stmt, 5, pkg.moniker.c_str(), -1, SQLITE_STATIC);
         sqlite3_bind_text(stmt, 6, pkg.description.c_str(), -1, SQLITE_STATIC);
-        sqlite3_bind_text(stmt, 7, pkg.shortDescription.c_str(), -1, SQLITE_STATIC);
-        sqlite3_bind_text(stmt, 8, pkg.homepage.c_str(), -1, SQLITE_STATIC);
-        sqlite3_bind_text(stmt, 9, pkg.license.c_str(), -1, SQLITE_STATIC);
-        sqlite3_bind_text(stmt, 10, pkg.author.c_str(), -1, SQLITE_STATIC);
-        sqlite3_bind_text(stmt, 11, pkg.copyright.c_str(), -1, SQLITE_STATIC);
-        sqlite3_bind_text(stmt, 12, pkg.licenseUrl.c_str(), -1, SQLITE_STATIC);
-        sqlite3_bind_text(stmt, 13, pkg.privacyUrl.c_str(), -1, SQLITE_STATIC);
-        sqlite3_bind_text(stmt, 14, pkg.packageUrl.c_str(), -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 7, pkg.homepage.c_str(), -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 8, pkg.license.c_str(), -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 9, pkg.author.c_str(), -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 10, pkg.copyright.c_str(), -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 11, pkg.licenseUrl.c_str(), -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 12, pkg.privacyUrl.c_str(), -1, SQLITE_STATIC);
+        
+        if (!pkg.iconData.empty()) {
+            sqlite3_bind_blob(stmt, 13, pkg.iconData.data(), pkg.iconData.size(), SQLITE_STATIC);
+            sqlite3_bind_text(stmt, 14, pkg.iconType.c_str(), -1, SQLITE_STATIC);
+        } else {
+            sqlite3_bind_null(stmt, 13);
+            sqlite3_bind_null(stmt, 14);
+        }
+        
         sqlite3_step(stmt);
         sqlite3_finalize(stmt);
     }
@@ -292,7 +306,8 @@ void WinProgramUpdater::AddTag(const std::string& packageId, const std::string& 
 }
 
 std::string WinProgramUpdater::ExecuteWingetCommand(const std::string& command) {
-    std::string fullCmd = "winget " + command + " --accept-source-agreements";
+    // Use cmd.exe to run winget (winget is not a .exe but a Windows package)
+    std::string fullCmd = "cmd.exe /c winget " + command + " --accept-source-agreements";
     std::string result;
     
     HANDLE hReadPipe, hWritePipe;
@@ -335,7 +350,7 @@ std::string WinProgramUpdater::ExecuteWingetCommand(const std::string& command) 
 
 std::vector<std::string> WinProgramUpdater::GetWingetPackages() {
     std::vector<std::string> packages;
-    std::string output = ExecuteWingetCommand("search . --source winget");
+    std::string output = ExecuteWingetCommand("search \"\" --source winget");
     
 #ifdef _CONSOLE
     std::wcout << L"Output length: " << output.length() << L" characters" << std::endl;
@@ -349,6 +364,12 @@ std::vector<std::string> WinProgramUpdater::GetWingetPackages() {
     std::string line;
     bool inResults = false;
     int lineCount = 0;
+    
+    // Regex to split on 2+ spaces
+    std::regex splitRegex("\\s{2,}");
+    
+    // Regex to validate package ID: alphanumeric with dots/dashes, must contain non-numeric chars
+    std::regex idRegex("^[A-Za-z0-9][\\w._-]*\\.[\\w._-]+$");
     
     while (std::getline(stream, line)) {
         lineCount++;
@@ -368,25 +389,36 @@ std::vector<std::string> WinProgramUpdater::GetWingetPackages() {
         // Skip lines that are just whitespace
         if (line.find_first_not_of(" \t\r\n") == std::string::npos) continue;
         
-        // Parse package ID (second column)
+        // Split line on 2+ spaces to get columns
         // Format: Name   PackageId   Version   Source
-        std::istringstream lineStream(line);
-        std::string name, packageId;
-        lineStream >> name >> packageId;
+        std::vector<std::string> columns;
+        std::sregex_token_iterator iter(line.begin(), line.end(), splitRegex, -1);
+        std::sregex_token_iterator end;
         
-        // Validate package ID format (should contain at least one dot)
-        if (!packageId.empty() && packageId.find('.') != std::string::npos) {
-            // Skip if it's a number (version column)
-            if (packageId.find_first_not_of("0123456789.") == std::string::npos) {
-                continue;
+        for (; iter != end; ++iter) {
+            std::string col = Trim(iter->str());
+            if (!col.empty()) {
+                columns.push_back(col);
             }
-            packages.push_back(packageId);
+        }
+        
+        // Second column should be PackageID
+        if (columns.size() >= 2) {
+            std::string packageId = columns[1];
+            
+            // Validate package ID format
+            if (std::regex_match(packageId, idRegex)) {
+                // Additional check: ensure it's not pure numeric (like version numbers)
+                if (packageId.find_first_not_of("0123456789.-") != std::string::npos) {
+                    packages.push_back(packageId);
 #ifdef _CONSOLE
-            // Show first few IDs for verification
-            if (packages.size() <= 5) {
-                std::wcout << L"  ID " << packages.size() << L": " << StringToWString(packageId) << std::endl;
-            }
+                    // Show first few IDs for verification
+                    if (packages.size() <= 5) {
+                        std::wcout << L"  ID " << packages.size() << L": " << StringToWString(packageId) << std::endl;
+                    }
 #endif
+                }
+            }
         }
     }
     
@@ -394,8 +426,8 @@ std::vector<std::string> WinProgramUpdater::GetWingetPackages() {
 }
 
 void WinProgramUpdater::PopulateSearchDatabase() {
-    // Empty the search database
-    ExecuteSQLSearch("DELETE FROM search_results;");
+    // Keep existing search database and update with new packages
+    // (Do not delete - preserve for future use)
     
 #ifdef _CONSOLE
     std::wcout << L"Querying winget search..." << std::endl;
@@ -494,17 +526,33 @@ PackageInfo WinProgramUpdater::GetPackageInfo(const std::string& packageId, int 
     
     std::istringstream stream(output);
     std::string line;
+    bool firstLine = true;
     
     while (std::getline(stream, line)) {
+        // Skip spinner lines (single char or whitespace)
+        if (line.length() <= 2 || line.find_first_not_of(" \t\r\n-\\/|") == std::string::npos) {
+            continue;
+        }
+        
+        // First non-empty line is "Found <Name> [PackageId]"
+        if (firstLine && line.find("Found ") == 0) {
+            firstLine = false;
+            size_t start = 6; // After "Found "
+            size_t end = line.find(" [");
+            if (end != std::string::npos && end > start) {
+                info.name = Trim(line.substr(start, end - start));
+            }
+            continue;
+        }
+        firstLine = false;
+        
         size_t colonPos = line.find(':');
         if (colonPos == std::string::npos) continue;
         
         std::string key = Trim(line.substr(0, colonPos));
         std::string value = Trim(line.substr(colonPos + 1));
         
-        if (key == "Found") {
-            info.name = value.substr(0, value.find(" ["));
-        } else if (key == "Version") {
+        if (key == "Version") {
             info.version = value;
         } else if (key == "Publisher") {
             info.publisher = value;
@@ -541,7 +589,126 @@ PackageInfo WinProgramUpdater::GetPackageInfo(const std::string& packageId, int 
         }
     }
     
+    // Fetch icon from homepage if available
+    if (!info.homepage.empty()) {
+        FetchIconFromHomepage(info.homepage, info.iconData, info.iconType);
+    }
+    
     return info;
+}
+
+void WinProgramUpdater::FetchIconFromHomepage(const std::string& homepage, std::vector<unsigned char>& iconData, std::string& iconType) {
+    if (homepage.empty()) return;
+    
+    // Use PowerShell to fetch the homepage HTML, find icon URL, and download it
+    std::string psScript = 
+        "$url = '" + homepage + "'; "
+        "try { "
+        "$response = Invoke-WebRequest -Uri $url -TimeoutSec 5 -UseBasicParsing -ErrorAction Stop; "
+        "$html = $response.Content; "
+        
+        // Look for various icon patterns
+        "if ($html -match '<link[^>]*rel=[\"''](?:icon|shortcut icon)[\"''][^>]*href=[\"'']([^\"'']+)[\"'']') { "
+        "  $icon = $Matches[1]; "
+        "} elseif ($html -match '<link[^>]*href=[\"'']([^\"'']+)[\"''][^>]*rel=[\"''](?:icon|shortcut icon)[\"'']') { "
+        "  $icon = $Matches[1]; "
+        "} else { "
+        "  $icon = '/favicon.ico'; "
+        "} "
+        
+        // Convert relative URL to absolute
+        "if ($icon -notmatch '^https?://') { "
+        "  $uri = [System.Uri]$url; "
+        "  if ($icon -match '^//') { "
+        "    $icon = $uri.Scheme + ':' + $icon; "
+        "  } elseif ($icon -match '^/') { "
+        "    $icon = $uri.Scheme + '://' + $uri.Host + $icon; "
+        "  } else { "
+        "    $icon = $uri.Scheme + '://' + $uri.Host + '/' + $icon; "
+        "  } "
+        "} "
+        
+        // Download the icon
+        "try { "
+        "  $iconResponse = Invoke-WebRequest -Uri $icon -TimeoutSec 5 -UseBasicParsing -ErrorAction Stop; "
+        "  $tempFile = [System.IO.Path]::GetTempFileName(); "
+        "  [System.IO.File]::WriteAllBytes($tempFile, $iconResponse.Content); "
+        "  Write-Output $tempFile; "
+        "  Write-Output $icon; "
+        "} catch { Write-Output ''; } "
+        "} catch { Write-Output ''; }";
+    
+    std::string command = "powershell -NoProfile -Command \"" + psScript + "\"";
+    
+    SECURITY_ATTRIBUTES sa = {sizeof(SECURITY_ATTRIBUTES), nullptr, TRUE};
+    HANDLE hRead, hWrite;
+    if (!CreatePipe(&hRead, &hWrite, &sa, 0)) {
+        return;
+    }
+    
+    STARTUPINFOA si = {};
+    si.cb = sizeof(STARTUPINFOA);
+    si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+    si.hStdOutput = hWrite;
+    si.hStdError = hWrite;
+    si.wShowWindow = SW_HIDE;
+    
+    PROCESS_INFORMATION pi;
+    if (!CreateProcessA(nullptr, const_cast<char*>(command.c_str()), 
+                        nullptr, nullptr, TRUE, 0, nullptr, nullptr, &si, &pi)) {
+        CloseHandle(hRead);
+        CloseHandle(hWrite);
+        return;
+    }
+    
+    CloseHandle(hWrite);
+    
+    std::string output;
+    char buffer[4096];
+    DWORD bytesRead;
+    while (ReadFile(hRead, buffer, sizeof(buffer) - 1, &bytesRead, nullptr) && bytesRead > 0) {
+        buffer[bytesRead] = '\0';
+        output += buffer;
+    }
+    
+    WaitForSingleObject(pi.hProcess, 15000); // 15 second timeout
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+    CloseHandle(hRead);
+    
+    // Parse output: first line is temp file path, second line is icon URL
+    std::istringstream stream(output);
+    std::string tempFile, iconUrl;
+    std::getline(stream, tempFile);
+    std::getline(stream, iconUrl);
+    
+    tempFile = Trim(tempFile);
+    iconUrl = Trim(iconUrl);
+    
+    if (!tempFile.empty() && !iconUrl.empty()) {
+        // Read the icon file
+        std::ifstream file(tempFile, std::ios::binary | std::ios::ate);
+        if (file.is_open()) {
+            std::streamsize size = file.tellg();
+            file.seekg(0, std::ios::beg);
+            
+            iconData.resize(size);
+            if (file.read(reinterpret_cast<char*>(iconData.data()), size)) {
+                // Determine icon type from URL
+                if (iconUrl.find(".png") != std::string::npos) {
+                    iconType = "png";
+                } else if (iconUrl.find(".jpg") != std::string::npos || iconUrl.find(".jpeg") != std::string::npos) {
+                    iconType = "jpg";
+                } else {
+                    iconType = "ico";
+                }
+            }
+            file.close();
+        }
+        
+        // Clean up temp file
+        DeleteFileA(tempFile.c_str());
+    }
 }
 
 std::vector<std::string> WinProgramUpdater::ExtractTagsFromText(const std::string& name,
@@ -712,7 +879,7 @@ bool WinProgramUpdater::UpdateDatabase(UpdateStats& stats) {
 #ifdef _CONSOLE
     std::wcout << L"Attaching search database..." << std::endl;
 #endif
-    // Use relative path for ATTACH (same directory as main DB)
+    // Use relative filename since working directory is set to executable location
     std::string attachSql = "ATTACH DATABASE 'WinProgramsSearch.db' AS search_db;";
     if (!ExecuteSQL(attachSql)) {
 #ifdef _CONSOLE
@@ -775,13 +942,13 @@ bool WinProgramUpdater::UpdateDatabase(UpdateStats& stats) {
         stats.packagesRemoved++;
     }
     
-    // Step 4: Update tags for packages with zero tags
+    // Step 4: Update tags for packages with zero tags (only if not yet checked)
 #ifdef _CONSOLE
     std::wcout << L"\n=== Step 4: Update tags for zero-tag packages ===" << std::endl;
 #endif
     
     sqlite3_stmt* stmt;
-    const char* sql = "SELECT package_id FROM apps WHERE id NOT IN (SELECT DISTINCT app_id FROM app_categories);";
+    const char* sql = "SELECT package_id FROM apps WHERE tags_updated = 0 AND id NOT IN (SELECT DISTINCT app_id FROM app_categories);";
     
     if (sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr) == SQLITE_OK) {
         std::vector<std::string> zeroTagPackages;
@@ -791,7 +958,7 @@ bool WinProgramUpdater::UpdateDatabase(UpdateStats& stats) {
         sqlite3_finalize(stmt);
         
 #ifdef _CONSOLE
-        std::wcout << L"Found " << zeroTagPackages.size() << L" packages with zero tags" << std::endl;
+        std::wcout << L"Found " << zeroTagPackages.size() << L" packages with zero tags (not yet checked)" << std::endl;
 #endif
         
         for (const auto& packageId : zeroTagPackages) {
@@ -805,11 +972,21 @@ bool WinProgramUpdater::UpdateDatabase(UpdateStats& stats) {
                 stats.tagsFromWinget++;
                 addedTags++;
             }
+            
+            // Mark this package as checked (whether tags were found or not)
+            std::string updateSql = "UPDATE apps SET tags_updated = 1 WHERE package_id = ?;";
+            sqlite3_stmt* updateStmt;
+            if (sqlite3_prepare_v2(db_, updateSql.c_str(), -1, &updateStmt, nullptr) == SQLITE_OK) {
+                sqlite3_bind_text(updateStmt, 1, packageId.c_str(), -1, SQLITE_STATIC);
+                sqlite3_step(updateStmt);
+                sqlite3_finalize(updateStmt);
+            }
+            
 #ifdef _CONSOLE
             if (addedTags > 0) {
                 std::wcout << L" ✓ Added " << addedTags << L" tags" << std::endl;
             } else {
-                std::wcout << L" (no tags)" << std::endl;
+                std::wcout << L" (no tags found)" << std::endl;
             }
 #endif
         }
@@ -846,123 +1023,56 @@ bool WinProgramUpdater::UpdateDatabase(UpdateStats& stats) {
     auto duration = std::chrono::duration_cast<std::chrono::seconds>(endTime - startTime).count();
     stats.elapsedSeconds = static_cast<double>(duration);
     
-#ifdef _CONSOLE
+    // Format duration as HH:MM:SS for APPDATA log
     int hours = duration / 3600;
     int minutes = (duration % 3600) / 60;
     int seconds = duration % 60;
+    std::ostringstream durationStr;
+    durationStr << std::setfill('0') << std::setw(2) << hours << ":"
+                << std::setfill('0') << std::setw(2) << minutes << ":"
+                << std::setfill('0') << std::setw(2) << seconds;
+    
+#ifdef _CONSOLE
     std::wcout << L"\n=== Update Complete ===" << std::endl;
-    std::wcout << L"Time the update took: " 
-               << std::setfill(L'0') << std::setw(2) << hours << L":"
-               << std::setfill(L'0') << std::setw(2) << minutes << L":"
-               << std::setfill(L'0') << std::setw(2) << seconds << std::endl;
+    std::wcout << L"Time the update took: " << StringToWString(durationStr.str()) << std::endl;
 #endif
+    
+    // Write permanent log
+    WriteAppDataLog(stats, durationStr.str());
     
     return true;
 }
 
-std::string WinProgramUpdater::GetLogPath() {
-    // Get executable path
-    wchar_t exePath[MAX_PATH];
-    GetModuleFileNameW(nullptr, exePath, MAX_PATH);
+std::string WinProgramUpdater::GetAppDataLogPath() {
+    // Get %APPDATA% directory
+    wchar_t* appDataPath = nullptr;
+    HRESULT hr = SHGetKnownFolderPath(FOLDERID_RoamingAppData, 0, nullptr, &appDataPath);
     
-    std::wstring wExePath(exePath);
-    size_t lastSlash = wExePath.find_last_of(L"\\/");
-    if (lastSlash == std::wstring::npos) {
-        return "";  // Should never happen
+    if (FAILED(hr) || !appDataPath) {
+        return "";
     }
     
-    // Get parent directory (go up one level)
-    std::wstring exeDir = wExePath.substr(0, lastSlash);
-    lastSlash = exeDir.find_last_of(L"\\/");
-    if (lastSlash == std::wstring::npos) {
-        return "";  // Should never happen
-    }
+    std::wstring wAppDataPath(appDataPath);
+    CoTaskMemFree(appDataPath);
     
-    std::wstring parentDir = exeDir.substr(0, lastSlash);
-    std::wstring logDir = parentDir + L"\\log";
+    // Create WinProgramManager\log directory
+    std::wstring baseDir = wAppDataPath + L"\\WinProgramManager";
+    std::wstring logDir = baseDir + L"\\log";
     
-    // Convert to UTF-8
-    std::string result = WStringToString(logDir);
+    // Create directories
+    CreateDirectoryW(baseDir.c_str(), nullptr);
+    CreateDirectoryW(logDir.c_str(), nullptr);
     
-    // Create directory if it doesn't exist
-    CreateDirectoryA(result.c_str(), nullptr);
-    
+    // Convert to UTF-8 and return full log file path
+    std::string result = WStringToString(logDir) + "\\WinProgramUpdater.log";
     return result;
 }
 
-void WinProgramUpdater::PruneOldLogEntries(const std::string& logPath) {
-    std::ifstream inFile(logPath);
-    if (!inFile) return;
-    
-    auto now = std::chrono::system_clock::now();
-    auto cutoff = now - std::chrono::hours(24 * LOG_RETENTION_DAYS);
-    
-    std::vector<std::string> validEntries;
-    std::string line;
-    bool inEntry = false;
-    std::string currentEntry;
-    
-    while (std::getline(inFile, line)) {
-        if (line.find("Run time: ") == 0) {
-            // Parse timestamp
-            std::string timestamp = line.substr(10, 19);
-            std::tm tm = {};
-            std::istringstream ss(timestamp);
-            ss >> std::get_time(&tm, "%Y.%m.%d-%H:%M:%S");
-            
-            auto entryTime = std::chrono::system_clock::from_time_t(std::mktime(&tm));
-            
-            if (!currentEntry.empty() && inEntry) {
-                validEntries.push_back(currentEntry);
-            }
-            
-            if (entryTime >= cutoff) {
-                currentEntry = line + "\n";
-                inEntry = true;
-            } else {
-                currentEntry.clear();
-                inEntry = false;
-            }
-        } else if (inEntry) {
-            currentEntry += line + "\n";
-        }
-    }
-    
-    if (!currentEntry.empty() && inEntry) {
-        validEntries.push_back(currentEntry);
-    }
-    
-    inFile.close();
-    
-    // Write back
-    std::ofstream outFile(logPath, std::ios::trunc);
-    for (const auto& entry : validEntries) {
-        outFile << entry;
-    }
-}
-
-void WinProgramUpdater::WriteLog(const UpdateStats& stats) {
-#if !ENABLE_LOGGING
-    return;  // Logging disabled
-#endif
-    
-    std::string logDir = GetLogPath();
-    if (logDir.empty()) {
-#ifdef _CONSOLE
-        std::wcout << L"ERROR: GetLogPath returned empty!" << std::endl;
-#endif
+void WinProgramUpdater::WriteAppDataLog(const UpdateStats& stats, const std::string& duration) {
+    std::string logPath = GetAppDataLogPath();
+    if (logPath.empty()) {
         return;
     }
-    
-#ifdef _CONSOLE
-    std::wcout << L"Log directory: " << StringToWString(logDir) << std::endl;
-#endif
-    
-    std::string logPath = logDir + "\\WinProgramUpdaterLog.txt";
-    
-#ifdef _CONSOLE
-    std::wcout << L"Log path: " << StringToWString(logPath) << std::endl;
-#endif
     
     // Read existing content
     std::string existingContent;
@@ -980,32 +1090,85 @@ void WinProgramUpdater::WriteLog(const UpdateStats& stats) {
     std::tm tm;
     localtime_s(&tm, &nowTime);
     
-    // Format elapsed time as HH:MM:SS
-    int totalSeconds = static_cast<int>(stats.elapsedSeconds);
-    int hours = totalSeconds / 3600;
-    int minutes = (totalSeconds % 3600) / 60;
-    int seconds = totalSeconds % 60;
-    
-    // Create new entry
+    // Create new entry in exact format user requested
     std::ostringstream newEntry;
-    newEntry << "Time: " 
-             << std::put_time(&tm, "%Y.%m.%d-%H:%M:%S") << "\n"
-             << "Packages added: " << stats.packagesAdded << "\n"
-             << "Packages removed: " << stats.packagesRemoved << "\n"
-             << "Time to complete: " 
-             << std::setfill('0') << std::setw(2) << hours << ":"
-             << std::setfill('0') << std::setw(2) << minutes << ":"
-             << std::setfill('0') << std::setw(2) << seconds << "\n\n";
+    newEntry << "[" 
+             << std::put_time(&tm, "%Y-%m-%d %H:%M:%S") << "] \n"
+             << "Update completed: \n"
+             << "+" << stats.packagesAdded << " added, \n"
+             << "-" << stats.packagesRemoved << " removed, \n"
+             << "~" << stats.packagesUpdated << " updated, \n"
+             << stats.tagsFromInference + stats.tagsFromCorrelation << " tags inferred\n"
+             << "Time update took: " << duration << "\n\n";
     
-    // Write new entry at top
+    // Write new entry at top (prepend)
     std::ofstream outFile(logPath, std::ios::trunc);
     if (outFile) {
         outFile << newEntry.str() << existingContent;
         outFile.close();
     }
     
-    // Prune old entries
-    PruneOldLogEntries(logPath);
+    // Prune old entries (3 months)
+    PruneAppDataLog();
+}
+
+void WinProgramUpdater::PruneAppDataLog() {
+    std::string logPath = GetAppDataLogPath();
+    if (logPath.empty()) {
+        return;
+    }
+    
+    std::ifstream inFile(logPath);
+    if (!inFile) return;
+    
+    auto now = std::chrono::system_clock::now();
+    auto cutoff = now - std::chrono::hours(24 * 90);  // 3 months = ~90 days
+    
+    std::vector<std::string> validEntries;
+    std::string line;
+    std::string currentEntry;
+    bool inEntry = false;
+    
+    while (std::getline(inFile, line)) {
+        // Check if this is a timestamp line (starts with [YYYY-MM-DD)
+        if (line.length() > 0 && line[0] == '[' && line.length() > 20) {
+            // Save previous entry if valid
+            if (!currentEntry.empty() && inEntry) {
+                validEntries.push_back(currentEntry);
+            }
+            
+            // Parse timestamp [2026-01-19 14:30:45]
+            std::string timestamp = line.substr(1, 19);
+            std::tm tm = {};
+            std::istringstream ss(timestamp);
+            ss >> std::get_time(&tm, "%Y-%m-%d %H:%M:%S");
+            
+            auto entryTime = std::chrono::system_clock::from_time_t(std::mktime(&tm));
+            
+            if (entryTime >= cutoff) {
+                currentEntry = line + "\n";
+                inEntry = true;
+            } else {
+                currentEntry.clear();
+                inEntry = false;
+            }
+        } else if (inEntry) {
+            currentEntry += line + "\n";
+        }
+    }
+    
+    // Save last entry
+    if (!currentEntry.empty() && inEntry) {
+        validEntries.push_back(currentEntry);
+    }
+    
+    inFile.close();
+    
+    // Write back only valid entries
+    std::ofstream outFile(logPath, std::ios::trunc);
+    for (const auto& entry : validEntries) {
+        outFile << entry;
+    }
 }
 
 std::string WinProgramUpdater::Trim(const std::string& str) {
@@ -1026,7 +1189,8 @@ std::wstring WinProgramUpdater::StringToWString(const std::string& str) {
 std::string WinProgramUpdater::WStringToString(const std::wstring& wstr) {
     if (wstr.empty()) return "";
     int size = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, nullptr, 0, nullptr, nullptr);
-    std::string result(size, 0);
+    if (size <= 1) return "";  // Only null terminator
+    std::string result(size - 1, 0);  // Exclude null terminator
     WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, &result[0], size, nullptr, nullptr);
     return result;
 }

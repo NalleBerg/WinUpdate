@@ -9,6 +9,7 @@ param(
 
 $ErrorActionPreference = "Continue"
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
 $PSDefaultParameterValues['*:Encoding'] = 'utf8'
 
 $scriptStartTime = Get-Date
@@ -185,7 +186,9 @@ function Get-CompletePackageData {
     while ($retryCount -lt $maxRetries -and [string]::IsNullOrWhiteSpace($output)) {
         try {
             Write-Log "  [VERBOSE] Calling winget show for $PackageId (attempt $($retryCount + 1)/$maxRetries)..." "Gray"
-            $output = winget show $PackageId --accept-source-agreements 2>$null | Out-String
+            # Filter out winget loading animation characters (-, \, /, |)
+            $rawOutput = winget show $PackageId --accept-source-agreements 2>$null | Where-Object { $_.Trim() -notmatch '^[-\\/|]$' }
+            $output = $rawOutput | Out-String
             
             if ([string]::IsNullOrWhiteSpace($output)) {
                 $retryCount++
@@ -435,11 +438,32 @@ if (-not $TestOnly) {
 }
 
 # Get all winget packages
-Write-Log "Fetching winget package list..." "Cyan"
+$wingetListFile = Join-Path $scriptDir "winget_package_list.txt"
+
+if (-not (Test-Path $wingetListFile)) {
+    Write-Log "ERROR: Package list file not found: $wingetListFile" "Red"
+    Write-Log "" "White"
+    Write-Log "Please run this command first in PowerShell:" "Yellow"
+    Write-Log "  winget search . --source winget --accept-source-agreements > winget_package_list.txt" "Cyan"
+    Write-Log "" "White"
+    Write-Log "This will create the package list file that this script can parse." "Yellow"
+    Write-Log "The winget search command may take 2-5 minutes to complete." "Yellow"
+    exit 1
+}
+
+Write-Log "Reading package list from: $wingetListFile" "Cyan"
 $packages = @()
 
-$searchOutput = winget search . --source winget --accept-source-agreements 2>&1 | Out-String
-$lines = $searchOutput -split "`n"
+$lines = Get-Content $wingetListFile -Encoding UTF8
+Write-Log "Processing $($lines.Count) lines from winget output..." "Gray"
+
+# Get existing package IDs if SkipProcessed is enabled
+$existingPackages = @()
+if ($SkipProcessed -and (Test-Path $dbPath)) {
+    Write-Log "Loading existing package IDs to skip..." "Yellow"
+    $existingPackages = & sqlite3\sqlite3.exe $dbPath "SELECT package_id FROM apps;" | ForEach-Object { $_.Trim() }
+    Write-Log "Found $($existingPackages.Count) existing packages in database" "Yellow"
+}
 
 $inData = $false
 foreach ($line in $lines) {
@@ -456,10 +480,25 @@ foreach ($line in $lines) {
     
     if ($parts.Count -ge 2) {
         $id = $parts[1].Trim()
-        if ($id -match '^[A-Za-z0-9][\w._-]*\.[\w._-]+$') {
+        # Skip obviously corrupted IDs (numbers followed by ASCII text without proper separator)
+        if ($id -match '^\d+\.\d+[A-Za-z]') {
+            Write-Host "  [WARNING] Skipped corrupted ID (encoding issue): $id" -ForegroundColor Yellow
+            continue
+        }
+        # Accept proper package IDs (with Unicode support for Chinese publishers)
+        if ($id -match '^\S+\.\S+$') {
+            # Skip if already in database (when SkipProcessed is enabled)
+            if ($SkipProcessed -and $existingPackages -contains $id) {
+                continue
+            }
             $packages += $id
         }
     }
+}
+
+# Filter count after SkipProcessed logic
+if ($SkipProcessed) {
+    Write-Log "After filtering existing: $($packages.Count) new packages to process" "Yellow"
 }
 
 if ($TestOnly) {

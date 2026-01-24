@@ -2,6 +2,63 @@
 Notes for future versioned changelog
 
 =====================================
+Date: 2026-01-24
+Component: WinProgramManager
+
+FEATURE: Enhanced Category Navigation with Visual Folder Icons
+---------------------------------------------------------------
+- Implemented yellow folder icons for category list navigation
+- Dynamic folder state: closed folders open when selected
+- Custom 25×19 pixel folder icons (gr_folder.icon_closed.ico, gr_folder.icon_open.ico)
+- Consistent 3px spacing between icons and text in both panes
+- Blue selection highlighting on startup and during navigation
+
+TECHNICAL DETAILS:
+- Replaced TreeView with ListView for consistent icon control
+- Custom folder icons loaded from .ico files (fallback to shell32.dll)
+- Icon swapping on selection via LVN_ITEMCHANGED notification
+- Category names stored with display spacing (3 leading spaces)
+- Display names trimmed for database queries to maintain compatibility
+- SetFocus(g_hTagTree) on startup for blue selection highlighting
+
+VISUAL IMPROVEMENTS:
+- Category list: 25×19 folder icons with 7px icon-text spacing
+- App list: 21×19 app icons with 3px icon-text spacing  
+- 4px left margin added to both panes for less cramped appearance
+- Wider folder icons accommodate open folder flap design
+- Consistent visual spacing between icon and text across both panes
+
+USER EXPERIENCE IMPROVEMENTS:
+- Clear visual indication of active category (open folder)
+- Blue selection highlighting matches Windows Explorer behavior
+- Professional appearance with custom-designed folder icons
+- Improved readability with optimized icon-text spacing
+
+FILES MODIFIED:
+- WinProgramManager/main.cpp
+  * Replaced TreeView with ListView (WC_LISTVIEW)
+  * Implemented folder icon swapping on selection
+  * Added custom draw for margins and spacing (NM_CUSTOMDRAW)
+  * Added display name trimming for database queries
+  * Added SetFocus call for blue selection on startup
+- WinProgramManager/gr_folder.icon_closed.ico (NEW)
+- WinProgramManager/gr_folder.icon_open.ico (NEW)
+- WinProgramManager/makeit.bat
+  * Added .ico file copying to package directory
+
+ICON SPECIFICATIONS:
+- Closed folder icon: 25×19 pixels, yellow theme
+- Open folder icon: 25×19 pixels with visible flap, yellow theme
+- ImageList size: 25×19 to accommodate largest icon
+- App icons: 21×19 pixels (slightly wider than tall)
+
+KNOWN ISSUES RESOLVED:
+- Fixed category selection showing grey instead of blue on startup
+- Fixed empty category lists due to display spaces in database queries
+- Fixed inconsistent spacing between icons and text across panes
+- Fixed folder icons not changing state on selection
+
+=====================================
 Date: 2026-01-23
 Component: WinProgramManager
 

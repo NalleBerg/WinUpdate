@@ -14,19 +14,24 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     
     std::wstring dbPath = exePath;
     size_t lastSlash = dbPath.find_last_of(L"\\/");
+    std::wstring exeDir;
     if (lastSlash != std::wstring::npos) {
-        dbPath = dbPath.substr(0, lastSlash + 1);
+        exeDir = dbPath.substr(0, lastSlash + 1);
+        dbPath = exeDir + L"WinProgramManager.db";
+    } else {
+        dbPath = L"WinProgramManager.db";
     }
-    dbPath += L"WinProgramManager.db";
+    
+    // Set working directory to executable location for portable relative paths
+    if (!exeDir.empty()) {
+        SetCurrentDirectoryW(exeDir.c_str());
+    }
     
     // Run updater
     WinProgramUpdater updater(dbPath);
     UpdateStats stats;
     
     bool success = updater.UpdateDatabase(stats);
-    
-    // Always write log (even if no changes or failure)
-    updater.WriteLog(stats);
     
     return success ? 0 : 1;
 }
@@ -43,10 +48,18 @@ int main(int argc, char* argv[]) {
     
     std::wstring dbPath = exePath;
     size_t lastSlash = dbPath.find_last_of(L"\\/");
+    std::wstring exeDir;
     if (lastSlash != std::wstring::npos) {
-        dbPath = dbPath.substr(0, lastSlash + 1);
+        exeDir = dbPath.substr(0, lastSlash + 1);
+        dbPath = exeDir + L"WinProgramManager.db";
+    } else {
+        dbPath = L"WinProgramManager.db";
     }
-    dbPath += L"WinProgramManager.db";
+    
+    // Set working directory to executable location for portable relative paths
+    if (!exeDir.empty()) {
+        SetCurrentDirectoryW(exeDir.c_str());
+    }
     
     std::wcout << L"Starting WinProgramUpdater..." << std::endl;
     std::wcout << L"Database: " << dbPath << std::endl;
@@ -57,9 +70,6 @@ int main(int argc, char* argv[]) {
     std::wcout << L"\nUpdating database..." << std::endl;
     bool success = updater.UpdateDatabase(stats);
     
-    // Always write log (even if no changes or failure)
-    updater.WriteLog(stats);
-    
     if (success) {
         std::wcout << L"\n✓ Update complete!" << std::endl;
         std::wcout << L"  Packages added: " << stats.packagesAdded << std::endl;
@@ -69,10 +79,10 @@ int main(int argc, char* argv[]) {
         std::wcout << L"  Tags from correlation: " << stats.tagsFromCorrelation << std::endl;
         std::wcout << L"  Uncategorized: " << stats.uncategorized << std::endl;
         
-        std::wcout << L"\nLog written to %APPDATA%\\WinUpdate\\WinProgramUpdaterLog.txt" << std::endl;
+        std::wcout << L"\nLog written to %APPDATA%\\WinProgramManager\\log\\WinProgramUpdater.log" << std::endl;
     } else {
         std::wcout << L"\n✗ Update failed!" << std::endl;
-        std::wcout << L"Log written to %APPDATA%\\WinUpdate\\WinProgramUpdaterLog.txt" << std::endl;
+        std::wcout << L"Log written to %APPDATA%\\WinProgramManager\\log\\WinProgramUpdater.log" << std::endl;
         return 1;
     }
     

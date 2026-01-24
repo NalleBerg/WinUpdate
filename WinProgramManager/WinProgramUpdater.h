@@ -4,9 +4,6 @@
 #include <map>
 #include <memory>
 
-// Configuration
-#define ENABLE_LOGGING true  // Set to false to disable all logging
-
 // Forward declaration for SQLite
 typedef struct sqlite3 sqlite3;
 
@@ -25,12 +22,15 @@ struct PackageInfo {
     std::string licenseUrl;
     std::string privacyUrl;
     std::string packageUrl;
+    std::vector<unsigned char> iconData;
+    std::string iconType;
     std::vector<std::string> tags;
 };
 
 struct UpdateStats {
     int packagesAdded = 0;
     int packagesRemoved = 0;
+    int packagesUpdated = 0;
     int tagsAdded = 0;
     int tagsFromWinget = 0;
     int tagsFromInference = 0;
@@ -48,7 +48,7 @@ public:
     bool UpdateDatabase(UpdateStats& stats);
 
     // Logging
-    void WriteLog(const UpdateStats& stats);
+    void WriteAppDataLog(const UpdateStats& stats, const std::string& duration);
 
 private:
     // Database operations
@@ -61,7 +61,6 @@ private:
     std::vector<std::string> QueryPackageIds();
     bool HasTags(const std::string& packageId);
     void AddPackage(const PackageInfo& pkg);
-    std::string GetLogPath();
     void RemovePackage(const std::string& packageId);
     void AddTag(const std::string& packageId, const std::string& tag);
     int GetCategoryId(const std::string& category);
@@ -74,6 +73,7 @@ private:
     std::vector<std::string> GetWingetPackages();
     PackageInfo GetPackageInfo(const std::string& packageId, int attempt = 1);
     std::string ExecuteWingetCommand(const std::string& command);
+    void FetchIconFromHomepage(const std::string& homepage, std::vector<unsigned char>& iconData, std::string& iconType);
 
     // Tag inference
     void ApplyNameBasedInference(UpdateStats& stats);
@@ -89,7 +89,8 @@ private:
     std::wstring StringToWString(const std::string& str);
     std::string WStringToString(const std::wstring& wstr);
     std::string GetAppDataPath();
-    void PruneOldLogEntries(const std::string& logPath);
+    std::string GetAppDataLogPath();
+    void PruneAppDataLog();
 
     // Tag pattern mappings
     void InitializeTagPatterns();

@@ -383,7 +383,13 @@ foreach ($line in $lines) {
     
     if ($parts.Count -ge 2) {
         $id = $parts[1].Trim()
-        if ($id -match '^[A-Za-z0-9][\w._-]*\.[\w._-]+$') {
+        # Skip obviously corrupted IDs (numbers followed by ASCII text without proper separator)
+        if ($id -match '^\d+\.\d+[A-Za-z]') {
+            Write-Host "  [WARNING] Skipped corrupted ID (encoding issue): $id" -ForegroundColor Yellow
+            continue
+        }
+        # Accept proper package IDs (with Unicode support for Chinese publishers)
+        if ($id -match '^\S+\.\S+$') {
             $packages += $id
         }
     }
