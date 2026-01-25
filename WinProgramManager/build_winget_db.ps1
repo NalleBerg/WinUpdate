@@ -399,8 +399,14 @@ foreach ($line in $lines) {
             Write-Host "  [WARNING] Skipped corrupted ID (encoding issue): $id" -ForegroundColor Yellow
             continue
         }
+        # Skip IDs that are only version numbers (digits, dots, plus signs)
+        if ($id -match '^[0-9.+]+$') {
+            Write-Host "  [WARNING] Skipped version-only ID: $id" -ForegroundColor Yellow
+            continue
+        }
         # Accept proper package IDs (with Unicode support for Chinese publishers)
-        if ($id -match '^\S+\.\S+$') {
+        # Must contain at least one letter or Unicode character
+        if ($id -match '^\S+\.\S+$' -and $id -match '[A-Za-z\p{L}]') {
             $packages += $id
         }
     }

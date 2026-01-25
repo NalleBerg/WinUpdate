@@ -15,10 +15,12 @@
 #include <regex>
 #include "resource.h"
 #include "search.h"
+#include "installed_apps.h"
 
 // Control IDs
 #define ID_SEARCH_BTN 1001
 #define ID_END_SEARCH_BTN 1006
+#define ID_INSTALLED_BTN 1007
 #define ID_TAG_TREE 1002
 #define ID_APP_LIST 1004
 #define ID_LANG_COMBO 1005
@@ -45,6 +47,7 @@ struct Locale {
 // Global variables
 HWND g_hSearchBtn = NULL;
 HWND g_hEndSearchBtn = NULL;
+HWND g_hInstalledBtn = NULL;
 HWND g_hTagTree = NULL;
 HWND g_hTagCountLabel = NULL;
 HWND g_hAppList = NULL;
@@ -229,6 +232,7 @@ bool OpenDatabase();
 void CloseDatabase();
 void LoadAllDataIntoMemory();  // Load all apps and categories into memory for fast search
 void LoadAllIcons();  // Load all app icons into ImageList (call after ImageList is created)
+void LoadInstalledPackageIds();  // Load installed package IDs from database
 HBITMAP LoadIconFromBlob(const std::vector<unsigned char>& data, const std::wstring& type);
 HICON LoadIconFromMemory(const unsigned char* data, int size);
 void OnTagSelectionChanged();
@@ -689,6 +693,48 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                 // End search and restore all data
                 EndSearch();
             }
+            else if (LOWORD(wParam) == ID_INSTALLED_BTN) {
+                // Toggle installed filter
+                bool wasActive = IsInstalledFilterActive();
+                SetInstalledFilterActive(!wasActive);
+                
+                // Load installed package IDs if activating filter
+                if (IsInstalledFilterActive()) {
+                    LoadInstalledPackageIds(g_db);
+                }
+                
+                // Show spinner when deactivating (going back to all apps)
+                if (wasActive && !IsInstalledFilterActive()) {
+                    // Create and show loading dialog
+                    g_hIconLoadingDialog = CreateDialog((HINSTANCE)GetWindowLongPtr(g_mainWindow, GWLP_HINSTANCE), 
+                                                        MAKEINTRESOURCE(IDD_LOADING_DIALOG), g_mainWindow, IconLoadingDialogProc);
+                    if (g_hIconLoadingDialog) {
+                        SetDlgItemTextW(g_hIconLoadingDialog, IDC_LOADING_TEXT, g_locale.repopulating_table.c_str());
+                        ShowWindow(g_hIconLoadingDialog, SW_SHOW);
+                        UpdateWindow(g_hIconLoadingDialog);
+                        
+                        // Process messages to let spinner start
+                        MSG msg;
+                        for (int i = 0; i < 10; i++) {
+                            while (PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE)) {
+                                TranslateMessage(&msg);
+                                DispatchMessageW(&msg);
+                            }
+                            Sleep(16);
+                        }
+                    }
+                }
+                
+                InvalidateRect(g_hInstalledBtn, NULL, TRUE);  // Redraw button with new state
+                LoadTags();  // Refresh categories to show only those with installed apps
+                OnTagSelectionChanged();  // Refresh the app list
+                
+                // Destroy spinner dialog if it was shown
+                if (g_hIconLoadingDialog) {
+                    DestroyWindow(g_hIconLoadingDialog);
+                    g_hIconLoadingDialog = nullptr;
+                }
+            }
             else if (HIWORD(wParam) == CBN_SELCHANGE) {
                 if ((HWND)lParam == g_hLangCombo) {
                     OnLanguageChanged();
@@ -862,6 +908,29 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                 SelectObject(hdc, oldf);
                 if (dis->itemState & ODS_FOCUS) DrawFocusRect(hdc, &rc);
                 return TRUE;
+            } else if (dis->CtlID == ID_INSTALLED_BTN) {
+                HWND hBtn = dis->hwndItem;
+                BOOL hover = (BOOL)GetWindowLongPtrW(hBtn, GWLP_USERDATA);
+                bool pressed = (dis->itemState & ODS_SELECTED) != 0;
+                HDC hdc = dis->hDC;
+                RECT rc = dis->rcItem;
+                // Green color scheme when active, dark blue (matching Search) when inactive
+                COLORREF base = IsInstalledFilterActive() ? RGB(40,140,40) : RGB(10,57,129);
+                COLORREF hoverCol = IsInstalledFilterActive() ? RGB(60,180,60) : RGB(25,95,210);
+                COLORREF pressCol = IsInstalledFilterActive() ? RGB(20,100,20) : RGB(6,34,80);
+                HBRUSH hBrush = CreateSolidBrush(pressed ? pressCol : (hover ? hoverCol : base));
+                FillRect(hdc, &rc, hBrush);
+                DeleteObject(hBrush);
+                // Draw text with checkmark when active
+                SetTextColor(hdc, RGB(255,255,255));
+                SetBkMode(hdc, TRANSPARENT);
+                HFONT hf = g_hBoldFont ? g_hBoldFont : (HFONT)GetStockObject(DEFAULT_GUI_FONT);
+                HGDIOBJ oldf = SelectObject(hdc, hf);
+                std::wstring btnText = IsInstalledFilterActive() ? L"✓ Installed" : L"Installed";
+                DrawTextW(hdc, btnText.c_str(), -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+                SelectObject(hdc, oldf);
+                if (dis->itemState & ODS_FOCUS) DrawFocusRect(hdc, &rc);
+                return TRUE;
             }
             return FALSE;
         }
@@ -963,6 +1032,40 @@ void CreateControls(HWND hwnd) {
     // Subclass end search button for hover effects
     if (g_hEndSearchBtn) {
         SetWindowSubclass(g_hEndSearchBtn, [](HWND h, UINT msg, WPARAM wp, LPARAM lp, UINT_PTR, DWORD_PTR)->LRESULT {
+            switch (msg) {
+            case WM_MOUSEMOVE: {
+                SetWindowLongPtrW(h, GWLP_USERDATA, 1);
+                InvalidateRect(h, NULL, TRUE);
+                TRACKMOUSEEVENT tme{}; tme.cbSize = sizeof(tme); tme.dwFlags = TME_LEAVE; tme.hwndTrack = h; TrackMouseEvent(&tme);
+                break;
+            }
+            case WM_MOUSELEAVE: {
+                SetWindowLongPtrW(h, GWLP_USERDATA, 0);
+                InvalidateRect(h, NULL, TRUE);
+                break;
+            }
+            }
+            return DefSubclassProc(h, msg, wp, lp);
+        }, 0, 0);
+    }
+    
+    // Installed button (toggle to show only installed apps)
+    g_hInstalledBtn = CreateWindowExW(
+        0,
+        L"BUTTON",
+        L"Installed",
+        WS_CHILD | WS_VISIBLE | BS_OWNERDRAW | WS_TABSTOP,
+        0, 0, 0, 0,
+        hwnd,
+        (HMENU)ID_INSTALLED_BTN,
+        hInst,
+        NULL
+    );
+    SendMessageW(g_hInstalledBtn, WM_SETFONT, (WPARAM)g_hFont, TRUE);
+    
+    // Subclass installed button for hover effects
+    if (g_hInstalledBtn) {
+        SetWindowSubclass(g_hInstalledBtn, [](HWND h, UINT msg, WPARAM wp, LPARAM lp, UINT_PTR, DWORD_PTR)->LRESULT {
             switch (msg) {
             case WM_MOUSEMOVE: {
                 SetWindowLongPtrW(h, GWLP_USERDATA, 1);
@@ -1144,12 +1247,12 @@ void CreateControls(HWND hwnd) {
     // Create a blue dot icon as default (for apps without icons)
     HDC hdc = GetDC(NULL);
     HDC hdcMem = CreateCompatibleDC(hdc);
-    HBITMAP hBitmap = CreateCompatibleBitmap(hdc, 19, 19);
+    HBITMAP hBitmap = CreateCompatibleBitmap(hdc, 21, 19);
     HBITMAP hOldBitmap = (HBITMAP)SelectObject(hdcMem, hBitmap);
     
     // Fill with transparent background
     HBRUSH hBrushBg = CreateSolidBrush(RGB(240, 240, 240));
-    RECT rect = {0, 0, 19, 19};
+    RECT rect = {0, 0, 21, 19};
     FillRect(hdcMem, &rect, hBrushBg);
     DeleteObject(hBrushBg);
     
@@ -1232,6 +1335,7 @@ void ResizeControls(HWND hwnd) {
     const int spacing = 4;
     const int langComboWidth = 150;
     const int searchBtnWidth = 100;
+    const int installedBtnWidth = 100;
     const int endSearchBtnWidth = 110;
     const int searchBtnSpacing = 9;  // Extra space between buttons and dropdown
     
@@ -1239,17 +1343,25 @@ void ResizeControls(HWND hwnd) {
     MoveWindow(g_hLangCombo, rc.right - margin - langComboWidth, margin, langComboWidth, 200, TRUE);
     
     // Button layout depends on search state
+    // From right: [Language] ... [End Search?] [Search] [Installed]
     if (g_searchActive && IsWindowVisible(g_hEndSearchBtn)) {
-        // Both buttons visible: [End Search] [Search] ... [Language]
-        int totalBtnWidth = searchBtnWidth + spacing + endSearchBtnWidth;
-        int searchX = rc.right - margin - langComboWidth - searchBtnSpacing - totalBtnWidth;
+        // All buttons visible: [Installed] [Search] [End Search] ... [Language]
+        int totalBtnWidth = installedBtnWidth + spacing + searchBtnWidth + spacing + endSearchBtnWidth;
+        int installedX = rc.right - margin - langComboWidth - searchBtnSpacing - totalBtnWidth;
+        int searchX = installedX + installedBtnWidth + spacing;
         int endSearchX = searchX + searchBtnWidth + spacing;
         
+        MoveWindow(g_hInstalledBtn, installedX, margin, installedBtnWidth, btnHeight, TRUE);
         MoveWindow(g_hSearchBtn, searchX, margin, searchBtnWidth, btnHeight, TRUE);
         MoveWindow(g_hEndSearchBtn, endSearchX, margin, endSearchBtnWidth, btnHeight, TRUE);
     } else {
-        // Only search button visible: [Search] ... [Language]
-        MoveWindow(g_hSearchBtn, rc.right - margin - langComboWidth - searchBtnSpacing - searchBtnWidth, margin, searchBtnWidth, btnHeight, TRUE);
+        // Search and Installed buttons visible: [Installed] [Search] ... [Language]
+        int totalBtnWidth = installedBtnWidth + spacing + searchBtnWidth;
+        int installedX = rc.right - margin - langComboWidth - searchBtnSpacing - totalBtnWidth;
+        int searchX = installedX + installedBtnWidth + spacing;
+        
+        MoveWindow(g_hInstalledBtn, installedX, margin, installedBtnWidth, btnHeight, TRUE);
+        MoveWindow(g_hSearchBtn, searchX, margin, searchBtnWidth, btnHeight, TRUE);
     }
     
     // Left panel
@@ -1324,7 +1436,8 @@ void CloseDatabase() {
     }
 }
 
-// Load all apps and categories into memory for instant searching
+// Installed apps functionality now in installed_apps.cpp
+
 void LoadAllDataIntoMemory() {
     if (!g_db) return;
     
@@ -1513,6 +1626,9 @@ INT_PTR CALLBACK IconLoadingDialogProc(HWND hDlg, UINT message, WPARAM wParam, L
 void LoadAllIcons() {
     if (!g_db || !g_hImageList) return;
     
+    // NOTE: Index 0 in ImageList is the brown package icon (default for apps without icons)
+    // We must preserve this by starting custom icons at index 1+
+    
     // Query all apps with their icons
     sqlite3_stmt* stmt;
     const char* sql = "SELECT id, icon_data FROM apps WHERE name IS NOT NULL AND TRIM(name) != '' ORDER BY name;";
@@ -1524,8 +1640,7 @@ void LoadAllIcons() {
             // Find this app in g_allApps
             for (auto& app : g_allApps) {
                 if (app.id == appId) {
-                    // Load icon from database
-                    bool iconLoaded = false;
+                    // Try to load icon from database
                     if (sqlite3_column_type(stmt, 1) == SQLITE_BLOB) {
                         const void* blobData = sqlite3_column_blob(stmt, 1);
                         int blobSize = sqlite3_column_bytes(stmt, 1);
@@ -1533,15 +1648,19 @@ void LoadAllIcons() {
                         if (blobData && blobSize > 0) {
                             HICON hIcon = LoadIconFromMemory((const unsigned char*)blobData, blobSize);
                             if (hIcon) {
+                                // Add icon to ImageList - this returns new index (1, 2, 3, ...)
                                 app.iconIndex = ImageList_AddIcon(g_hImageList, hIcon);
                                 DestroyIcon(hIcon);
-                                iconLoaded = true;
+                            } else {
+                                // Icon data exists but failed to load - use brown package
+                                app.iconIndex = 0;
                             }
+                        } else {
+                            // No icon data - use brown package icon (index 0)
+                            app.iconIndex = 0;
                         }
-                    }
-                    
-                    // If no icon was loaded, use the default brown package icon (index 0)
-                    if (!iconLoaded) {
+                    } else {
+                        // No icon in database - use brown package icon (index 0)
                         app.iconIndex = 0;
                     }
                     break;
@@ -1621,6 +1740,25 @@ void LoadTags(const std::wstring& filter) {
         
         // Only show categories with 4+ apps, or categories with orphaned apps
         if (appCount < 4 && !hasOrphanedApps) continue;
+        
+        // If installed filter is active, check if category has any installed apps
+        if (IsInstalledFilterActive()) {
+            bool hasInstalledApp = false;
+            for (int appId : it->second) {
+                // Find this app in g_allApps
+                for (const auto& app : g_allApps) {
+                    if (app.id == appId) {
+                        if (IsPackageInstalled(app.packageId)) {
+                            hasInstalledApp = true;
+                            break;
+                        }
+                        break;
+                    }
+                }
+                if (hasInstalledApp) break;
+            }
+            if (!hasInstalledApp) continue;  // Skip categories with no installed apps
+        }
         
         // Apply filter if specified
         if (!filter.empty()) {
@@ -1706,6 +1844,13 @@ void LoadApps(const std::wstring& tag, const std::wstring& filter) {
                 lower_publisher.find(lower_filter) == std::wstring::npos &&
                 lower_packageId.find(lower_filter) == std::wstring::npos) {
                 continue;
+            }
+        }
+        
+        // Apply installed filter if active
+        if (IsInstalledFilterActive()) {
+            if (!IsPackageInstalled(app.packageId)) {
+                continue;  // Skip non-installed apps
             }
         }
         

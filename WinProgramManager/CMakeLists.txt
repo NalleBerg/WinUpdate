@@ -11,6 +11,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 add_executable(WinProgramManager WIN32
     main.cpp
     search.cpp
+    installed_apps.cpp
     winprogrammanager.rc
 )
 

@@ -2,7 +2,90 @@
 Notes for future versioned changelog
 
 =====================================
-Date: 2026-01-25
+Date: 2026-01-25 (Update 2 - Installed Apps Filter)
+Component: WinProgramManager
+
+FEATURE: Installed Apps Filter with Database Integration
+---------------------------------------------------------
+- Implemented "Installed" button to filter apps by installation status
+- Integrated with installed_apps database table for persistent tracking
+- Visual state indication: Green with checkmark when active, blue when inactive
+- Animated loading dialog when deactivating filter (same as End Search)
+- Button color matches Search button design (RGB 10,57,129)
+
+INSTALLED APPS TRACKING:
+- installed_apps table with package_id, installed_date, source columns
+- sync_installed_apps.ps1 script for database synchronization
+- Tracks winget-installed packages on user's system
+- Shows count of installed apps in categories and main list
+
+FILTER BEHAVIOR:
+- Toggle button: Click once to activate, click again to deactivate
+- When active: Shows only installed apps (44 apps in current system)
+- When active: Categories filtered to show only those with installed apps (190 categories)
+- When deactivated: Shows loading spinner while repopulating full list
+- Preserves all search and filter capabilities
+
+USER INTERFACE:
+- Button states:
+  * Inactive: Blue (RGB 10,57,129), text "Installed"
+  * Active: Green (RGB 40,140,40), text "✓ Installed" with checkmark
+  * Hover effects for both states
+- Positioned next to Search button for consistent navigation
+- Smooth spinner animation when returning to all apps
+
+MODULAR ARCHITECTURE:
+- installed_apps.h: Public API with 7 functions
+- installed_apps.cpp: Encapsulated implementation with static module state
+- Clean separation from main.cpp
+- O(1) lookup performance using std::set<std::wstring>
+
+DATABASE CLEANUP:
+- Removed 169 invalid version-number-only entries (e.g., "0.0.3", "1.0.0")
+- Enhanced build_winget_db.ps1 with validation:
+  * Rejects package IDs containing only digits, dots, and plus signs
+  * Requires at least one letter in package ID
+  * Prevents future parse errors
+- Final database: 10,981 valid apps (down from 11,150)
+
+TECHNICAL DETAILS:
+- Database relationship: apps.package_id → installed_apps.package_id
+- LoadInstalledPackageIds() populates in-memory cache from database
+- IsPackageInstalled() performs O(1) set lookup
+- IsInstalledFilterActive() / SetInstalledFilterActive() manage filter state
+- LoadTags() and LoadApps() respect installed filter when active
+- Spinner dialog matches End Search behavior for consistency
+
+FILES MODIFIED:
+- WinProgramManager/installed_apps.h (NEW)
+- WinProgramManager/installed_apps.cpp (NEW)
+- WinProgramManager/main.cpp
+  * Refactored to use installed_apps API
+  * Added spinner when deactivating filter
+  * Updated button colors to match Search
+- WinProgramManager/CMakeLists.txt
+  * Added installed_apps.cpp to build
+- WinProgramManager/build_winget_db.ps1
+  * Added version-number validation
+
+SCRIPTS AVAILABLE:
+- sync_installed_apps.ps1: Sync system packages to database
+  Usage: .\sync_installed_apps.ps1
+  Result: Updates installed_apps table with current winget list
+
+USER EXPERIENCE IMPROVEMENTS:
+- One-click access to installed apps
+- Visual feedback with state-aware button colors
+- Loading spinner prevents UI freeze perception
+- Consistent navigation between Search, Installed, and full list
+
+KNOWN ISSUES RESOLVED:
+- Fixed database location (WinProgramManager\WinProgramManager\WinProgramManager.db)
+- Fixed brown package icons (bitmap size mismatch 19x19 vs 21x19)
+- Removed invalid version-only database entries
+
+=====================================
+Date: 2026-01-25 (Update 1 - Search and Icons)
 Component: WinProgramManager
 
 FEATURE: Advanced Search Functionality with End Search Dialog
