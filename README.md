@@ -1,6 +1,6 @@
 # WinProgramSuite — Complete Windows Package Management System
 
-**Latest Update:** 26 January 2026 | **Installed Apps Sync Working**
+**Latest Update:** 26 January 2026 | **Complete Installed Apps Integration**
 
 **WinProgramSuite** is a comprehensive package management system for Windows, combining database-driven package metadata management with a friendly GUI for updates. Built on Microsoft's `winget` package manager with advanced categorization, search, filtering, and analysis capabilities.
 
@@ -12,15 +12,18 @@
 Database builder and metadata management system for Windows packages.
 
 **Key Features:**
-- Single-pass collection of all winget package data (~10,981 valid packages)
+- Single-pass collection of all winget package data (~10,693 valid packages after cleanup)
 - Comprehensive 20+ column database schema (SQLite)
 - Icon extraction and storage as BLOB with type detection
 - Category/tag system with Unicode support (Chinese, Japanese, etc.)
 - Enhanced category navigation with visual folder icons
 - Folder icons dynamically open/close based on selection
 - Advanced search with multi-field filtering and regex support
-- Installed apps filter with working database synchronization
-- Parses winget list output using right-to-left tokenization
+- **Complete installed apps integration**: All 47 installed apps in database and filter
+- **Step 2.5 Missing Package Handler**: Automatically adds installed packages missing from main database
+- **Safe comprehensive deletion**: Protects all installed apps, removes only obsolete packages
+- **Hybrid PowerShell architecture**: Resolves C++ pipe buffering issues with winget
+- Parses winget list and winget search output using right-to-left tokenization
 - Handles regional latency (tested with Greek Windows, 60+ second delays)
 - Full-text search ready (FTS5 compatible)
 - Automatic tag inference from co-occurrence patterns
@@ -48,6 +51,8 @@ Database builder and metadata management system for Windows packages.
 
 **Scripts:**
 - `build_everything.ps1` — Single-pass database creation with all metadata
+- `add_missing_installed_packages.ps1` — Adds missing installed packages with full metadata via winget show
+- `check_deleted_packages.ps1` — Safe comprehensive deletion using winget search . catalog verification
 - `restore_ignored_tags_fixed.ps1` — Complete tag restoration with retry logic
 - `correlate_categories.ps1` — Tag co-occurrence analysis
 - `infer_categories.ps1` — Automatic category inference

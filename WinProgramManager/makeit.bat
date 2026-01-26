@@ -101,6 +101,8 @@ robocopy i18n "%PACKAGE_DIR%\i18n" /E >nul 2>&1
 robocopy img "%PACKAGE_DIR%\img" /E >nul 2>&1
 robocopy locale "%PACKAGE_DIR%\locale" /E >nul 2>&1
 robocopy assets "%PACKAGE_DIR%\assets" /E >nul 2>&1
+robocopy scripts "%PACKAGE_DIR%\scripts" /E >nul 2>&1
+echo Scripts packaged.
 REM copy the built executables
 if exist "%BUILD_DIR%\WinProgramManager.exe" (
     copy /Y "%BUILD_DIR%\WinProgramManager.exe" "%PACKAGE_DIR%\WinProgramManager.exe" >nul 2>&1
@@ -133,6 +135,10 @@ if exist "C:\mingw64\bin\libstdc++-6.dll" copy /Y "C:\mingw64\bin\libstdc++-6.dl
 if exist "C:\mingw64\bin\libwinpthread-1.dll" copy /Y "C:\mingw64\bin\libwinpthread-1.dll" "%PACKAGE_DIR%\libwinpthread-1.dll" >nul 2>&1
 REM Copy sqlite3 DLL
 if exist "sqlite3\sqlite3.dll" copy /Y "sqlite3\sqlite3.dll" "%PACKAGE_DIR%\sqlite3.dll" >nul 2>&1
+REM Copy sqlite3 folder for scripts
+if not exist "%PACKAGE_DIR%\sqlite3" mkdir "%PACKAGE_DIR%\sqlite3"
+if exist "sqlite3\sqlite3.exe" copy /Y "sqlite3\sqlite3.exe" "%PACKAGE_DIR%\sqlite3\sqlite3.exe" >nul 2>&1
+echo sqlite3 tools packaged.
 REM Database already exists in package directory
 echo Packaged to %PACKAGE_DIR%.
 echo Build complete!

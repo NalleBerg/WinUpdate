@@ -10,6 +10,7 @@
 #include <iomanip>
 #include <ctime>
 #include <algorithm>
+#include <unordered_set>
 
 WinProgramUpdater::WinProgramUpdater(const std::wstring& dbPath)
     : db_(nullptr), searchDb_(nullptr), dbPath_(dbPath) {
@@ -306,45 +307,55 @@ void WinProgramUpdater::AddTag(const std::string& packageId, const std::string& 
 }
 
 std::string WinProgramUpdater::ExecuteWingetCommand(const std::string& command) {
-    // Use cmd.exe to run winget (winget is not a .exe but a Windows package)
-    std::string fullCmd = "cmd.exe /c winget " + command + " --accept-source-agreements --disable-interactivity";
-    std::string result;
+    // Use temp file to avoid pipe buffering issues with winget
+    char tempPath[MAX_PATH];
+    GetTempPathA(MAX_PATH, tempPath);
+    std::string tempFile = std::string(tempPath) + "winget_output_" + std::to_string(GetTickCount()) + ".txt";
     
-    HANDLE hReadPipe, hWritePipe;
-    SECURITY_ATTRIBUTES sa = { sizeof(SECURITY_ATTRIBUTES), nullptr, TRUE };
-    
-    if (!CreatePipe(&hReadPipe, &hWritePipe, &sa, 0)) {
-        return "";
-    }
+    // Redirect winget output to temp file using cmd.exe
+    std::string fullCmd = "cmd.exe /c \"winget " + command + " --accept-source-agreements --disable-interactivity > \"" + tempFile + "\" 2>&1\"";
     
     STARTUPINFOA si = {};
     si.cb = sizeof(STARTUPINFOA);
-    si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
-    si.hStdOutput = hWritePipe;
-    si.hStdError = hWritePipe;
+    si.dwFlags = STARTF_USESHOWWINDOW;
     si.wShowWindow = SW_HIDE;
     
     PROCESS_INFORMATION pi = {};
     
     if (CreateProcessA(nullptr, const_cast<char*>(fullCmd.c_str()), nullptr, nullptr, 
-                       TRUE, CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi)) {
-        CloseHandle(hWritePipe);
+                       FALSE, CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi)) {
+        // Wait up to 2 minutes for regional latency
+        DWORD waitResult = WaitForSingleObject(pi.hProcess, 120000);
         
-        char buffer[4096];
-        DWORD bytesRead;
-        while (ReadFile(hReadPipe, buffer, sizeof(buffer) - 1, &bytesRead, nullptr) && bytesRead > 0) {
-            buffer[bytesRead] = '\0';
-            result += buffer;
-        }
-        
-        WaitForSingleObject(pi.hProcess, INFINITE);
         CloseHandle(pi.hProcess);
         CloseHandle(pi.hThread);
+        
+        if (waitResult == WAIT_TIMEOUT) {
+            // Timeout - delete temp file and return empty
+            DeleteFileA(tempFile.c_str());
+            return "";
+        }
+        
+        // Give file system a moment to flush
+        Sleep(100);
     } else {
-        CloseHandle(hWritePipe);
+        return "";
     }
     
-    CloseHandle(hReadPipe);
+    // Read output from temp file
+    std::string result;
+    std::ifstream file(tempFile, std::ios::binary);
+    if (file.is_open()) {
+        std::string line;
+        while (std::getline(file, line)) {
+            result += line + "\n";
+        }
+        file.close();
+    }
+    
+    // Clean up temp file
+    DeleteFileA(tempFile.c_str());
+    
     return result;
 }
 
@@ -494,17 +505,76 @@ std::vector<std::string> WinProgramUpdater::GetNewPackages() {
 std::vector<std::string> WinProgramUpdater::GetDeletedPackages() {
     std::vector<std::string> deletedPackages;
     
-    // Find packages in main DB but not in search DB
+    // Step 3.1: Run comprehensive winget search to get ALL available packages
+    std::string searchOutput = ExecuteWingetCommand("search .");
+    
+    // Step 3.2: Parse all package IDs from the comprehensive search
+    std::unordered_set<std::string> availablePackageIds;
+    std::istringstream stream(searchOutput);
+    std::string line;
+    bool inResultsSection = false;
+    
+    while (std::getline(stream, line)) {
+        // Skip until we find the header line with "Name" and "Id"
+        if (!inResultsSection) {
+            if (line.find("Name") != std::string::npos && line.find("Id") != std::string::npos) {
+                inResultsSection = true;
+                std::getline(stream, line); // Skip the separator line (dashes)
+            }
+            continue;
+        }
+        
+        // Skip empty lines and progress indicators
+        if (line.empty() || line.length() <= 2) continue;
+        if (line.find_first_not_of(" \t\r\n-\\/|") == std::string::npos) continue;
+        
+        // Parse line using right-to-left tokenization
+        // Format: Name [spaces] Id [spaces] Version [spaces] Source
+        std::vector<std::string> tokens;
+        std::string token;
+        bool inToken = false;
+        
+        // Right-to-left parsing
+        for (int i = line.length() - 1; i >= 0; i--) {
+            char c = line[i];
+            if (c == ' ' || c == '\t') {
+                if (inToken) {
+                    std::reverse(token.begin(), token.end());
+                    tokens.push_back(token);
+                    token.clear();
+                    inToken = false;
+                    if (tokens.size() >= 3) break; // Got Source, Version, and Id
+                }
+            } else {
+                token += c;
+                inToken = true;
+            }
+        }
+        
+        // Package ID is the 3rd token from the right (Source, Version, Id)
+        if (tokens.size() >= 3) {
+            std::string packageId = tokens[2]; // 0=Source, 1=Version, 2=Id
+            if (!packageId.empty()) {
+                availablePackageIds.insert(packageId);
+            }
+        }
+    }
+    
+    // Step 3.3: Find packages in DB that are NOT available AND NOT installed
     const char* sql = 
         "SELECT package_id FROM apps "
-        "WHERE package_id NOT IN (SELECT package_id FROM search_db.search_results);";
+        "WHERE package_id NOT IN (SELECT package_id FROM installed_apps);";
     
     sqlite3_stmt* stmt;
     if (sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr) == SQLITE_OK) {
         while (sqlite3_step(stmt) == SQLITE_ROW) {
             const unsigned char* text = sqlite3_column_text(stmt, 0);
             if (text) {
-                deletedPackages.push_back(reinterpret_cast<const char*>(text));
+                std::string packageId = reinterpret_cast<const char*>(text);
+                // Only mark for deletion if NOT in comprehensive available list
+                if (availablePackageIds.find(packageId) == availablePackageIds.end()) {
+                    deletedPackages.push_back(packageId);
+                }
             }
         }
         sqlite3_finalize(stmt);
@@ -928,24 +998,104 @@ bool WinProgramUpdater::UpdateDatabase(UpdateStats& stats) {
         }
     }
     
-    // Step 3: Find deleted packages (in main but not in search)
+    // Step 2.5: Add installed packages that are missing from main database
 #ifdef _CONSOLE
-    std::wcout << L"\n=== Step 3: Find deleted packages ===" << std::endl;
+    std::wcout << L"\n=== Step 2.5: Add missing installed packages ===" << std::endl;
 #endif
     
-    auto deletedPackages = GetDeletedPackages();
+    // Use PowerShell script to add missing installed packages
+    // This avoids pipe buffering issues with winget show
+    char exePath[MAX_PATH];
+    GetModuleFileNameA(nullptr, exePath, MAX_PATH);
+    std::string exeDir = std::string(exePath);
+    size_t lastSlash = exeDir.find_last_of("\\/");
+    if (lastSlash != std::string::npos) {
+        exeDir = exeDir.substr(0, lastSlash);
+    }
     
+    std::string scriptPath = exeDir + "\\scripts\\add_missing_installed_packages.ps1";
+    std::wstring wDbPath = dbPath_;
+    std::string dbPathUtf8;
+    int size = WideCharToMultiByte(CP_UTF8, 0, wDbPath.c_str(), -1, nullptr, 0, nullptr, nullptr);
+    if (size > 0) {
+        dbPathUtf8.resize(size - 1);
+        WideCharToMultiByte(CP_UTF8, 0, wDbPath.c_str(), -1, &dbPathUtf8[0], size, nullptr, nullptr);
+    }
+    
+    std::string psCommand = "powershell.exe -ExecutionPolicy Bypass -NoProfile -File \"" + 
+                           scriptPath + "\" -DatabasePath \"" + dbPathUtf8 + "\"";
+    
+    STARTUPINFOA si = {};
+    si.cb = sizeof(STARTUPINFOA);
+    si.dwFlags = STARTF_USESHOWWINDOW;
+    si.wShowWindow = SW_HIDE;
+    
+    PROCESS_INFORMATION pi = {};
+    
+    if (CreateProcessA(nullptr, const_cast<char*>(psCommand.c_str()), nullptr, nullptr,
+                       FALSE, CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi)) {
+        // Wait up to 5 minutes for script to complete
+        WaitForSingleObject(pi.hProcess, 300000);
+        
+        DWORD exitCode = 0;
+        GetExitCodeProcess(pi.hProcess, &exitCode);
+        
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
+        
 #ifdef _CONSOLE
-    std::wcout << L"Found " << deletedPackages.size() << L" deleted packages" << std::endl;
+        if (exitCode == 0) {
+            std::wcout << L"Script completed successfully" << std::endl;
+        } else {
+            std::wcout << L"Script exited with code: " << exitCode << std::endl;
+        }
+#endif
+    } else {
+#ifdef _CONSOLE
+        std::wcout << L"Failed to execute script" << std::endl;
+#endif
+    }
+    
+    // Step 3: Find and remove deleted packages (comprehensive check)
+    // Run "winget search ." to get ALL available packages, then safely delete
+    // packages that are NOT available AND NOT installed
+#ifdef _CONSOLE
+    std::wcout << L"\n=== Step 3: Find deleted packages (comprehensive) ===" << std::endl;
 #endif
     
-    // Remove deleted packages
-    for (const auto& packageId : deletedPackages) {
+    // Use PowerShell script for comprehensive check via "winget search ."
+    // This ensures we only delete packages that are truly gone from winget
+    std::string checkScript = exeDir + "\\scripts\\check_deleted_packages.ps1";
+    std::string checkCommand = "powershell.exe -ExecutionPolicy Bypass -NoProfile -File \"" + 
+                               checkScript + "\" -DatabasePath \"" + dbPathUtf8 + "\"";
+    
+    STARTUPINFOA checkSi = {};
+    PROCESS_INFORMATION checkPi = {};
+    checkSi.cb = sizeof(checkSi);
+    checkSi.dwFlags = STARTF_USESHOWWINDOW;
+    checkSi.wShowWindow = SW_HIDE;
+    
+    if (CreateProcessA(nullptr, const_cast<char*>(checkCommand.c_str()), nullptr, nullptr, 
+                       FALSE, CREATE_NO_WINDOW, nullptr, nullptr, &checkSi, &checkPi)) {
+        WaitForSingleObject(checkPi.hProcess, 600000); // 10 minute timeout for comprehensive search
+        
+        DWORD checkExitCode = 0;
+        GetExitCodeProcess(checkPi.hProcess, &checkExitCode);
+        
+        CloseHandle(checkPi.hProcess);
+        CloseHandle(checkPi.hThread);
+        
 #ifdef _CONSOLE
-        std::wcout << L"  Removing: " << StringToWString(packageId) << std::endl;
+        if (checkExitCode == 0) {
+            std::wcout << L"Cleanup completed successfully" << std::endl;
+        } else {
+            std::wcout << L"Cleanup script exited with code: " << checkExitCode << std::endl;
+        }
 #endif
-        RemovePackage(packageId);
-        stats.packagesRemoved++;
+    } else {
+#ifdef _CONSOLE
+        std::wcout << L"Failed to execute cleanup script" << std::endl;
+#endif
     }
     
     // Step 4: Update tags for packages with zero tags (only if not yet checked)

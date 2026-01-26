@@ -2,6 +2,77 @@
 Notes for future versioned changelog
 
 =====================================
+Date: 2026-01-26 (Update 4 - Complete Installed Apps Integration)
+Component: WinProgramManager / WinProgramUpdater
+
+FEATURE: All Installed Apps Now in Database
+---------------------------------------------------------
+- Fixed missing installed packages issue: All 47 installed apps now appear in database and UI
+- Implemented Step 2.5: Automatic addition of missing installed packages
+- Safe deletion logic protects installed apps from being removed
+- Hybrid PowerShell architecture resolves C++ pipe buffering issues
+
+STEP 2.5 - MISSING PACKAGE HANDLER:
+- New updater step runs after installed apps sync
+- Queries database for packages in installed_apps but not in main apps table
+- Calls PowerShell script (add_missing_installed_packages.ps1) to fetch metadata
+- Uses winget show for each missing package to get complete information
+- Inserts package details into apps table with tags
+- Handles all packages that weren't captured by winget search
+
+HYBRID POWERSHELL ARCHITECTURE:
+Problem Solved: C++ CreateProcess with pipes would hang indefinitely on winget show output
+- winget sends progress indicators (spinner chars) that fill pipe buffer
+- ReadFile() blocks waiting for more data, CreateProcess deadlocks
+- Multiple attempted fixes: PeekNamedPipe, temp files, all failed
+
+Solution: External PowerShell scripts called from C++
+- add_missing_installed_packages.ps1: Adds missing packages with full metadata
+- check_deleted_packages.ps1: Safely removes obsolete packages
+- Scripts packaged with sqlite3.exe for database operations
+- C++ orchestrates via CreateProcessA without pipe redirection
+- Reliable winget interaction without buffering issues
+
+SAFE PACKAGE DELETION (Step 3):
+Logic: Delete ONLY if package is NOT in winget catalog AND NOT installed
+- Runs comprehensive "winget search ." to get entire catalog (~10,811 packages)
+- Compares database against full catalog, not just search results
+- Protects installed apps even if delisted from winget
+- Safely removes truly obsolete packages (not available + not installed)
+- Result: Database reduced from 10,811 to 10,693 (118 obsolete removed)
+
+ZERO MAGIC NUMBERS:
+- All operations driven by database queries and winget API
+- No hardcoded package lists or manual interventions
+- Systematic approach ensures consistency and maintainability
+
+SCRIPTS:
+- WinProgramManager/scripts/add_missing_installed_packages.ps1
+  * Query missing packages via SQL
+  * Run winget show for each package
+  * Parse output for name, version, publisher, tags
+  * Insert into apps and app_tags tables
+  * Verbose logging with counts and status
+
+- WinProgramManager/scripts/check_deleted_packages.ps1
+  * Run winget search . for complete catalog
+  * Parse all available package IDs
+  * Query non-installed packages from database
+  * Delete packages not in catalog AND not installed
+  * Comprehensive safety check with 10-minute timeout
+
+PACKAGING:
+- makeit.bat updated to package scripts/ folder
+- sqlite3.exe copied to WinProgramManager/sqlite3/ for script use
+- Scripts work independently of C++ execution context
+
+RESULTS:
+- Database: 10,693 apps, 47 installed_apps
+- All 47 installed apps present in main apps table
+- "Installed" filter shows complete list
+- No missing packages, no false deletions
+
+=====================================
 Date: 2026-01-26 (Update 3 - Installed Apps Sync Fixed)
 Component: WinProgramManager / WinProgramUpdater
 
