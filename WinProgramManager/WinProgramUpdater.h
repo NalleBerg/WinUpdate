@@ -25,6 +25,15 @@ struct PackageInfo {
     std::vector<unsigned char> iconData;
     std::string iconType;
     std::vector<std::string> tags;
+    // Metadata fields (8 new fields)
+    std::string source;
+    std::string installerType;
+    std::string architecture;
+    std::string documentationUrl;
+    std::string installerUrl;
+    std::string installerSha256;
+    std::string offlineDistributionSupported;
+    std::string commands;
 };
 
 struct UpdateStats {
@@ -39,6 +48,10 @@ struct UpdateStats {
     double elapsedSeconds = 0.0;
 };
 
+// Callback typedefs for GUI integration
+typedef void (*LogCallbackFunc)(const std::string& message, void* userData);
+typedef void (*StatsCallbackFunc)(int found, int added, int deleted, void* userData);
+
 class WinProgramUpdater {
 public:
     WinProgramUpdater(const std::wstring& dbPath);
@@ -46,6 +59,11 @@ public:
 
     // Main update function
     bool UpdateDatabase(UpdateStats& stats);
+
+    // Callback setters for GUI
+    void SetLogCallback(LogCallbackFunc callback, void* userData);
+    void SetStatsCallback(StatsCallbackFunc callback, void* userData);
+    void SetCancelFlag(std::atomic<bool>* flag);
 
     // Logging
     void WriteAppDataLog(const UpdateStats& stats, const std::string& duration);
@@ -94,6 +112,9 @@ private:
     std::string GetAppDataPath();
     std::string GetAppDataLogPath();
     void PruneAppDataLog();
+    void Log(const std::string& message);
+    bool IsCancelled() const;
+    void NotifyStats(int found, int added, int deleted);
 
     // Tag pattern mappings
     void InitializeTagPatterns();
@@ -104,6 +125,13 @@ private:
     sqlite3* searchDb_;
     std::wstring dbPath_;
     std::wstring searchDbPath_;
+
+    // Callbacks for GUI
+    LogCallbackFunc logCallback_;
+    void* logUserData_;
+    StatsCallbackFunc statsCallback_;
+    void* statsUserData_;
+    std::atomic<bool>* cancelFlag_;
 
     // Constants
     static constexpr int MAX_RETRIES = 3;

@@ -16,6 +16,7 @@
 #include "resource.h"
 #include "search.h"
 #include "installed_apps.h"
+#include "app_details.h"
 
 // Control IDs
 #define ID_SEARCH_BTN 1001
@@ -1939,8 +1940,9 @@ void OnAppDoubleClick() {
     ListView_GetItem(g_hAppList, &lvi);
     
     AppInfo* app = (AppInfo*)lvi.lParam;
-    if (app && !app->homepage.empty()) {
-        ShellExecuteW(NULL, L"open", app->homepage.c_str(), NULL, NULL, SW_SHOWNORMAL);
+    if (app) {
+        // Show app details dialog
+        ShowAppDetailsDialog(g_mainWindow, g_db, app->packageId);
     }
 }
 

@@ -9,6 +9,7 @@
 // Dialogs
 #define IDD_SEARCH_DIALOG 103
 #define IDD_LOADING_DIALOG 104
+#define IDD_APP_DETAILS 105
 
 // Loading dialog controls
 #define IDC_LOADING_ANIMATE 210
@@ -25,3 +26,20 @@
 #define IDC_USE_REGEX 207
 #define IDC_SEARCH_ALL 208
 #define IDC_REFINE_RESULTS 209
+
+// App details dialog controls
+#define IDC_APP_ICON 301
+#define IDC_APP_NAME 302
+#define IDC_APP_PUBLISHER 303
+#define IDC_APP_VERSION 304
+#define IDC_APP_PACKAGE_ID 305
+#define IDC_APP_SOURCE 306
+#define IDC_APP_STATUS 307
+#define IDC_APP_DESCRIPTION 308
+#define IDC_APP_HOMEPAGE 309
+#define IDC_APP_LICENSE 310
+#define IDC_APP_INSTALLER 311
+#define IDC_APP_ARCH 312
+#define IDC_APP_TAGS 313
+#define IDC_BTN_INSTALL 314
+#define IDC_BTN_UNINSTALL 315

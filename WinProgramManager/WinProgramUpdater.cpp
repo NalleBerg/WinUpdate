@@ -13,7 +13,10 @@
 #include <unordered_set>
 
 WinProgramUpdater::WinProgramUpdater(const std::wstring& dbPath)
-    : db_(nullptr), searchDb_(nullptr), dbPath_(dbPath) {
+    : db_(nullptr), searchDb_(nullptr), dbPath_(dbPath),
+      logCallback_(nullptr), logUserData_(nullptr),
+      statsCallback_(nullptr), statsUserData_(nullptr),
+      cancelFlag_(nullptr) {
     // Set search database path in same directory as main database
     size_t lastSlash = dbPath.find_last_of(L"\\/");
     if (lastSlash != std::wstring::npos) {
@@ -27,6 +30,44 @@ WinProgramUpdater::WinProgramUpdater(const std::wstring& dbPath)
 WinProgramUpdater::~WinProgramUpdater() {
     CloseDatabase();
     CloseSearchDatabase();
+}
+
+// ========== Callback Setters ==========
+
+void WinProgramUpdater::SetLogCallback(LogCallbackFunc callback, void* userData) {
+    logCallback_ = callback;
+    logUserData_ = userData;
+}
+
+void WinProgramUpdater::SetStatsCallback(StatsCallbackFunc callback, void* userData) {
+    statsCallback_ = callback;
+    statsUserData_ = userData;
+}
+
+void WinProgramUpdater::SetCancelFlag(std::atomic<bool>* flag) {
+    cancelFlag_ = flag;
+}
+
+// ========== Logging Function ==========
+
+void WinProgramUpdater::Log(const std::string& message) {
+    if (logCallback_) {
+        // Convert Unix-style \n to Windows \r\n for multiline Edit control
+        std::string windowsMessage = message;
+        size_t pos = 0;
+        while ((pos = windowsMessage.find("\n", pos)) != std::string::npos) {
+            if (pos == 0 || windowsMessage[pos - 1] != '\r') {
+                windowsMessage.insert(pos, "\r");
+                pos += 2;
+            } else {
+                pos += 1;
+            }
+        }
+        logCallback_(windowsMessage, logUserData_);
+    }
+    #ifdef _CONSOLE
+    std::cout << message;
+    #endif
 }
 
 void WinProgramUpdater::InitializeTagPatterns() {
@@ -596,7 +637,7 @@ PackageInfo WinProgramUpdater::GetPackageInfo(const std::string& packageId, int 
     
     std::istringstream stream(output);
     std::string line;
-    bool firstLine = true;
+    bool foundName = false;
     
     while (std::getline(stream, line)) {
         // Skip spinner lines (single char or whitespace)
@@ -604,9 +645,9 @@ PackageInfo WinProgramUpdater::GetPackageInfo(const std::string& packageId, int 
             continue;
         }
         
-        // First non-empty line is "Found <Name> [PackageId]"
-        if (firstLine && line.find("Found ") == 0) {
-            firstLine = false;
+        // Look for "Found <Name> [PackageId]" line (may not exist in batch mode)
+        if (!foundName && line.find("Found ") == 0) {
+            foundName = true;
             size_t start = 6; // After "Found "
             size_t end = line.find(" [");
             if (end != std::string::npos && end > start) {
@@ -614,7 +655,6 @@ PackageInfo WinProgramUpdater::GetPackageInfo(const std::string& packageId, int 
             }
             continue;
         }
-        firstLine = false;
         
         size_t colonPos = line.find(':');
         if (colonPos == std::string::npos) continue;
@@ -656,6 +696,17 @@ PackageInfo WinProgramUpdater::GetPackageInfo(const std::string& packageId, int 
                     info.tags.push_back(tag);
                 }
             }
+        }
+    }
+    
+    // If no "Found" line was present (batch mode), use packageId as name
+    if (info.name.empty() && !info.version.empty()) {
+        // Extract a readable name from packageId (e.g., "7zip.7zip" -> "7zip")
+        info.name = packageId;
+        size_t dotPos = packageId.find('.');
+        if (dotPos != std::string::npos && dotPos < packageId.length() - 1) {
+            // Use the part after the first dot if it exists
+            info.name = packageId.substr(dotPos + 1);
         }
     }
     
@@ -923,11 +974,16 @@ void WinProgramUpdater::TagUncategorized(UpdateStats& stats) {
 bool WinProgramUpdater::UpdateDatabase(UpdateStats& stats) {
     auto startTime = std::chrono::high_resolution_clock::now();
     
+    // BEGIN: UpdateDatabase - Main 8-step database update procedure
+    Log("=== WinProgram Database Updater ===\n");
+    
     // Clear search cache to ensure fresh data
+    Log("Clearing search cache...\n");
 #ifdef _CONSOLE
     std::wcout << L"Clearing search cache..." << std::endl;
 #endif
     DeleteFileW(L"WinProgramsSearch.db");
+    Log("Cache cleared!\n\n");
     
     if (!OpenDatabase()) {
         return false;
@@ -938,26 +994,41 @@ bool WinProgramUpdater::UpdateDatabase(UpdateStats& stats) {
         return false;
     }
     
+    // BEGIN: Step 1 - Query winget for available packages
     // Step 1: Populate search database with winget search results
+    Log("=== Step 1: Query winget ===\n");
+    Log("Executing 'winget search .' to enumerate all available packages...\n");
 #ifdef _CONSOLE
     std::wcout << L"\n=== Step 1: Query winget ===" << std::endl;
     auto stepStart = std::chrono::high_resolution_clock::now();
 #endif
     PopulateSearchDatabase();
+    Log("Step 1 complete! All available packages retrieved from winget.\n\n");
     
 #ifdef _CONSOLE
     auto stepEnd = std::chrono::high_resolution_clock::now();
     auto stepDuration = std::chrono::duration_cast<std::chrono::seconds>(stepEnd - stepStart).count();
     std::wcout << L"   Time: " << stepDuration << L" seconds" << std::endl;
 #endif
+    // END: Step 1
     
     // Attach search database to main database for SQL comparisons
+    Log("Attaching search database for comparison...\n");
 #ifdef _CONSOLE
     std::wcout << L"Attaching search database..." << std::endl;
 #endif
-    // Use relative filename since working directory is set to executable location
-    std::string attachSql = "ATTACH DATABASE 'WinProgramsSearch.db' AS search_db;";
+    // Convert searchDbPath_ (wstring) to UTF-8 string for SQL
+    std::string searchDbPathUtf8 = WStringToString(searchDbPath_);
+    // Escape single quotes in path for SQL
+    std::string escapedPath;
+    for (char c : searchDbPathUtf8) {
+        if (c == '\'') escapedPath += "''";
+        else escapedPath += c;
+    }
+    std::string attachSql = "ATTACH DATABASE '" + escapedPath + "' AS search_db;";
     if (!ExecuteSQL(attachSql)) {
+        Log("ERROR: Failed to attach search database!\n");
+        Log("Path attempted: " + searchDbPathUtf8 + "\n");
 #ifdef _CONSOLE
         std::wcout << L"Failed to attach search database" << std::endl;
         std::wcout << L"SQL: " << StringToWString(attachSql) << std::endl;
@@ -966,20 +1037,30 @@ bool WinProgramUpdater::UpdateDatabase(UpdateStats& stats) {
         CloseDatabase();
         return false;
     }
+    Log("Database attached successfully!\n\n");
     
+    // BEGIN: Step 2 - Find and add new packages to database
     // Step 2: Find new packages (in search but not in main)
+    Log("=== Step 2: Find new packages ===\n");
+    Log("Comparing winget results with database to find new packages...\n");
 #ifdef _CONSOLE
     std::wcout << L"\n=== Step 2: Find new packages ===" << std::endl;
 #endif
     
     auto newPackages = GetNewPackages();
     
+    std::string countMsg = "Found " + std::to_string(newPackages.size()) + " new packages to add.\n";
+    Log(countMsg);
 #ifdef _CONSOLE
     std::wcout << L"Found " << newPackages.size() << L" new packages" << std::endl;
 #endif
     
     // Add new packages
+    int processedCount = 0;
     for (const auto& packageId : newPackages) {
+        processedCount++;
+        std::string progressMsg = "[" + std::to_string(processedCount) + "/" + std::to_string(newPackages.size()) + "] ";
+        Log(progressMsg + "Processing: " + packageId + "...\n");
 #ifdef _CONSOLE
         std::wcout << L"  Processing: " << StringToWString(packageId) << L"..." << std::flush;
 #endif
@@ -988,23 +1069,100 @@ bool WinProgramUpdater::UpdateDatabase(UpdateStats& stats) {
             AddPackage(info);
             stats.packagesAdded++;
             stats.tagsFromWinget += info.tags.size();
+            std::string successMsg = "   ✓ Added: " + info.name + " (" + std::to_string(info.tags.size()) + " tags)\n";
+            Log(successMsg);
 #ifdef _CONSOLE
             std::wcout << L" ✓ Added (" << info.tags.size() << L" tags)" << std::endl;
 #endif
         } else {
+            Log("   ✗ Skipped (no package info available)\n");
 #ifdef _CONSOLE
             std::wcout << L" ✗ Skipped (no info)" << std::endl;
 #endif
         }
     }
     
-    // Step 2.5: Add installed packages that are missing from main database
+    // Step 2 (continued): Cross-reference with installed packages
+    Log("\nCross-referencing with installed packages...\n");
+    Log("Synchronizing currently installed applications...\n");
+    
+    // First, sync installed apps to get current system state
+    if (SyncInstalledApps()) {
+        Log("Installed apps synchronized.\n");
+    } else {
+        Log("Warning: Failed to sync installed apps.\n");
+    }
+    
+    // Now find packages that are: installed + in winget + not yet in database
+    // This catches packages with special characters or any other edge cases
+    Log("Checking for installed packages not yet in database...\n");
+    
+    const char* sqlFindMissing = 
+        "SELECT DISTINCT sr.package_id "
+        "FROM search_db.search_results sr "
+        "INNER JOIN installed_apps ia ON sr.package_id = ia.package_id "
+        "WHERE sr.package_id NOT IN (SELECT package_id FROM apps);";
+    
+    sqlite3_stmt* stmtMissing;
+    std::vector<std::string> missingInstalledPackages;
+    
+    if (sqlite3_prepare_v2(db_, sqlFindMissing, -1, &stmtMissing, nullptr) == SQLITE_OK) {
+        while (sqlite3_step(stmtMissing) == SQLITE_ROW) {
+            const unsigned char* text = sqlite3_column_text(stmtMissing, 0);
+            if (text) {
+                missingInstalledPackages.push_back(reinterpret_cast<const char*>(text));
+            }
+        }
+        sqlite3_finalize(stmtMissing);
+    }
+    
+    if (missingInstalledPackages.size() > 0) {
+        std::string foundMsg = "Found " + std::to_string(missingInstalledPackages.size()) + 
+                               " package(s) not yet in database.\n";
+        Log(foundMsg);
+        
+        int addedFromInstalled = 0;
+        for (const auto& packageId : missingInstalledPackages) {
+            Log("  Adding package: " + packageId + "...\n");
+            PackageInfo info = GetPackageInfo(packageId);
+            if (!info.name.empty()) {
+                AddPackage(info);
+                stats.packagesAdded++;
+                stats.tagsFromWinget += info.tags.size();
+                addedFromInstalled++;
+                Log("   ✓ Added\n");
+            } else {
+                Log("   ✗ Could not retrieve package info\n");
+            }
+            
+            // Add delay between winget calls to prevent overwhelming the system
+            Sleep(300);
+        }
+        
+        std::string resultMsg = "Added " + std::to_string(addedFromInstalled) + 
+                                " package(s) to database.\n";
+        Log(resultMsg);
+    } else {
+        Log("All packages are already in database.\n");
+    }
+    
+    std::string step2Summary = "\nStep 2 Summary: Added " + std::to_string(stats.packagesAdded) + " new packages with " + 
+                                std::to_string(stats.tagsFromWinget) + " tags from winget.\n";
+    Log(step2Summary);
+    // END: Step 2
+    
+    // BEGIN: Step 3 - Find and remove packages deleted from winget
+    // Step 3: Find and remove deleted packages (comprehensive check)
+    // Run "winget search ." to get ALL available packages, then safely delete
+    // packages that are NOT available AND NOT installed
+    Log("=== Step 3: Find deleted packages ===\n");
+    Log("Running comprehensive winget search to identify obsolete packages...\n");
+    Log("This step ensures packages no longer in winget (and not installed) are removed.\n");
 #ifdef _CONSOLE
-    std::wcout << L"\n=== Step 2.5: Add missing installed packages ===" << std::endl;
+    std::wcout << L"\n=== Step 3: Find deleted packages (comprehensive) ===" << std::endl;
 #endif
     
-    // Use PowerShell script to add missing installed packages
-    // This avoids pipe buffering issues with winget show
+    // Get executable directory for script path
     char exePath[MAX_PATH];
     GetModuleFileNameA(nullptr, exePath, MAX_PATH);
     std::string exeDir = std::string(exePath);
@@ -1013,7 +1171,7 @@ bool WinProgramUpdater::UpdateDatabase(UpdateStats& stats) {
         exeDir = exeDir.substr(0, lastSlash);
     }
     
-    std::string scriptPath = exeDir + "\\scripts\\add_missing_installed_packages.ps1";
+    // Convert database path to UTF-8
     std::wstring wDbPath = dbPath_;
     std::string dbPathUtf8;
     int size = WideCharToMultiByte(CP_UTF8, 0, wDbPath.c_str(), -1, nullptr, 0, nullptr, nullptr);
@@ -1021,47 +1179,6 @@ bool WinProgramUpdater::UpdateDatabase(UpdateStats& stats) {
         dbPathUtf8.resize(size - 1);
         WideCharToMultiByte(CP_UTF8, 0, wDbPath.c_str(), -1, &dbPathUtf8[0], size, nullptr, nullptr);
     }
-    
-    std::string psCommand = "powershell.exe -ExecutionPolicy Bypass -NoProfile -File \"" + 
-                           scriptPath + "\" -DatabasePath \"" + dbPathUtf8 + "\"";
-    
-    STARTUPINFOA si = {};
-    si.cb = sizeof(STARTUPINFOA);
-    si.dwFlags = STARTF_USESHOWWINDOW;
-    si.wShowWindow = SW_HIDE;
-    
-    PROCESS_INFORMATION pi = {};
-    
-    if (CreateProcessA(nullptr, const_cast<char*>(psCommand.c_str()), nullptr, nullptr,
-                       FALSE, CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi)) {
-        // Wait up to 5 minutes for script to complete
-        WaitForSingleObject(pi.hProcess, 300000);
-        
-        DWORD exitCode = 0;
-        GetExitCodeProcess(pi.hProcess, &exitCode);
-        
-        CloseHandle(pi.hProcess);
-        CloseHandle(pi.hThread);
-        
-#ifdef _CONSOLE
-        if (exitCode == 0) {
-            std::wcout << L"Script completed successfully" << std::endl;
-        } else {
-            std::wcout << L"Script exited with code: " << exitCode << std::endl;
-        }
-#endif
-    } else {
-#ifdef _CONSOLE
-        std::wcout << L"Failed to execute script" << std::endl;
-#endif
-    }
-    
-    // Step 3: Find and remove deleted packages (comprehensive check)
-    // Run "winget search ." to get ALL available packages, then safely delete
-    // packages that are NOT available AND NOT installed
-#ifdef _CONSOLE
-    std::wcout << L"\n=== Step 3: Find deleted packages (comprehensive) ===" << std::endl;
-#endif
     
     // Use PowerShell script for comprehensive check via "winget search ."
     // This ensures we only delete packages that are truly gone from winget
@@ -1092,13 +1209,24 @@ bool WinProgramUpdater::UpdateDatabase(UpdateStats& stats) {
             std::wcout << L"Cleanup script exited with code: " << checkExitCode << std::endl;
         }
 #endif
+        if (checkExitCode == 0) {
+            Log("Step 3 complete! Obsolete packages have been removed.\n\n");
+        } else {
+            std::string errMsg = "Step 3 warning: Cleanup script exited with code " + std::to_string(checkExitCode) + "\n\n";
+            Log(errMsg);
+        }
     } else {
+        Log("ERROR: Failed to execute cleanup script!\n\n");
 #ifdef _CONSOLE
         std::wcout << L"Failed to execute cleanup script" << std::endl;
 #endif
     }
+    // END: Step 3
     
+    // BEGIN: Step 4 - Update tags for packages with zero tags
     // Step 4: Update tags for packages with zero tags (only if not yet checked)
+    Log("=== Step 4: Update tags for zero-tag packages ===\n");
+    Log("Finding packages without tags and querying winget for their metadata...\n");
 #ifdef _CONSOLE
     std::wcout << L"\n=== Step 4: Update tags for zero-tag packages ===" << std::endl;
 #endif
@@ -1113,11 +1241,17 @@ bool WinProgramUpdater::UpdateDatabase(UpdateStats& stats) {
         }
         sqlite3_finalize(stmt);
         
+        std::string foundMsg = "Found " + std::to_string(zeroTagPackages.size()) + " packages with zero tags (not yet checked).\n\n";
+        Log(foundMsg);
 #ifdef _CONSOLE
         std::wcout << L"Found " << zeroTagPackages.size() << L" packages with zero tags (not yet checked)" << std::endl;
 #endif
         
+        int step4Count = 0;
         for (const auto& packageId : zeroTagPackages) {
+            step4Count++;
+            std::string progressMsg = "[" + std::to_string(step4Count) + "/" + std::to_string(zeroTagPackages.size()) + "] ";
+            Log(progressMsg + "Updating: " + packageId + "...\n");
 #ifdef _CONSOLE
             std::wcout << L"  Updating tags for: " << StringToWString(packageId) << L"..." << std::flush;
 #endif
@@ -1138,6 +1272,12 @@ bool WinProgramUpdater::UpdateDatabase(UpdateStats& stats) {
                 sqlite3_finalize(updateStmt);
             }
             
+            if (addedTags > 0) {
+                std::string successMsg = "   ✓ Added " + std::to_string(addedTags) + " tags\n";
+                Log(successMsg);
+            } else {
+                Log("   (no tags found in winget metadata)\n");
+            }
 #ifdef _CONSOLE
             if (addedTags > 0) {
                 std::wcout << L" ✓ Added " << addedTags << L" tags" << std::endl;
@@ -1146,39 +1286,42 @@ bool WinProgramUpdater::UpdateDatabase(UpdateStats& stats) {
             }
 #endif
         }
+        Log("\nStep 4 complete! All zero-tag packages have been checked.\n\n");
     }
+    // END: Step 4
     
+    // BEGIN: Step 5 - Apply name-based inference for categorization
     // Step 5: Apply inference
+    Log("=== Step 5: Apply name-based inference ===\n");
+    Log("Using package names to infer categories...\n");
 #ifdef _CONSOLE
     std::wcout << L"\n=== Step 5: Apply name-based inference ===" << std::endl;
 #endif
     ApplyNameBasedInference(stats);
+    Log("Step 5 complete! Name-based inference applied.\n\n");
+    // END: Step 5
     
+    // BEGIN: Step 6 - Apply correlation analysis for categorization
     // Step 6: Apply correlation
+    Log("=== Step 6: Apply correlation analysis ===\n");
+    Log("Analyzing relationships between packages to infer categories...\n");
 #ifdef _CONSOLE
     std::wcout << L"\n=== Step 6: Apply correlation analysis ===" << std::endl;
 #endif
     ApplyCorrelationAnalysis(stats);
+    Log("Step 6 complete! Correlation analysis applied.\n\n");
+    // END: Step 6
     
+    // BEGIN: Step 7 - Tag remaining uncategorized packages
     // Step 7: Tag uncategorized
+    Log("=== Step 7: Tag uncategorized ===\n");
+    Log("Assigning default category to remaining uncategorized packages...\n");
 #ifdef _CONSOLE
     std::wcout << L"\n=== Step 7: Tag uncategorized ===" << std::endl;
 #endif
     TagUncategorized(stats);
-    
-    // Step 8: Sync installed apps
-#ifdef _CONSOLE
-    std::wcout << L"\n=== Step 8: Sync installed apps ===" << std::endl;
-#endif
-    if (SyncInstalledApps()) {
-#ifdef _CONSOLE
-        std::wcout << L"   Installed apps synced successfully" << std::endl;
-#endif
-    } else {
-#ifdef _CONSOLE
-        std::wcout << L"   Failed to sync installed apps" << std::endl;
-#endif
-    }
+    Log("Step 7 complete! All packages now have categories.\n\n");
+    // END: Step 7
     
     stats.tagsAdded = stats.tagsFromWinget + stats.tagsFromInference + stats.tagsFromCorrelation;
     
@@ -1202,10 +1345,22 @@ bool WinProgramUpdater::UpdateDatabase(UpdateStats& stats) {
                 << std::setfill('0') << std::setw(2) << minutes << ":"
                 << std::setfill('0') << std::setw(2) << seconds;
     
+    // Create completion summary for GUI
+    std::string completionMsg = "\n=== Update Complete ===\n";
+    completionMsg += "Time elapsed: " + durationStr.str() + "\n";
+    completionMsg += "Packages added: " + std::to_string(stats.packagesAdded) + "\n";
+    completionMsg += "Total tags added: " + std::to_string(stats.tagsAdded) + "\n";
+    completionMsg += "  - From winget: " + std::to_string(stats.tagsFromWinget) + "\n";
+    completionMsg += "  - From inference: " + std::to_string(stats.tagsFromInference) + "\n";
+    completionMsg += "  - From correlation: " + std::to_string(stats.tagsFromCorrelation) + "\n";
+    completionMsg += "\nDatabase update successful!\n";
+    Log(completionMsg);
+    
 #ifdef _CONSOLE
     std::wcout << L"\n=== Update Complete ===" << std::endl;
     std::wcout << L"Time the update took: " << StringToWString(durationStr.str()) << std::endl;
 #endif
+    // END: UpdateDatabase
     
     // Write permanent log
     WriteAppDataLog(stats, durationStr.str());

@@ -13,7 +13,26 @@ all=Alla
 # Window title
 title=WinProgram Manager
 
-# Loading dialog
-processing_database=Bearbetar databas...
-wait_moment=Vänta ett ögonblick....
+# Updater GUI
+updater_title=WinProgram Databasuppdaterare
+updater_explanation_line1=Denna uppdaterare kommer att:
+updater_explanation_line2=  • Fråga installerade paket från winget
+updater_explanation_line3=  • Jämföra med lokal databas
+updater_explanation_line4=  • Lägga till nya paket i databasen
+updater_explanation_line5=  • Ta bort föråldrade paket
+updater_explanation_line6=
+updater_explanation_line7=Klicka 'Starta uppdatering' för att börja...
+updater_btn_start=Starta uppdatering
+updater_btn_cancel=Avbryt
+updater_btn_done=Stäng
+updater_btn_view_log=Visa logg
+updater_btn_close=Stäng
+updater_log_viewer_title=Uppdateringslogg
+updater_log_not_found=Loggfilen finns inte eller är tom.
+updater_stats_format=Hittade: %d  |  Tillagda: %d  |  Raderade: %d
+updater_cancelled=\n\n=== Uppdatering avbruten ===\nDatabas återställd till tidigare tillstånd.\n
+updater_complete=\n\n=== Uppdatering slutförd ===\n
+updater_backup_failed=FEL: Kunde inte skapa databassäkerhetskopia!\n
+updater_restore_failed=FEL: Kunde inte återställa databassäkerhetskopia!\n
+
 repopulating_table=Återuppbygger tabell...

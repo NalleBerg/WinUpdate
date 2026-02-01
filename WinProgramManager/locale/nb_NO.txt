@@ -13,7 +13,26 @@ all=Alle
 # Window title
 title=WinProgram Manager
 
-# Loading dialog
-processing_database=Behandler database...
-wait_moment=Vent et øyeblikk....
+# Updater GUI
+updater_title=WinProgram Databaseoppdaterer
+updater_explanation_line1=Denne oppdateringen vil:
+updater_explanation_line2=  • Spørre installerte pakker fra winget
+updater_explanation_line3=  • Sammenligne med lokal database
+updater_explanation_line4=  • Legge til nye pakker i databasen
+updater_explanation_line5=  • Fjerne utdaterte pakker
+updater_explanation_line6=
+updater_explanation_line7=Klikk 'Start oppdatering' for å begynne...
+updater_btn_start=Start oppdatering
+updater_btn_cancel=Avbryt
+updater_btn_done=Lukk
+updater_btn_view_log=Vis logg
+updater_btn_close=Lukk
+updater_log_viewer_title=Oppdateringslogg
+updater_log_not_found=Loggfilen finnes ikke eller er tom.
+updater_stats_format=Funnet: %d  |  Lagt til: %d  |  Slettet: %d
+updater_cancelled=\n\n=== Oppdatering avbrutt ===\nDatabase gjenopprettet til forrige tilstand.\n
+updater_complete=\n\n=== Oppdatering fullført ===\n
+updater_backup_failed=FEIL: Kunne ikke opprette sikkerhetskopi av database!\n
+updater_restore_failed=FEIL: Kunne ikke gjenopprette sikkerhetskopi av database!\n
+
 repopulating_table=Gjenoppbygger tabell...

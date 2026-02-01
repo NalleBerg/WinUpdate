@@ -13,7 +13,26 @@ all=All
 # Window title
 title=WinProgram Manager
 
-# Loading dialog
-processing_database=Processing database...
-wait_moment=Wait a moment....
+# Updater GUI
+updater_title=WinProgram Database Updater
+updater_explanation_line1=This updater will:
+updater_explanation_line2=  • Query installed packages from winget
+updater_explanation_line3=  • Compare with local database
+updater_explanation_line4=  • Add new packages to the database
+updater_explanation_line5=  • Remove obsolete packages
+updater_explanation_line6=
+updater_explanation_line7=Click 'Start Update' to begin...
+updater_btn_start=Start Update
+updater_btn_cancel=Cancel
+updater_btn_done=Close
+updater_btn_view_log=View Log
+updater_btn_close=Close
+updater_log_viewer_title=Updater Log Viewer
+updater_log_not_found=Log file not found or empty.
+updater_stats_format=Found: %d  |  Added: %d  |  Deleted: %d
+updater_cancelled=\n\n=== Update Cancelled ===\nDatabase restored to previous state.\n
+updater_complete=\n\n=== Update Complete ===\n
+updater_backup_failed=ERROR: Failed to create database backup!\n
+updater_restore_failed=ERROR: Failed to restore database backup!\n
+
 repopulating_table=Repopulating table...

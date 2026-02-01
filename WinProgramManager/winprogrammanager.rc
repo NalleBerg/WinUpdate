@@ -50,6 +50,63 @@ BEGIN
     PUSHBUTTON      "Cancel", IDCANCEL, 365, 250, 70, 20
 END
 
+// App details dialog
+IDD_APP_DETAILS DIALOGEX 0, 0, 420, 380
+STYLE DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Application Details"
+FONT 9, "Segoe UI"
+BEGIN
+    // Icon (left side, 48x48)
+    CONTROL         "", IDC_APP_ICON, "Static", SS_BITMAP | SS_CENTERIMAGE, 12, 12, 48, 48
+    
+    // App name (large, bold via code)
+    LTEXT           "App Name", IDC_APP_NAME, 70, 12, 340, 20, SS_NOPREFIX
+    
+    // Publisher
+    LTEXT           "Publisher:", -1, 70, 35, 60, 10
+    LTEXT           "...", IDC_APP_PUBLISHER, 135, 35, 275, 10
+    
+    // Version
+    LTEXT           "Version:", -1, 70, 48, 60, 10
+    LTEXT           "...", IDC_APP_VERSION, 135, 48, 100, 10
+    
+    // Package ID
+    LTEXT           "Package ID:", -1, 12, 70, 60, 10
+    LTEXT           "...", IDC_APP_PACKAGE_ID, 75, 70, 335, 10, SS_NOPREFIX
+    
+    // Source
+    LTEXT           "Source:", -1, 12, 85, 60, 10
+    LTEXT           "...", IDC_APP_SOURCE, 75, 85, 100, 10
+    
+    // Install status
+    LTEXT           "Status:", -1, 12, 100, 60, 10
+    LTEXT           "Not Installed", IDC_APP_STATUS, 75, 100, 200, 10
+    
+    // Description (multi-line, scrollable)
+    GROUPBOX        "Description", -1, 12, 120, 396, 90
+    EDITTEXT        IDC_APP_DESCRIPTION, 20, 135, 380, 68, ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL | WS_VSCROLL
+    
+    // Technical details
+    GROUPBOX        "Technical Information", -1, 12, 215, 396, 65
+    LTEXT           "Homepage:", -1, 20, 230, 60, 10
+    LTEXT           "...", IDC_APP_HOMEPAGE, 85, 230, 315, 10, SS_NOPREFIX
+    LTEXT           "License:", -1, 20, 245, 60, 10
+    LTEXT           "...", IDC_APP_LICENSE, 85, 245, 315, 10
+    LTEXT           "Installer Type:", -1, 20, 260, 60, 10
+    LTEXT           "...", IDC_APP_INSTALLER, 85, 260, 100, 10
+    LTEXT           "Architecture:", -1, 200, 260, 60, 10
+    LTEXT           "...", IDC_APP_ARCH, 265, 260, 100, 10
+    
+    // Tags
+    GROUPBOX        "Tags", -1, 12, 285, 396, 55
+    EDITTEXT        IDC_APP_TAGS, 20, 300, 380, 33, ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL | WS_VSCROLL
+    
+    // Buttons (Install/Uninstall disabled for now)
+    PUSHBUTTON      "Install", IDC_BTN_INSTALL, 12, 350, 70, 14, WS_DISABLED
+    PUSHBUTTON      "Uninstall", IDC_BTN_UNINSTALL, 88, 350, 70, 14, WS_DISABLED
+    DEFPUSHBUTTON   "Close", IDOK, 338, 350, 70, 14
+END
+
 // Version information
 VS_VERSION_INFO VERSIONINFO
 FILEVERSION 1,0,0,0

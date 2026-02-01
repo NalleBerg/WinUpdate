@@ -12,6 +12,7 @@ add_executable(WinProgramManager WIN32
     main.cpp
     search.cpp
     installed_apps.cpp
+    app_details.cpp
     winprogrammanager.rc
 )
 
@@ -46,6 +47,46 @@ else()
     target_compile_options(WinProgramManager PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
+# NEW: WinProgramUpdaterGUI - Single updater with GUI (normal) and silent (--hidden) modes
+# Replaces both WinProgramUpdater.exe and WinProgramUpdaterConsole.exe
+add_executable(WinProgramUpdaterGUI WIN32
+    updater_gui.cpp
+    bouncing_ball.cpp
+    bouncing_ball.h
+    WinProgramUpdater.cpp
+    WinProgramUpdater.h
+    winprogrammanager.rc
+)
+
+# Include SQLite3 headers
+target_include_directories(WinProgramUpdaterGUI PRIVATE 
+    ${CMAKE_CURRENT_SOURCE_DIR}/sqlite3
+)
+
+# Link SQLite3 DLL and Windows libraries
+target_link_libraries(WinProgramUpdaterGUI
+    ${CMAKE_CURRENT_SOURCE_DIR}/sqlite3/sqlite3.dll
+    comctl32
+    shell32
+    ole32
+)
+
+# Link options for MinGW
+if(MINGW)
+    target_link_options(WinProgramUpdaterGUI PRIVATE -municode -mwindows)
+endif()
+
+# Enable Unicode
+target_compile_definitions(WinProgramUpdaterGUI PRIVATE UNICODE _UNICODE)
+
+# Compiler warnings
+if(MSVC)
+    target_compile_options(WinProgramUpdaterGUI PRIVATE /W4)
+else()
+    target_compile_options(WinProgramUpdaterGUI PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+# OLD UPDATERS (kept for now, will be removed after testing)
 # Updater executable (silent/GUI version for Task Scheduler)
 # NOTE: Both updater executables share the same source files (updater_main.cpp, WinProgramUpdater.cpp)
 # If you modify the source, rebuild both executables!
@@ -117,3 +158,4 @@ if(MSVC)
 else()
     target_compile_options(WinProgramUpdaterConsole PRIVATE -Wall -Wextra -Wpedantic)
 endif()
+
