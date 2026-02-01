@@ -2,6 +2,109 @@
 Notes for future versioned changelog
 
 =====================================
+Date: 2026-02-01 (Update 6 - Winget List Parser Fix for Variable Column Count)
+Component: WinProgramManager / WinProgramUpdater
+
+CRITICAL PARSER FIX: Variable Column Count Support
+---------------------------------------------------------
+- Fixed SyncInstalledApps() to handle variable column count in "winget list" output
+- Bug: Parser used fixed positional logic (tokens[size-3] = ID), failed when "Available" column present
+- Impact: ~5 packages missing including Notepad++.Notepad++, possibly Total Commander, Blender
+- Root Cause: When updates available, winget list shows 5 columns instead of 4:
+  * Without updates: Name | Id | Version | Source (4 columns)
+  * With updates: Name | Id | Version | Available | Source (5 columns)
+  * Fixed position parsing captured "Available" value instead of package ID
+- Fix: Implemented regex-based right-to-left package ID detection:
+  * Pattern: ^[A-Za-z0-9+_-]*[A-Za-z][A-Za-z0-9+._-]*\.[A-Za-z0-9+_-]*[A-Za-z][A-Za-z0-9+._-]*$
+  * Requires letters on both sides of dot to distinguish from version numbers (e.g., 8.9.1)
+  * Supports + character for packages like Notepad++.Notepad++
+  * Scans tokens right-to-left starting after Source column
+  * Falls back to positional logic if no regex match found
+- Additional Fixes:
+  * Spinner animation filtering: Winget uses \r for progress spinner, now filters lines with only -, \, |, / chars
+  * Carriage return handling: Changed ExecuteWingetCommand from getline() to istreambuf_iterator
+  * Character support: Added + to allowed package ID characters (was only ._-)
+- Result: All packages correctly detected, verified Notepad++, Total Commander, Blender in database (49 packages total)
+- Debug logging: Added comprehensive trace to sync_debug.txt in LOCALAPPDATA for troubleshooting
+
+=====================================
+Date: 2026-02-01 (Update 5 - Critical Bug Fixes & Performance Optimization)
+Component: WinProgramManager / WinProgramUpdater
+
+CRITICAL BUGFIX: Database Deletion Prevention
+---------------------------------------------------------
+- Fixed CRITICAL database wipe bug in WinProgramUpdater.cpp
+- Bug: DeleteFileW(L"WinProgramsSearch.db") used relative path instead of absolute path
+- Impact: Could delete main database (10,780+ apps) if working directory was incorrect
+- Fix: Changed to DeleteFileW(searchDbPath_.c_str()) using absolute path calculated in constructor
+- Prevention: All file operations now use searchDbPath_ member variable with full path
+- Recovery: Database backup system proved invaluable, restored 116MB database from .\DB\ backup
+- Result: Database file operations are now safe regardless of working directory
+
+MAJOR BUGFIX: Winget Batch Mode Parsing
+---------------------------------------------------------
+- Fixed GetPackageInfo() parsing failure in WinProgramUpdater.cpp
+- Bug: Parser stopped at first spinner line (764-935 chars), never found "Found" line in batch mode
+- Impact: All 35 packages cross-referenced from installed_apps failed with "Could not retrieve package info"
+- Root Cause: Batch mode output differs from interactive mode:
+  * Interactive: Has "Found <Name> [PackageId]" line
+  * Batch: No "Found" line, starts directly with "Version:" field
+  * Both: Can have 764-935 character spinner progress lines
+- Fix: Implemented foundName flag that continues searching for "Found" line through entire output
+- Fallback: If no "Found" line found, extract name from packageId (e.g., "7zip.7zip" → "7zip")
+- Result: Parser now handles both interactive and batch modes, all 35 packages added successfully
+
+PERFORMANCE: Step 2.5 Eliminated (4+ hours → <1 second)
+---------------------------------------------------------
+- Replaced PowerShell loop calling winget show 259 times with single SQL query
+- Old: External add_missing_installed_packages.ps1 script took 4+ hours
+- New: SQL cross-reference query using ATTACH DATABASE completed instantly:
+  ```sql
+  SELECT DISTINCT sr.package_id 
+  FROM search_db.search_results sr 
+  INNER JOIN installed_apps ia ON sr.package_id = ia.package_id 
+  WHERE sr.package_id NOT IN (SELECT package_id FROM apps);
+  ```
+- Consolidated Step 8 into Step 2 (8 steps → 7 steps)
+- Step 2 now handles both initial packages and cross-referenced installed packages
+- Summary positioned correctly to include counts from both addition loops
+
+UI IMPROVEMENTS: Verbose Logging & Clean Output
+---------------------------------------------------------
+- Implemented callback infrastructure for WinProgramUpdaterGUI:
+  * SetLogCallback() with userData pointer
+  * SetStatsCallback() for progress updates
+  * SetCancelFlag() for interruption support
+- All 7 steps now have verbose logging with BEGIN/END markers
+- Step 2 output cleaned: Removed extra blank lines before summary
+- Fixed "installed" word appearing in 4 message locations (redundant with context)
+- Log() function converts \n to \r\n for Windows Edit controls
+- Added 300ms delay between GetPackageInfo() calls to reduce winget stress
+
+DATABASE ARCHITECTURE: Path Safety
+---------------------------------------------------------
+- searchDbPath_ member variable calculated in constructor from main dbPath_
+- ATTACH DATABASE now uses escaped searchDbPath_ instead of hardcoded 'WinProgramsSearch.db'
+- All database operations use absolute paths from member variables
+- Working directory independence ensures reliability across execution contexts
+
+LESSONS LEARNED:
+---------------------------------------------------------
+- NEVER use relative paths with DeleteFileW() - always use absolute paths
+- Winget output format differs between interactive and batch modes
+- Parser must handle both spinner lines AND missing "Found" lines
+- Database backups are ESSENTIAL - saved entire project from data loss
+- SQL queries vastly outperform repeated command execution (4+ hours → instant)
+- User intuition matters: "if delay was issue, first would succeed" led to parsing discovery
+
+RESULTS:
+- Database: Safe from accidental deletion (10,780 apps preserved)
+- Parsing: All 35 missing packages successfully added
+- Performance: Step 2.5 eliminated, 4+ hours saved
+- Update process: 8 steps consolidated to 7 steps
+- Output: Clean, verbose logging without formatting issues
+
+=====================================
 Date: 2026-01-26 (Update 4 - Complete Installed Apps Integration)
 Component: WinProgramManager / WinProgramUpdater
 

@@ -139,9 +139,9 @@ static bool BackupDatabase() {
             return true;
         }
     } catch (...) {
-        LogCallback("ERROR: Failed to create database backup!", nullptr);
+        LogCallback("WARNING: Failed to create database backup - continuing anyway\n", nullptr);
     }
-    return false;
+    return true;  // Return true anyway - backup failure shouldn't stop the update
 }
 
 // Restore database from backup (on cancel)
@@ -679,9 +679,9 @@ static int RunSilentMode(const std::wstring& dbPath) {
         }
     } catch (...) {
         if (logFile.is_open()) {
-            logFile << "ERROR: Failed to create database backup!" << std::endl;
+            logFile << "WARNING: Failed to create database backup - continuing anyway" << std::endl;
         }
-        return 1;
+        // Continue anyway - backup failure shouldn't stop the update
     }
     
     // Run updater with file logging

@@ -1,8 +1,18 @@
 # WinProgramSuite — Complete Windows Package Management System
 
-**Latest Update:** 26 January 2026 | **Complete Installed Apps Integration**
+**Latest Update:** 1 February 2026 | **Critical Bug Fixes & Performance Optimization**
 
 **WinProgramSuite** is a comprehensive package management system for Windows, combining database-driven package metadata management with a friendly GUI for updates. Built on Microsoft's `winget` package manager with advanced categorization, search, filtering, and analysis capabilities.
+
+## 🚨 Recent Critical Updates (2026-02-01)
+
+- **CRITICAL FIX**: Variable column parser - Notepad++, Total Commander, Blender and ~5 other packages now correctly detected
+- **PARSER FIX**: Regex-based package ID detection - Handles "Available" column when updates present (5 columns vs 4)
+- **CRITICAL FIX**: Database deletion bug prevented - Fixed DeleteFileW() to use absolute paths instead of relative paths
+- **MAJOR FIX**: Winget batch mode parsing - All installed packages now correctly added to database
+- **PERFORMANCE**: Step 2.5 eliminated - 4+ hour PowerShell loop replaced with instant SQL query
+- **CONSOLIDATION**: Update process reduced from 8 steps to 7 steps
+- **UI**: Verbose logging with clean output formatting for all update steps
 
 > **Note:** Currently only **WinUpdate** (the GUI component) is published and available. WinProgramManager (database management) is under active development.
 
@@ -12,17 +22,18 @@
 Database builder and metadata management system for Windows packages.
 
 **Key Features:**
-- Single-pass collection of all winget package data (~10,693 valid packages after cleanup)
+- Single-pass collection of all winget package data (~10,780+ packages)
 - Comprehensive 20+ column database schema (SQLite)
 - Icon extraction and storage as BLOB with type detection
 - Category/tag system with Unicode support (Chinese, Japanese, etc.)
 - Enhanced category navigation with visual folder icons
 - Folder icons dynamically open/close based on selection
 - Advanced search with multi-field filtering and regex support
-- **Complete installed apps integration**: All 47 installed apps in database and filter
-- **Step 2.5 Missing Package Handler**: Automatically adds installed packages missing from main database
-- **Safe comprehensive deletion**: Protects all installed apps, removes only obsolete packages
-- **Hybrid PowerShell architecture**: Resolves C++ pipe buffering issues with winget
+- **Complete installed apps integration**: All installed apps in database and filter
+- **Intelligent cross-referencing**: SQL-based missing package detection (instant vs 4+ hours)
+- **Safe database operations**: Absolute path protection prevents accidental data loss
+- **Robust winget parsing**: Handles both interactive and batch mode output formats
+- **7-step update process**: Optimized from original 8-step process
 - Parses winget list and winget search output using right-to-left tokenization
 - Handles regional latency (tested with Greek Windows, 60+ second delays)
 - Full-text search ready (FTS5 compatible)
@@ -30,6 +41,8 @@ Database builder and metadata management system for Windows packages.
 - Professional startup dialog with animated spinner and i18n support
 - Blue selection highlighting matching Windows Explorer
 - Animated loading dialogs with continuous spinner during operations
+- Verbose logging with BEGIN/END markers for all operations
+- Database backup system with timestamped recovery files
 
 **User Interface:**
 - Two-pane ListView interface (categories + applications)

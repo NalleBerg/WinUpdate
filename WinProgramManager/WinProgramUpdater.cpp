@@ -51,6 +51,16 @@ void WinProgramUpdater::SetCancelFlag(std::atomic<bool>* flag) {
 // ========== Logging Function ==========
 
 void WinProgramUpdater::Log(const std::string& message) {
+    // DEBUG: Write to file when we see the sync message
+    if (message.find("Synchronizing currently installed") != std::string::npos) {
+        char* appdata = getenv("LOCALAPPDATA");
+        std::string debugPath = appdata ? std::string(appdata) + "\\sync_trigger_debug.txt" : "sync_trigger_debug.txt";
+        std::ofstream debugFile(debugPath, std::ios::app);
+        debugFile << "Log() called with sync message: " << message << "\n";
+        debugFile << "About to check if SyncInstalledApps will be called...\n";
+        debugFile.close();
+    }
+    
     if (logCallback_) {
         // Convert Unix-style \n to Windows \r\n for multiline Edit control
         std::string windowsMessage = message;
@@ -387,10 +397,8 @@ std::string WinProgramUpdater::ExecuteWingetCommand(const std::string& command) 
     std::string result;
     std::ifstream file(tempFile, std::ios::binary);
     if (file.is_open()) {
-        std::string line;
-        while (std::getline(file, line)) {
-            result += line + "\n";
-        }
+        // Read entire file into string
+        result = std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
         file.close();
     }
     
@@ -420,8 +428,8 @@ std::vector<std::string> WinProgramUpdater::GetWingetPackages() {
     // Regex to split on 2+ spaces
     std::regex splitRegex("\\s{2,}");
     
-    // Regex to validate package ID: alphanumeric with dots/dashes, must contain non-numeric chars
-    std::regex idRegex("^[A-Za-z0-9][\\w._-]*\\.[\\w._-]+$");
+    // Regex to validate package ID: alphanumeric with dots/dashes/plus signs, must contain non-numeric chars
+    std::regex idRegex("^[A-Za-z0-9][\\w.+_-]*\\.[\\w.+_-]+$");
     
     while (std::getline(stream, line)) {
         lineCount++;
@@ -982,7 +990,7 @@ bool WinProgramUpdater::UpdateDatabase(UpdateStats& stats) {
 #ifdef _CONSOLE
     std::wcout << L"Clearing search cache..." << std::endl;
 #endif
-    DeleteFileW(L"WinProgramsSearch.db");
+    DeleteFileW(searchDbPath_.c_str());
     Log("Cache cleared!\n\n");
     
     if (!OpenDatabase()) {
@@ -1037,11 +1045,11 @@ bool WinProgramUpdater::UpdateDatabase(UpdateStats& stats) {
         CloseDatabase();
         return false;
     }
-    Log("Database attached successfully!\n\n");
+    Log("Database attached successfully!\n");
     
     // BEGIN: Step 2 - Find and add new packages to database
     // Step 2: Find new packages (in search but not in main)
-    Log("=== Step 2: Find new packages ===\n");
+    Log("\n=== Step 2: Find new packages ===\n");
     Log("Comparing winget results with database to find new packages...\n");
 #ifdef _CONSOLE
     std::wcout << L"\n=== Step 2: Find new packages ===" << std::endl;
@@ -1083,7 +1091,7 @@ bool WinProgramUpdater::UpdateDatabase(UpdateStats& stats) {
     }
     
     // Step 2 (continued): Cross-reference with installed packages
-    Log("\nCross-referencing with installed packages...\n");
+    Log("Cross-referencing with installed packages...\n");
     Log("Synchronizing currently installed applications...\n");
     
     // First, sync installed apps to get current system state
@@ -1155,7 +1163,7 @@ bool WinProgramUpdater::UpdateDatabase(UpdateStats& stats) {
     // Step 3: Find and remove deleted packages (comprehensive check)
     // Run "winget search ." to get ALL available packages, then safely delete
     // packages that are NOT available AND NOT installed
-    Log("=== Step 3: Find deleted packages ===\n");
+    Log("\n=== Step 3: Find deleted packages ===\n");
     Log("Running comprehensive winget search to identify obsolete packages...\n");
     Log("This step ensures packages no longer in winget (and not installed) are removed.\n");
 #ifdef _CONSOLE
@@ -1521,7 +1529,19 @@ std::string WinProgramUpdater::WStringToString(const std::wstring& wstr) {
 }
 
 bool WinProgramUpdater::SyncInstalledApps() {
-    if (!db_) return false;
+    // DEBUG: Log function entry
+    char* appdata = getenv("LOCALAPPDATA");
+    std::string debugPath = appdata ? std::string(appdata) + "\\sync_debug.txt" : "sync_debug.txt";
+    std::ofstream debugLog(debugPath, std::ios::app);
+    debugLog << "=== SyncInstalledApps CALLED at " << time(nullptr) << " ===\n";
+    debugLog.close();
+    
+    if (!db_) {
+        std::ofstream debugLog2(debugPath, std::ios::app);
+        debugLog2 << "ERROR: db_ is null!\n";
+        debugLog2.close();
+        return false;
+    }
     
     // Create installed_apps table if it doesn't exist
     const char* createTableSql = 
@@ -1536,8 +1556,15 @@ bool WinProgramUpdater::SyncInstalledApps() {
         "CREATE INDEX IF NOT EXISTS idx_installed_last_seen ON installed_apps(last_seen);";
     
     if (!ExecuteSQL(createTableSql)) {
+        std::ofstream debugLog3(debugPath, std::ios::app);
+        debugLog3 << "ERROR: Failed to create table!\n";
+        debugLog3.close();
         return false;
     }
+    
+    std::ofstream debugLog3b(debugPath, std::ios::app);
+    debugLog3b << "Table created successfully\n";
+    debugLog3b.close();
     
     // Get current timestamp
     auto now = std::chrono::system_clock::now();
@@ -1548,10 +1575,28 @@ bool WinProgramUpdater::SyncInstalledApps() {
     std::strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &tm_now);
     
     // Execute winget list to get installed packages
+    std::ofstream debugLog4(debugPath, std::ios::app);
+    debugLog4 << "About to call ExecuteWingetCommand...\n";
+    debugLog4.close();
+    
     std::string output = ExecuteWingetCommand("list");
+    
+    std::ofstream debugLog5(debugPath, std::ios::app);
+    debugLog5 << "ExecuteWingetCommand returned, output length: " << output.length() << " bytes\n";
+    if (output.length() > 0) {
+        debugLog5 << "First 200 chars: " << output.substr(0, std::min(size_t(200), output.length())) << "\n";
+    }
+    debugLog5.close();
+    
     if (output.empty()) {
+        std::ofstream debugLog6(debugPath, std::ios::app);
+        debugLog6 << "ERROR: output is empty, returning false!\n";
+        debugLog6.close();
         return false;
     }
+    
+    // Replace carriage returns with newlines (winget uses \r for spinner animation)
+    std::replace(output.begin(), output.end(), '\r', '\n');
     
     // Parse winget list output
     // Format: Name  Id  Version  Available  Source
@@ -1566,6 +1611,16 @@ bool WinProgramUpdater::SyncInstalledApps() {
         // Skip empty or very short lines
         if (line.length() < 10) continue;
         
+        // Skip spinner animation lines (only contain -, \, |, /, and whitespace)
+        bool isSpinnerLine = true;
+        for (char c : line) {
+            if (c != ' ' && c != '-' && c != '\\' && c != '|' && c != '/' && c != '\t' && c != '\r' && c != '\n') {
+                isSpinnerLine = false;
+                break;
+            }
+        }
+        if (isSpinnerLine) continue;
+        
         // Skip header line
         if (line.find("Name") != std::string::npos && line.find("Id") != std::string::npos) {
             pastHeader = true;
@@ -1579,6 +1634,15 @@ bool WinProgramUpdater::SyncInstalledApps() {
         }
         
         if (!pastHeader) continue;
+        
+        // DEBUG: Log first few lines being processed
+        static int lineCount = 0;
+        if (lineCount < 5) {
+            std::ofstream debugLogLine(debugPath, std::ios::app);
+            debugLogLine << "Processing line " << lineCount << ": [" << line << "]\n";
+            debugLogLine.close();
+            lineCount++;
+        }
         
         // Split line into tokens by whitespace
         std::vector<std::string> tokens;
@@ -1604,12 +1668,36 @@ bool WinProgramUpdater::SyncInstalledApps() {
         if (hasDigit) continue;
         
         // Extract fields from right to left
+        // Note: When updates are available, winget list shows: Name | Id | Version | Available | Source
+        // We need to identify package ID by pattern, not by fixed position
         std::string source, version, id;
         
+        // Define regex pattern for package ID (vendor.product format)
+        // Must have at least one letter before and after the dot to distinguish from version numbers
+        // Allows: letters, numbers, dots, underscores, hyphens, and plus signs
+        std::regex idRegex("^[A-Za-z0-9+_-]*[A-Za-z][A-Za-z0-9+._-]*\\.[A-Za-z0-9+_-]*[A-Za-z][A-Za-z0-9+._-]*$");
+        
         if (tokens.size() >= 3) {
-            source = tokens[tokens.size() - 1];  // Rightmost
-            version = tokens[tokens.size() - 2]; // Second from right
-            id = tokens[tokens.size() - 3];      // Third from right (ID)
+            source = tokens[tokens.size() - 1];  // Rightmost token is always source
+            
+            // Find package ID by scanning tokens right-to-left (skip source token)
+            int idIndex = -1;
+            for (int i = static_cast<int>(tokens.size()) - 2; i >= 0; --i) {
+                if (std::regex_match(tokens[i], idRegex)) {
+                    idIndex = i;
+                    break;
+                }
+            }
+            
+            if (idIndex >= 0) {
+                // Found package ID - version is immediately to the right of it
+                id = tokens[idIndex];
+                version = tokens[idIndex + 1];  // Could be followed by Available, but this is installed version
+            } else {
+                // Fallback: use old positional logic if no regex match
+                version = tokens[tokens.size() - 2];
+                id = tokens[tokens.size() - 3];
+            }
         } else if (tokens.size() == 2) {
             // No source column
             version = tokens[tokens.size() - 1];
@@ -1618,6 +1706,11 @@ bool WinProgramUpdater::SyncInstalledApps() {
         
         // Validate ID (should contain at least one dot or backslash for package IDs)
         if (id.empty() || (id.find('.') == std::string::npos && id.find('\\') == std::string::npos)) continue;
+        
+        // DEBUG: Log parsed package
+        std::ofstream debugLogParse(debugPath, std::ios::app);
+        debugLogParse << "Parsed: ID=" << id << ", Version=" << version << ", Source=" << source << "\n";
+        debugLogParse.close();
         
         installedPackages.push_back(std::make_tuple(id, version, source));
     }
