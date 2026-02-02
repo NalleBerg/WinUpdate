@@ -98,52 +98,6 @@ function Initialize-IgnoreDatabase {
     Write-Log "Ignore database initialized with $($ignoredTags.Count) tags" "Green"
 }
 
-# Initialize main database
-function Initialize-MainDatabase {
-    Write-Log "Creating fresh database with complete schema..." "Cyan"
-    
-    # Backup existing main database before removing
-    if (Test-Path $dbPath) {
-        $backupPath = $dbPath -replace '\.db$', "_backup_$(Get-Date -Format 'yyyyMMdd_HHmmss').db"
-        Copy-Item $dbPath $backupPath -Force
-        Write-Log "Backed up main database to: $backupPath" "Yellow"
-        Remove-Item $dbPath -Force
-    }
-    
-    $createApps = @"
-CREATE TABLE apps (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    package_id TEXT UNIQUE NOT NULL,
-    name TEXT,
-    version TEXT,
-    publisher TEXT,
-    description TEXT,
-    homepage TEXT,
-    publisher_url TEXT,
-    publisher_support_url TEXT,
-    author TEXT,
-    license TEXT,
-    license_url TEXT,
-    privacy_url TEXT,
-    copyright TEXT,
-    copyright_url TEXT,
-    release_notes_url TEXT,
-    moniker TEXT,
-    release_date TEXT,
-    icon_data BLOB,
-    icon_type TEXT,
-    processed_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-"@
-    
-    & sqlite3\sqlite3.exe $dbPath $createApps
-    & sqlite3\sqlite3.exe $dbPath "CREATE TABLE categories (id INTEGER PRIMARY KEY AUTOINCREMENT, category_name TEXT UNIQUE NOT NULL);"
-    & sqlite3\sqlite3.exe $dbPath "CREATE TABLE app_categories (app_id INTEGER, category_id INTEGER, PRIMARY KEY (app_id, category_id));"
-    & sqlite3\sqlite3.exe $dbPath "CREATE INDEX idx_package_id ON apps(package_id);"
-    
-    Write-Log "Database created successfully" "Green"
-}
-
 # Check if tag is ignored
 function Test-IgnoredTag {
     param([string]$Tag)
@@ -424,16 +378,21 @@ function Write-PackageToDatabase {
 
 # ============ MAIN EXECUTION ============
 
-# Initialize databases (unless test mode)
+# Check database exists (unless test mode)
 if (-not $TestOnly) {
+    if (-not (Test-Path $dbPath)) {
+        Write-Log "ERROR: Database not found at $dbPath" "Red"
+        Write-Log "" "White"
+        Write-Log "You will find a working copy of the database at https://prog.nalle.no" "Yellow"
+        Write-Log "It is advised that you run the updater after fetching it." "Yellow"
+        Write-Log "" "White"
+        Write-Log "Alternatively, restore from backup in .\DB\" "Gray"
+        exit 1
+    }
+    Write-Log "Using existing database: $dbPath" "Green"
+    
     if (-not (Test-Path $ignoreDbPath)) {
         Initialize-IgnoreDatabase
-    }
-    # Only create database if it doesn't exist - NEVER delete existing data!
-    if (-not (Test-Path $dbPath)) {
-        Initialize-MainDatabase
-    } else {
-        Write-Log "Using existing database: $dbPath" "Green"
     }
 }
 

@@ -96,54 +96,6 @@ function Initialize-IgnoreDatabase {
     Write-Log "Ignore database initialized with $($ignoredTags.Count) tags"
 }
 
-# Initialize main database with ALL columns
-function Initialize-MainDatabase {
-    Write-Log "Initializing main database with complete schema..."
-    
-    # Backup existing main database before removing
-    if (Test-Path $dbPath) {
-        $backupPath = $dbPath -replace '\.db$', "_backup_$(Get-Date -Format 'yyyyMMdd_HHmmss').db"
-        Copy-Item $dbPath $backupPath -Force
-        Write-Log "Backed up main database to: $backupPath"
-        Remove-Item $dbPath -Force
-    }
-    
-    # Apps table with ALL metadata columns
-    $createApps = @"
-CREATE TABLE apps (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    package_id TEXT UNIQUE NOT NULL,
-    name TEXT,
-    version TEXT,
-    publisher TEXT,
-    description TEXT,
-    homepage TEXT,
-    publisher_url TEXT,
-    publisher_support_url TEXT,
-    author TEXT,
-    license TEXT,
-    license_url TEXT,
-    privacy_url TEXT,
-    copyright TEXT,
-    copyright_url TEXT,
-    release_notes_url TEXT,
-    moniker TEXT,
-    release_date TEXT,
-    icon_data BLOB,
-    icon_type TEXT,
-    processed_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-"@
-    
-    & sqlite3\sqlite3.exe $dbPath $createApps
-    & sqlite3\sqlite3.exe $dbPath "CREATE TABLE categories (id INTEGER PRIMARY KEY AUTOINCREMENT, category_name TEXT UNIQUE NOT NULL);"
-    & sqlite3\sqlite3.exe $dbPath "CREATE TABLE app_categories (app_id INTEGER NOT NULL, category_id INTEGER NOT NULL, PRIMARY KEY (app_id, category_id), FOREIGN KEY (app_id) REFERENCES apps(id), FOREIGN KEY (category_id) REFERENCES categories(id));"
-    & sqlite3\sqlite3.exe $dbPath "CREATE INDEX idx_package_id ON apps(package_id);"
-    & sqlite3\sqlite3.exe $dbPath "CREATE INDEX idx_category_name ON categories(category_name);"
-    
-    Write-Log "Main database initialized with complete schema"
-}
-
 # Check if tag is ignored
 function Test-IgnoredTag {
     param([string]$Tag)
@@ -353,12 +305,20 @@ function Process-Package {
     }
 }
 
-# Initialize databases
+# Check database exists
+if (-not (Test-Path $dbPath)) {
+    Write-Log "ERROR: Database not found at $dbPath"
+    Write-Log ""
+    Write-Log "You will find a working copy of the database at https://prog.nalle.no"
+    Write-Log "It is advised that you run the updater after fetching it."
+    Write-Log ""
+    Write-Log "Alternatively, restore from backup in .\DB\"
+    exit 1
+}
+Write-Log "Using existing database: $dbPath"
+
 if (-not (Test-Path $ignoreDbPath)) {
     Initialize-IgnoreDatabase
-}
-if (-not (Test-Path $dbPath) -or -not $SkipProcessed) {
-    Initialize-MainDatabase
 }
 
 # Get all winget packages

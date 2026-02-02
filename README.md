@@ -1,18 +1,18 @@
 # WinProgramSuite — Complete Windows Package Management System
 
-**Latest Update:** 1 February 2026 | **Critical Bug Fixes & Performance Optimization**
+**Latest Update:** 2 February 2026 | **Database Protection & Updater Improvements**
 
 **WinProgramSuite** is a comprehensive package management system for Windows, combining database-driven package metadata management with a friendly GUI for updates. Built on Microsoft's `winget` package manager with advanced categorization, search, filtering, and analysis capabilities.
 
-## 🚨 Recent Critical Updates (2026-02-01)
+## 🚨 Recent Critical Updates (2026-02-02)
 
-- **CRITICAL FIX**: Variable column parser - Notepad++, Total Commander, Blender and ~5 other packages now correctly detected
-- **PARSER FIX**: Regex-based package ID detection - Handles "Available" column when updates present (5 columns vs 4)
-- **CRITICAL FIX**: Database deletion bug prevented - Fixed DeleteFileW() to use absolute paths instead of relative paths
-- **MAJOR FIX**: Winget batch mode parsing - All installed packages now correctly added to database
-- **PERFORMANCE**: Step 2.5 eliminated - 4+ hour PowerShell loop replaced with instant SQL query
-- **CONSOLIDATION**: Update process reduced from 8 steps to 7 steps
-- **UI**: Verbose logging with clean output formatting for all update steps
+- **CRITICAL FIX**: Build scripts now UPDATE-ONLY mode - Never delete existing database
+- **DATABASE PROTECTION**: Removed database deletion logic from build_everything.ps1 and build_complete_db.ps1
+- **USER GUIDANCE**: Error messages direct to https://prog.nalle.no for pre-built database download (115MB)
+- **UPDATER**: Step 3 now reports exact count of obsolete packages removed
+- **PACKAGE SUPPORT**: Verified support for packages with + character (Microsoft.VCRedist.2015+.x86, Notepad++.Notepad++)
+- **COMPILATION**: Successfully built all WinProgramManager executables (WinProgramUpdaterGUI, WinProgramManager)
+- **DATABASE**: Restored and verified 10,707 apps with full metadata
 
 > **Note:** Currently only **WinUpdate** (the GUI component) is published and available. WinProgramManager (database management) is under active development.
 
@@ -22,6 +22,8 @@
 Database builder and metadata management system for Windows packages.
 
 **Key Features:**
+- **UPDATE-ONLY MODE**: Build scripts never delete existing database - safe by design
+- **Database protection**: 10,800+ app database protected from accidental purging
 - Single-pass collection of all winget package data (~10,780+ packages)
 - Comprehensive 20+ column database schema (SQLite)
 - Icon extraction and storage as BLOB with type detection

@@ -104,20 +104,24 @@ foreach ($packageId in $candidates) {
     }
 }
 
-Write-Host "Found $($deletedPackages.Count) packages to delete (not in winget + not installed)"
-
-# Delete the obsolete packages
-foreach ($packageId in $deletedPackages) {
-    Write-Host "  Deleting: $packageId"
+if ($deletedPackages.Count -gt 0) {
+    Write-Host "Found $($deletedPackages.Count) packages to delete (not in winget + not installed)"
     
-    # Delete from app_tags first (foreign key)
-    $deleteTagsSql = "DELETE FROM app_tags WHERE package_id = '$($packageId.Replace("'", "''"))';"
-    & $sqliteExe $DatabasePath $deleteTagsSql | Out-Null
+    # Delete the obsolete packages
+    foreach ($packageId in $deletedPackages) {
+        Write-Host "  Deleting: $packageId"
+        
+        # Delete from app_tags first (foreign key)
+        $deleteTagsSql = "DELETE FROM app_tags WHERE package_id = '$($packageId.Replace("'", "''"))';"
+        & $sqliteExe $DatabasePath $deleteTagsSql | Out-Null
+        
+        # Delete from apps
+        $deleteAppSql = "DELETE FROM apps WHERE package_id = '$($packageId.Replace("'", "''"))';"
+        & $sqliteExe $DatabasePath $deleteAppSql | Out-Null
+    }
     
-    # Delete from apps
-    $deleteAppSql = "DELETE FROM apps WHERE package_id = '$($packageId.Replace("'", "''"))';"
-    & $sqliteExe $DatabasePath $deleteAppSql | Out-Null
+    Write-Host "Removed $($deletedPackages.Count) obsolete package(s) from database."
+} else {
+    Write-Host "No obsolete packages found - database is clean."
 }
-
-Write-Host "Cleanup complete: $($deletedPackages.Count) packages removed"
 exit 0

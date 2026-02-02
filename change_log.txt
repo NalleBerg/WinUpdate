@@ -2,6 +2,43 @@
 Notes for future versioned changelog
 
 =====================================
+Date: 2026-02-02 (Update 7 - Database Protection & Updater Improvements)
+Component: WinProgramManager / Build Scripts
+
+CRITICAL: Database Protection - Update-Only Mode
+---------------------------------------------------------
+- Modified build_everything.ps1 and build_complete_db.ps1 to NEVER delete existing database
+- Removed Initialize-MainDatabase() function that deleted and recreated database structure
+- Build scripts now require existing WinProgramManager.db file - will NOT create from scratch
+- Error message directs users to https://prog.nalle.no to download pre-built database (115MB)
+- Prevents accidental data loss: Database with 10,800+ apps is now protected from purging
+- Scripts operate in UPDATE-ONLY mode: Only adds new packages, updates metadata, removes obsolete entries
+- Database restoration verified: 10,707 apps including Notepad++.Notepad++, Microsoft.VCRedist packages
+
+DATABASE UPDATER: Obsolete Package Count Reporting
+---------------------------------------------------------
+- Updated check_deleted_packages.ps1 to clearly report deletion count
+- Messages: "Removed X obsolete package(s) from database" or "No obsolete packages found - database is clean"
+- Improves transparency: Users now see exact count of packages removed during Step 3
+- Consistent reporting across all update steps (Step 2 already showed addition count)
+
+PACKAGE SUPPORT: Special Characters in Package IDs
+---------------------------------------------------------
+- Verified WinProgramUpdater handles packages with + character correctly
+- No filters exclude special characters from package ID parsing
+- Right-to-left tokenization accepts all characters in package IDs
+- Successfully added Microsoft.VCRedist.2015+.x86 and Microsoft.VCRedist.2015+.x64 to database
+- Note: These packages were missing from original database build, now properly supported
+
+COMPILATION: WinProgramManager Executables
+---------------------------------------------------------
+- Successfully compiled all WinProgramManager components using makeit.bat
+- WinProgramManager.exe: Main GUI application (600KB)
+- WinProgramUpdaterGUI.exe: New unified updater with GUI and silent modes
+- WinProgramUpdater.exe: Legacy GUI updater (marked for eventual removal)
+- All executables packaged in WinProgramManager/ distribution directory
+
+=====================================
 Date: 2026-02-01 (Update 6 - Winget List Parser Fix for Variable Column Count)
 Component: WinProgramManager / WinProgramUpdater
 
