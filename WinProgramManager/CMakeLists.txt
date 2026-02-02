@@ -53,6 +53,8 @@ add_executable(WinProgramUpdaterGUI WIN32
     updater_gui.cpp
     bouncing_ball.cpp
     bouncing_ball.h
+    keyboard_shortcuts.cpp
+    keyboard_shortcuts.h
     WinProgramUpdater.cpp
     WinProgramUpdater.h
     winprogrammanager.rc

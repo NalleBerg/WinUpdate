@@ -5,8 +5,10 @@
 
 #include "WinProgramUpdater.h"
 #include "bouncing_ball.h"
+#include "keyboard_shortcuts.h"
 #include "resource.h"
 #include <windows.h>
+#include <windowsx.h>
 #include <commctrl.h>
 #include <shlobj.h>
 #include <richedit.h>
@@ -30,6 +32,8 @@ const wchar_t CLASS_NAME[] = L"WinProgramUpdaterGUIClass";
 #define IDC_BTN_VIEW_LOG 1007
 #define IDC_LOG_VIEWER_RICHEDIT 2001
 #define IDC_LOG_VIEWER_BTN_CLOSE 2002
+#define IDC_CONTEXT_COPY 2003
+#define IDC_CONTEXT_SELECT_ALL 2004
 
 // Custom messages
 #define WM_UPDATE_LOG (WM_APP + 1)
@@ -206,16 +210,24 @@ static std::wstring GetLogFilePath() {
     wchar_t appDataPath[MAX_PATH];
     if (SHGetFolderPathW(NULL, CSIDL_APPDATA, NULL, 0, appDataPath) == S_OK) {
         std::wstring logPath = appDataPath;
-        logPath += L"\\WinProgramManager\\log\\updater_log.txt";
+        logPath += L"\\WinProgramManager\\log\\WinProgramUpdater.log";
         return logPath;
     }
     return L"";
 }
 
-// Log Viewer Dialog Procedure
-static INT_PTR CALLBACK LogViewerDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM) {
+// Log Viewer Window Procedure
+static LRESULT CALLBACK LogViewerWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    // Store RichEdit handle in window user data
+    static HWND s_hRichEdit = NULL;
+    
     switch (uMsg) {
+        case WM_CREATE: {
+            return 0;
+        }
+        
         case WM_INITDIALOG: {
+            HWND hwndDlg = hwnd;
             // Load and initialize RichEdit library
             LoadLibraryW(L"Msftedit.dll");
             
@@ -224,16 +236,10 @@ static INT_PTR CALLBACK LogViewerDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPar
                 WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL,
                 10, 10, 760, 520, hwndDlg, (HMENU)IDC_LOG_VIEWER_RICHEDIT, NULL, NULL);
             
+            // Store RichEdit handle for keyboard shortcuts
+            s_hRichEdit = hRichEdit;
+            
             if (hRichEdit) {
-                // Set font
-                HFONT hFont = CreateFontW(-14, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
-                    DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-                    DEFAULT_QUALITY, FF_DONTCARE, L"Consolas");
-                SendMessage(hRichEdit, WM_SETFONT, (WPARAM)hFont, TRUE);
-                
-                // Enable UTF-8
-                SendMessageW(hRichEdit, EM_SETTEXTMODE, TM_PLAINTEXT | TM_MULTILEVELUNDO, 0);
-                
                 // Read log file
                 std::wstring logPath = GetLogFilePath();
                 std::ifstream logFile;
@@ -261,6 +267,13 @@ static INT_PTR CALLBACK LogViewerDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPar
                         if (line.find("ERROR") != std::string::npos || line.find("Failed") != std::string::npos) {
                             colorIndex = 2; // Red
                             isBold = true;
+                        } else if (line.find("[202") != std::string::npos && line.find("]") != std::string::npos) {
+                            // Timestamp line - bold black
+                            colorIndex = 1;
+                            isBold = true;
+                        } else if (line.find("Time update took:") != std::string::npos) {
+                            // Time update took line - blue
+                            colorIndex = 4;
                         } else if (line.find("===") != std::string::npos || line.find("Step") != std::string::npos) {
                             colorIndex = 4; // Blue
                             isBold = true;
@@ -286,11 +299,19 @@ static INT_PTR CALLBACK LogViewerDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPar
                     rtfContent += "}";
                     logFile.close();
                     
-                    // Set RTF content
-                    SETTEXTEX setText = {};
-                    setText.flags = ST_DEFAULT;
-                    setText.codepage = CP_ACP;
-                    SendMessageA(hRichEdit, EM_SETTEXTEX, (WPARAM)&setText, (LPARAM)rtfContent.c_str());
+                    // Set RTF content using EM_STREAMIN
+                    EDITSTREAM es = {};
+                    es.dwCookie = (DWORD_PTR)&rtfContent;
+                    es.pfnCallback = [](DWORD_PTR dwCookie, LPBYTE pbBuff, LONG cb, LONG* pcb) -> DWORD {
+                        std::string* pContent = (std::string*)dwCookie;
+                        *pcb = (LONG)std::min((size_t)cb, pContent->size());
+                        if (*pcb > 0) {
+                            memcpy(pbBuff, pContent->data(), *pcb);
+                            pContent->erase(0, *pcb);
+                        }
+                        return 0;
+                    };
+                    SendMessageA(hRichEdit, EM_STREAMIN, SF_RTF, (LPARAM)&es);
                 } else {
                     // No log file
                     SetWindowTextW(hRichEdit, t("updater_log_not_found").c_str());
@@ -307,24 +328,92 @@ static INT_PTR CALLBACK LogViewerDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPar
                 DEFAULT_QUALITY, FF_DONTCARE, L"Segoe UI");
             SendMessage(hBtnClose, WM_SETFONT, (WPARAM)hBtnFont, TRUE);
             
-            return TRUE;
+            return 0;
         }
         
         case WM_COMMAND: {
-            if (LOWORD(wParam) == IDC_LOG_VIEWER_BTN_CLOSE || LOWORD(wParam) == IDCANCEL) {
-                EndDialog(hwndDlg, 0);
-                return TRUE;
+            int cmdId = LOWORD(wParam);
+            if (cmdId == IDC_LOG_VIEWER_BTN_CLOSE || cmdId == IDCANCEL || cmdId == IDM_CLOSE_WINDOW) {
+                DestroyWindow(hwnd);
+                return 0;
+            }
+            else if (cmdId == IDM_SELECT_ALL || cmdId == IDC_CONTEXT_SELECT_ALL) {
+                // Select all text in RichEdit control
+                if (s_hRichEdit) {
+                    SendMessage(s_hRichEdit, EM_SETSEL, 0, -1);
+                    SetFocus(s_hRichEdit);
+                }
+                return 0;
+            }
+            else if (cmdId == IDM_COPY || cmdId == IDC_CONTEXT_COPY) {
+                // Copy selected text using RichEdit EM_EXGETSEL and manual clipboard
+                if (s_hRichEdit) {
+                    CHARRANGE cr;
+                    SendMessageW(s_hRichEdit, EM_EXGETSEL, 0, (LPARAM)&cr);
+                    
+                    if (cr.cpMin != cr.cpMax) {
+                        // Get selected text using EM_GETSELTEXT
+                        int len = cr.cpMax - cr.cpMin;
+                        std::wstring selected(len + 1, 0);
+                        SendMessageW(s_hRichEdit, EM_GETSELTEXT, 0, (LPARAM)&selected[0]);
+                        selected.resize(wcslen(selected.c_str()));
+                        
+                        // Copy to clipboard
+                        if (OpenClipboard(hwnd)) {
+                            EmptyClipboard();
+                            HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, (selected.length() + 1) * sizeof(wchar_t));
+                            if (hMem) {
+                                wchar_t* pMem = (wchar_t*)GlobalLock(hMem);
+                                if (pMem) {
+                                    wcscpy_s(pMem, selected.length() + 1, selected.c_str());
+                                    GlobalUnlock(hMem);
+                                    SetClipboardData(CF_UNICODETEXT, hMem);
+                                }
+                            }
+                            CloseClipboard();
+                        }
+                    }
+                }
+                return 0;
             }
             break;
         }
         
+        case WM_CONTEXTMENU: {
+            HWND hTarget = (HWND)wParam;
+            // Show context menu for RichEdit control
+            if (hTarget == s_hRichEdit) {
+                HMENU hMenu = CreatePopupMenu();
+                AppendMenuW(hMenu, MF_STRING, IDC_CONTEXT_COPY, L"Copy\tCtrl+C");
+                AppendMenuW(hMenu, MF_STRING, IDC_CONTEXT_SELECT_ALL, L"Select All\tCtrl+A");
+                
+                POINT pt;
+                pt.x = GET_X_LPARAM(lParam);
+                pt.y = GET_Y_LPARAM(lParam);
+                
+                // If invoked via keyboard (lParam == -1), use cursor position
+                if (lParam == -1) {
+                    GetCursorPos(&pt);
+                }
+                
+                TrackPopupMenu(hMenu, TPM_RIGHTBUTTON, pt.x, pt.y, 0, hwnd, NULL);
+                DestroyMenu(hMenu);
+            }
+            return 0;
+        }
+        
         case WM_CLOSE: {
-            EndDialog(hwndDlg, 0);
-            return TRUE;
+            DestroyWindow(hwnd);
+            return 0;
+        }
+        
+        case WM_DESTROY: {
+            PostQuitMessage(0);
+            return 0;
         }
     }
     
-    return FALSE;
+    return DefWindowProcW(hwnd, uMsg, wParam, lParam);
 }
 
 // Blue button owner-draw helper
@@ -420,6 +509,57 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
         
         case WM_COMMAND: {
             int id = LOWORD(wParam);
+            
+            // Handle keyboard shortcuts and context menu
+            if (id == IDM_CLOSE_WINDOW) {
+                PostMessage(hwnd, WM_CLOSE, 0, 0);
+                return 0;
+            }
+            else if (id == IDM_SELECT_ALL || id == IDC_CONTEXT_SELECT_ALL) {
+                // Select all text in log control
+                if (g_hLogText) {
+                    SendMessage(g_hLogText, EM_SETSEL, 0, -1);
+                    SetFocus(g_hLogText);
+                }
+                return 0;
+            }
+            else if (id == IDM_COPY || id == IDC_CONTEXT_COPY) {
+                // Copy selected text from log control using manual clipboard approach
+                if (g_hLogText) {
+                    // Get selection range
+                    DWORD start, end;
+                    SendMessageW(g_hLogText, EM_GETSEL, (WPARAM)&start, (LPARAM)&end);
+                    
+                    if (start != end) {
+                        // Get text length
+                        int len = GetWindowTextLengthW(g_hLogText);
+                        if (len > 0) {
+                            std::wstring text(len + 1, 0);
+                            GetWindowTextW(g_hLogText, &text[0], len + 1);
+                            
+                            // Extract selected portion
+                            std::wstring selected = text.substr(start, end - start);
+                            
+                            // Copy to clipboard
+                            if (OpenClipboard(hwnd)) {
+                                EmptyClipboard();
+                                HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, (selected.length() + 1) * sizeof(wchar_t));
+                                if (hMem) {
+                                    wchar_t* pMem = (wchar_t*)GlobalLock(hMem);
+                                    if (pMem) {
+                                        wcscpy_s(pMem, selected.length() + 1, selected.c_str());
+                                        GlobalUnlock(hMem);
+                                        SetClipboardData(CF_UNICODETEXT, hMem);
+                                    }
+                                }
+                                CloseClipboard();
+                            }
+                        }
+                    }
+                }
+                return 0;
+            }
+            
             if (id == IDC_BTN_START && !g_updateRunning) {
                 // Start update
                 g_updateRunning = true;
@@ -491,40 +631,62 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
                 // Create modal dialog using a simple window-based approach
                 WNDCLASSEXW wc = {};
                 wc.cbSize = sizeof(WNDCLASSEXW);
-                wc.lpfnWndProc = DefDlgProcW;
+                wc.lpfnWndProc = LogViewerWindowProc;
                 wc.hInstance = GetModuleHandle(NULL);
                 wc.lpszClassName = L"LogViewerDialog";
                 wc.hbrBackground = (HBRUSH)(COLOR_BTNFACE + 1);
-                RegisterClassExW(&wc);
+                
+                // Unregister if already registered
+                UnregisterClassW(L"LogViewerDialog", GetModuleHandle(NULL));
+                
+                if (!RegisterClassExW(&wc)) {
+                    MessageBoxW(hwnd, L"Failed to register window class", L"Error", MB_OK | MB_ICONERROR);
+                    return 0;
+                }
                 
                 HWND hLogDlg = CreateWindowExW(
                     WS_EX_DLGMODALFRAME,
                     L"LogViewerDialog",
                     t("updater_log_viewer_title").c_str(),
                     WS_POPUP | WS_CAPTION | WS_SYSMENU,
-                    0, 0, 800, 620,
+                    CW_USEDEFAULT, CW_USEDEFAULT, 800, 620,
                     hwnd, NULL, GetModuleHandle(NULL), NULL);
                 
                 if (hLogDlg) {
-                    // Set dialog procedure
-                    SetWindowLongPtrW(hLogDlg, DWLP_DLGPROC, (LONG_PTR)LogViewerDialogProc);
-                    
-                    // Send WM_INITDIALOG
+                    // Send WM_INITDIALOG to initialize controls
                     SendMessage(hLogDlg, WM_INITDIALOG, 0, 0);
+                    
+                    // Center window on parent
+                    RECT rcParent, rcDlg;
+                    GetWindowRect(hwnd, &rcParent);
+                    GetWindowRect(hLogDlg, &rcDlg);
+                    int x = rcParent.left + (rcParent.right - rcParent.left - (rcDlg.right - rcDlg.left)) / 2;
+                    int y = rcParent.top + (rcParent.bottom - rcParent.top - (rcDlg.bottom - rcDlg.top)) / 2;
+                    SetWindowPos(hLogDlg, NULL, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
                     
                     // Show dialog
                     ShowWindow(hLogDlg, SW_SHOW);
+                    UpdateWindow(hLogDlg);
+                    
+                    // Create accelerator table for log viewer
+                    HACCEL hLogAccel = CreateKeyboardAccelerators();
                     
                     // Modal message loop
                     EnableWindow(hwnd, FALSE);
                     MSG msg;
                     while (GetMessage(&msg, NULL, 0, 0)) {
                         if (!IsWindow(hLogDlg)) break;
-                        TranslateMessage(&msg);
-                        DispatchMessage(&msg);
+                        if (!ProcessAccelerator(hLogAccel, &msg)) {
+                            TranslateMessage(&msg);
+                            DispatchMessage(&msg);
+                        }
                     }
                     EnableWindow(hwnd, TRUE);
                     SetForegroundWindow(hwnd);
+                    
+                    if (hLogAccel) {
+                        DestroyAcceleratorTable(hLogAccel);
+                    }
                 }
             }
             return 0;
@@ -620,6 +782,29 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
                 DrawButton(dis, t("updater_btn_view_log").c_str(), IsWindowEnabled(g_hBtnViewLog));
             }
             return TRUE;
+        }
+        
+        case WM_CONTEXTMENU: {
+            HWND hTarget = (HWND)wParam;
+            // Only show context menu for log text control
+            if (hTarget == g_hLogText) {
+                HMENU hMenu = CreatePopupMenu();
+                AppendMenuW(hMenu, MF_STRING, IDC_CONTEXT_COPY, L"Copy\tCtrl+C");
+                AppendMenuW(hMenu, MF_STRING, IDC_CONTEXT_SELECT_ALL, L"Select All\tCtrl+A");
+                
+                POINT pt;
+                pt.x = GET_X_LPARAM(lParam);
+                pt.y = GET_Y_LPARAM(lParam);
+                
+                // If invoked via keyboard (lParam == -1), use cursor position
+                if (lParam == -1) {
+                    GetCursorPos(&pt);
+                }
+                
+                TrackPopupMenu(hMenu, TPM_RIGHTBUTTON, pt.x, pt.y, 0, hwnd, NULL);
+                DestroyMenu(hMenu);
+            }
+            return 0;
         }
         
         case WM_CLOSE: {
@@ -779,11 +964,20 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     ShowWindow(g_hWnd, SW_SHOW);
     UpdateWindow(g_hWnd);
     
+    // Create accelerator table for keyboard shortcuts
+    HACCEL hAccel = CreateKeyboardAccelerators();
+    
     // Message loop
     MSG msg = {};
     while (GetMessage(&msg, NULL, 0, 0)) {
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
+        if (!ProcessAccelerator(hAccel, &msg)) {
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+    }
+    
+    if (hAccel) {
+        DestroyAcceleratorTable(hAccel);
     }
     
     return (int)msg.wParam;

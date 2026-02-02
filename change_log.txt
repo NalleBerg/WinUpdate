@@ -2,6 +2,45 @@
 Notes for future versioned changelog
 
 =====================================
+Date: 2026-02-02 (Update 8 - WinProgramUpdaterGUI Enhancements)
+Component: WinProgramManager / WinProgramUpdaterGUI
+
+LOG VIEWER: RTF Rendering & Visual Formatting
+---------------------------------------------------------
+- Fixed log viewer button - corrected window procedure routing from dialog to window proc
+- Implemented RTF rendering using EM_STREAMIN with callback for RichEdit50W control
+- Bold timestamps: [YYYY-MM-DD HH:MM:SS] displayed in bold black
+- Blue "Time update took" lines: Colored in blue (RGB 0,0,255) for visibility
+- Error highlighting: Red text for error messages
+- Success highlighting: Green text for success messages
+- Proper RTF streaming with EDITSTREAM callback for reliable content delivery
+
+KEYBOARD SHORTCUTS: Universal Support
+---------------------------------------------------------
+- Created reusable keyboard_shortcuts.h/.cpp module
+- Ctrl+W: Close window - Works in both main window and log viewer
+- Ctrl+A: Select all text - Works in both main window (Edit control) and log viewer (RichEdit)
+- Ctrl+C: Copy selected text - Manual clipboard implementation for reliable copy operations
+- Accelerator table integration in message loop with TranslateAccelerator
+- Commands work via keyboard, context menu, and programmatic calls
+
+CONTEXT MENUS: Right-Click Support
+---------------------------------------------------------
+- Added WM_CONTEXTMENU handlers for both main window and log viewer
+- Popup menus show "Copy    Ctrl+C" and "Select All    Ctrl+A" with keyboard hints
+- Context menu commands route to same handlers as keyboard shortcuts
+- Keyboard invocation support (Shift+F10 or Apps key) with GetCursorPos fallback
+- Manual clipboard API implementation using GlobalAlloc/GlobalLock/SetClipboardData
+- EM_GETSEL/EM_EXGETSEL for selection ranges in Edit and RichEdit controls
+- CF_UNICODETEXT clipboard format for full Unicode support
+
+BUILD SYSTEM: windowsx.h Integration
+---------------------------------------------------------
+- Added #include <windowsx.h> for GET_X_LPARAM and GET_Y_LPARAM macros
+- Successfully compiled all 4 executables with new features
+- All changes packaged to WinProgramManager/WinProgramManager/ directory
+
+=====================================
 Date: 2026-02-02 (Update 7 - Database Protection & Updater Improvements)
 Component: WinProgramManager / Build Scripts
 

@@ -1,17 +1,24 @@
 # WinProgramSuite — Complete Windows Package Management System
 
-**Latest Update:** 2 February 2026 | **Database Protection & Updater Improvements**
+**Latest Update:** 2 February 2026 | **WinProgramUpdaterGUI Enhancements**
 
 **WinProgramSuite** is a comprehensive package management system for Windows, combining database-driven package metadata management with a friendly GUI for updates. Built on Microsoft's `winget` package manager with advanced categorization, search, filtering, and analysis capabilities.
 
-## 🚨 Recent Critical Updates (2026-02-02)
+## 🚨 Recent Updates (2026-02-02)
 
+### Update 8: WinProgramUpdaterGUI Enhancements
+- **LOG VIEWER**: Fixed button functionality with proper window procedure routing
+- **RTF RENDERING**: Color-coded log with bold timestamps, blue "Time update took" lines, red errors, green success
+- **KEYBOARD SHORTCUTS**: Ctrl+W (close), Ctrl+A (select all), Ctrl+C (copy) in both windows
+- **CONTEXT MENUS**: Right-click support with Copy and Select All options
+- **REUSABLE MODULE**: keyboard_shortcuts.h/.cpp for accelerator management
+
+### Update 7: Database Protection & Build Safety
 - **CRITICAL FIX**: Build scripts now UPDATE-ONLY mode - Never delete existing database
 - **DATABASE PROTECTION**: Removed database deletion logic from build_everything.ps1 and build_complete_db.ps1
 - **USER GUIDANCE**: Error messages direct to https://prog.nalle.no for pre-built database download (115MB)
 - **UPDATER**: Step 3 now reports exact count of obsolete packages removed
 - **PACKAGE SUPPORT**: Verified support for packages with + character (Microsoft.VCRedist.2015+.x86, Notepad++.Notepad++)
-- **COMPILATION**: Successfully built all WinProgramManager executables (WinProgramUpdaterGUI, WinProgramManager)
 - **DATABASE**: Restored and verified 10,707 apps with full metadata
 
 > **Note:** Currently only **WinUpdate** (the GUI component) is published and available. WinProgramManager (database management) is under active development.
@@ -63,6 +70,15 @@ Database builder and metadata management system for Windows packages.
 - Refine results mode for progressive filtering
 - End Search button to restore full list
 - Real-time result count display
+
+**WinProgramUpdaterGUI Features:**
+- Verbose GUI mode for database updates with real-time progress
+- Formatted RTF log viewer with color-coded messages
+- Keyboard shortcuts (Ctrl+W/A/C) and right-click context menus
+- Silent mode with --hidden flag for automated updates
+- Step-by-step process display with timing information
+- Bold timestamps and color-coded status messages
+- Manual clipboard support for reliable text copying
 
 **Scripts:**
 - `build_everything.ps1` — Single-pass database creation with all metadata
