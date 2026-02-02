@@ -2,10 +2,19 @@
 <span style="color: #0066cc;">📦 WinProgramSuite — Komplett Windows Pakkehåndteringssystem</span>
 </h2>
 <p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;">
-<strong>Siste oppdatering:</strong> 20. januar 2026 | <strong>Databasedrevet arkitektur</strong><br/>
+<strong>Siste oppdatering:</strong> 02. februar 2026 | <strong>Databasedrevet arkitektur</strong><br/>
 Denne endringsloggen dekker <strong>WinUpdate</strong>, GUI-applikasjonskomponenten i WinProgramSuite.<br/>
 For databasestyringsfunksjoner, se <strong>WinProgramManager</strong> dokumentasjon.
 </p>
+
+<h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">WinUpdate Versjon 2026.02.02.08</span></h3>
+<p><strong>Nytt i denne versjonen (02. februar 2026, 08:00 GMT+1):</strong></p>
+<ul>
+<li><strong>Silent skanner timeout-fiks:</strong> Økte timeout fra 8-15 sekunder til 110 sekunder i MapInstalledVersions, MapAvailableVersions og PerformHiddenScan for å matche GUI-skanneren</li>
+<li><strong>Systemstatusfeltet pålitelighet:</strong> Silent skanner venter nå på at winget fullfører msstore-kildesjekker, slik at den finner samme oppdateringer som GUI-skanneren</li>
+<li><strong>Konsistent oppdateringsdeteksjon:</strong> Fikset problem hvor systemstatusfelt-modus gikk glipp av 5-6 oppdateringer som GUI fant på grunn av for tidlig timeout</li>
+</ul>
 
 <h3 style="text-align: center;">&nbsp;</h3>
 <h3 style="text-align: center;"><span style="color: #ff0000;">WinUpdate Versjon 2026.01.20.08</span></h3>

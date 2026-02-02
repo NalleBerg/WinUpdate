@@ -13,8 +13,8 @@
 using namespace Gdiplus;
 
 // Version info
-const wchar_t ABOUT_PUBLISHED[] = L"20-01-2026";
-const wchar_t ABOUT_VERSION[] = L"2026.01.20.08";
+const wchar_t ABOUT_PUBLISHED[] = L"02-02-2026";
+const wchar_t ABOUT_VERSION[] = L"2026.02.02.08";
 
 // External i18n function
 extern std::wstring t(const char *key);

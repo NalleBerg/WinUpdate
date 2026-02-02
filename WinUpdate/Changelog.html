@@ -2,10 +2,19 @@
 <span style="color: #0066cc;">📦 WinProgramSuite — Complete Windows Package Management System</span>
 </h2>
 <p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;">
-<strong>Latest Update:</strong> 20 January 2026 | <strong>Database-Driven Architecture</strong><br/>
+<strong>Latest Update:</strong> 02 February 2026 | <strong>Database-Driven Architecture</strong><br/>
 This changelog covers <strong>WinUpdate</strong>, the GUI application component of the WinProgramSuite.<br/>
 For database management features, see <strong>WinProgramManager</strong> documentation.
 </p>
+
+<h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">WinUpdate Version 2026.02.02.08</span></h3>
+<p><strong>New in this version (02 February 2026, 08:00 GMT+1):</strong></p>
+<ul>
+<li><strong>Silent Scanner Timeout Fix:</strong> Increased timeout from 8-15 seconds to 110 seconds in MapInstalledVersions, MapAvailableVersions, and PerformHiddenScan to match GUI scanner</li>
+<li><strong>System Tray Reliability:</strong> Silent scanner now waits for winget to complete msstore source checks, ensuring it finds the same updates as the GUI scanner</li>
+<li><strong>Consistent Update Detection:</strong> Fixed issue where system tray mode missed 5-6 updates that the GUI found due to premature timeout</li>
+</ul>
 
 <h3 style="text-align: center;">&nbsp;</h3>
 <h3 style="text-align: center;"><span style="color: #ff0000;">WinUpdate Version 2026.01.20.08</span></h3>

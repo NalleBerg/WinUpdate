@@ -280,7 +280,8 @@ bool PerformHiddenScan() {
     } catch(...) {}
     
     // Run winget upgrade to check for updates
-    std::string output = RunWingetUpgrade(15000);
+    // Use 110s timeout to match GUI scanner - winget can take 50-60+ seconds with msstore source
+    std::string output = RunWingetUpgrade(110000);
     
     // Debug: Write winget output length first
     try {
