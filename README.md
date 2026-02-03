@@ -1,10 +1,18 @@
 # WinProgramSuite — Complete Windows Package Management System
 
-**Latest Update:** 3 February 2026 | **Extended Metadata & App Details Enhancement**
+**Latest Update:** 3 February 2026 | **App Details Dialog UX Enhancement**
 
 **WinProgramSuite** is a comprehensive package management system for Windows, combining database-driven package metadata management with a friendly GUI for updates. Built on Microsoft's `winget` package manager with advanced categorization, search, filtering, and analysis capabilities.
 
 ## 🚨 Recent Updates (2026-02-03)
+
+### Update 10: App Details Dialog UX Enhancement
+- **VISUAL CLARITY**: Icon display scaled to 50x50 pixels with HALFTONE mode for optimal quality
+- **READABILITY**: Font increased from 9pt to 11pt Segoe UI (~22% larger) for high-res displays
+- **LAYOUT**: Compact 500x295 dialog with standardized 15px spacing between fields
+- **TAGS**: 24px height with ES_MULTILINE support for horizontal scrollbar interaction
+- **HOMEPAGE**: Read-only EDITTEXT control - users can select and copy URLs via right-click
+- **UX POLISH**: Professional appearance with better space utilization and clarity
 
 ### Update 9: Extended Metadata & App Details Enhancement
 - **29-COLUMN DATABASE**: Expanded from 21 to 29 columns with 8 new metadata fields

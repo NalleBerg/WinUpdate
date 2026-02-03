@@ -23,9 +23,10 @@ struct AppDetailsData {
     std::wstring installed_version;
     std::vector<unsigned char> icon_data;
     std::wstring icon_type;
+    HICON hIcon;  // Pre-loaded icon from list view
 };
 
 // Function declarations
 INT_PTR CALLBACK AppDetailsDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 bool LoadAppDetails(sqlite3* db, const std::wstring& packageId, AppDetailsData& data);
-void ShowAppDetailsDialog(HWND hParent, sqlite3* db, const std::wstring& packageId);
+void ShowAppDetailsDialog(HWND hParent, sqlite3* db, const std::wstring& packageId, HICON hAppIcon = nullptr);

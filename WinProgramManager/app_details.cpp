@@ -25,15 +25,6 @@ static std::string WideToUtf8(const std::wstring& wide) {
     return result;
 }
 
-// Helper function to create HBITMAP from icon data
-static HBITMAP CreateBitmapFromIconData(const std::vector<unsigned char>& iconData, const std::wstring& /* iconType */) {
-    if (iconData.empty()) return nullptr;
-    
-    // For now, return nullptr - we'll implement icon rendering later
-    // This would need to handle PNG, ICO, etc. formats based on iconType
-    return nullptr;
-}
-
 // Load app details from database
 bool LoadAppDetails(sqlite3* db, const std::wstring& packageId, AppDetailsData& data) {
     if (!db) {
@@ -146,7 +137,7 @@ bool LoadAppDetails(sqlite3* db, const std::wstring& packageId, AppDetailsData& 
 INT_PTR CALLBACK AppDetailsDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
     static AppDetailsData* pData = nullptr;
     static HFONT hBoldFont = nullptr;
-    static HBITMAP hIconBitmap = nullptr;
+    static HICON hDefaultIcon = nullptr;
     
     switch (message) {
         case WM_INITDIALOG: {
@@ -210,7 +201,7 @@ INT_PTR CALLBACK AppDetailsDialogProc(HWND hDlg, UINT message, WPARAM wParam, LP
             SetDlgItemText(hDlg, IDC_APP_DESCRIPTION, 
                           pData->description.empty() ? L"No description available." : pData->description.c_str());
             
-            // Set homepage
+            // Set homepage (plain text)
             SetDlgItemText(hDlg, IDC_APP_HOMEPAGE, 
                           pData->homepage.empty() ? L"Not available" : pData->homepage.c_str());
             
@@ -238,12 +229,32 @@ INT_PTR CALLBACK AppDetailsDialogProc(HWND hDlg, UINT message, WPARAM wParam, LP
             }
             SetDlgItemText(hDlg, IDC_APP_TAGS, tagsText.c_str());
             
-            // Load and set icon if available
-            if (!pData->icon_data.empty()) {
-                hIconBitmap = CreateBitmapFromIconData(pData->icon_data, pData->icon_type);
-                if (hIconBitmap) {
-                    HWND hIconCtrl = GetDlgItem(hDlg, IDC_APP_ICON);
-                    SendMessage(hIconCtrl, STM_SETIMAGE, IMAGE_BITMAP, (LPARAM)hIconBitmap);
+            // Enable horizontal scrolling by calculating text width
+            HWND hTagsEdit = GetDlgItem(hDlg, IDC_APP_TAGS);
+            HDC hdc = GetDC(hTagsEdit);
+            SIZE size;
+            GetTextExtentPoint32W(hdc, tagsText.c_str(), (int)tagsText.length(), &size);
+            ReleaseDC(hTagsEdit, hdc);
+            SendMessage(hTagsEdit, EM_SETMARGINS, EC_LEFTMARGIN | EC_RIGHTMARGIN, MAKELPARAM(2, 2));
+            SendMessage(hTagsEdit, EM_SETLIMITTEXT, 0, 0);
+            // Scroll to beginning to show start of text
+            SendMessage(hTagsEdit, EM_SETSEL, 0, 0);
+            SendMessage(hTagsEdit, EM_SCROLLCARET, 0, 0);
+            
+            // Set icon - use passed icon or load default package icon
+            HWND hIconCtrl = GetDlgItem(hDlg, IDC_APP_ICON);
+            if (pData->hIcon) {
+                // Use the already-loaded icon from list view (much faster!)
+                SendMessage(hIconCtrl, STM_SETICON, (WPARAM)pData->hIcon, 0);
+            } else {
+                // Load default package icon from shell32.dll (generic application icon)
+                hDefaultIcon = (HICON)LoadImage(nullptr, MAKEINTRESOURCE(2), IMAGE_ICON, 128, 128, LR_SHARED);
+                if (!hDefaultIcon) {
+                    // Fallback to application's own icon
+                    hDefaultIcon = LoadIcon(GetModuleHandle(nullptr), MAKEINTRESOURCE(IDI_APP_ICON));
+                }
+                if (hDefaultIcon) {
+                    SendMessage(hIconCtrl, STM_SETICON, (WPARAM)hDefaultIcon, 0);
                 }
             }
             
@@ -261,10 +272,8 @@ INT_PTR CALLBACK AppDetailsDialogProc(HWND hDlg, UINT message, WPARAM wParam, LP
                     DeleteObject(hBoldFont);
                     hBoldFont = nullptr;
                 }
-                if (hIconBitmap) {
-                    DeleteObject(hIconBitmap);
-                    hIconBitmap = nullptr;
-                }
+                // Don't delete hIcon - it's owned by the list view or is shared
+                hDefaultIcon = nullptr;
                 EndDialog(hDlg, LOWORD(wParam));
                 return TRUE;
             }
@@ -276,10 +285,8 @@ INT_PTR CALLBACK AppDetailsDialogProc(HWND hDlg, UINT message, WPARAM wParam, LP
                 DeleteObject(hBoldFont);
                 hBoldFont = nullptr;
             }
-            if (hIconBitmap) {
-                DeleteObject(hIconBitmap);
-                hIconBitmap = nullptr;
-            }
+            // Don't delete hIcon - it's owned by the list view or is shared
+            hDefaultIcon = nullptr;
             EndDialog(hDlg, IDCANCEL);
             return TRUE;
     }
@@ -288,13 +295,22 @@ INT_PTR CALLBACK AppDetailsDialogProc(HWND hDlg, UINT message, WPARAM wParam, LP
 }
 
 // Show app details dialog
-void ShowAppDetailsDialog(HWND hParent, sqlite3* db, const std::wstring& packageId) {
+void ShowAppDetailsDialog(HWND hParent, sqlite3* db, const std::wstring& packageId, HICON hAppIcon) {
+    // Initialize SysLink control (required for hyperlinks)
+    INITCOMMONCONTROLSEX icc;
+    icc.dwSize = sizeof(INITCOMMONCONTROLSEX);
+    icc.dwICC = ICC_LINK_CLASS;
+    InitCommonControlsEx(&icc);
+    
     AppDetailsData data;
     
     if (!LoadAppDetails(db, packageId, data)) {
         MessageBox(hParent, L"Failed to load application details.", L"Error", MB_OK | MB_ICONERROR);
         return;
     }
+    
+    // Pass the already-loaded icon to the dialog
+    data.hIcon = hAppIcon;
     
     DialogBoxParam(GetModuleHandle(nullptr), MAKEINTRESOURCE(IDD_APP_DETAILS), 
                    hParent, AppDetailsDialogProc, reinterpret_cast<LPARAM>(&data));

@@ -51,60 +51,58 @@ BEGIN
 END
 
 // App details dialog
-IDD_APP_DETAILS DIALOGEX 0, 0, 420, 380
+IDD_APP_DETAILS DIALOGEX 0, 0, 500, 295
 STYLE DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Application Details"
-FONT 9, "Segoe UI"
+FONT 11, "Segoe UI"
 BEGIN
-    // Icon (left side, 48x48)
-    CONTROL         "", IDC_APP_ICON, "Static", SS_BITMAP | SS_CENTERIMAGE, 12, 12, 48, 48
+    // Icon (left side, 50x50)
+    CONTROL         "", IDC_APP_ICON, "Static", SS_ICON | SS_CENTERIMAGE, 12, 12, 50, 50
     
     // App name (large, bold via code)
-    LTEXT           "App Name", IDC_APP_NAME, 70, 12, 340, 20, SS_NOPREFIX
+    LTEXT           "App Name", IDC_APP_NAME, 150, 12, 340, 20, SS_NOPREFIX
     
     // Publisher
-    LTEXT           "Publisher:", -1, 70, 35, 60, 10
-    LTEXT           "...", IDC_APP_PUBLISHER, 135, 35, 275, 10
+    LTEXT           "Publisher:", -1, 150, 35, 60, 10
+    LTEXT           "...", IDC_APP_PUBLISHER, 215, 35, 275, 10
     
     // Version
-    LTEXT           "Version:", -1, 70, 48, 60, 10
-    LTEXT           "...", IDC_APP_VERSION, 135, 48, 100, 10
+    LTEXT           "Version:", -1, 150, 48, 60, 10
+    LTEXT           "...", IDC_APP_VERSION, 215, 48, 120, 10
     
-    // Package ID
-    LTEXT           "Package ID:", -1, 12, 70, 60, 10
-    LTEXT           "...", IDC_APP_PACKAGE_ID, 75, 70, 335, 10, SS_NOPREFIX
+    // Package ID (right after icon with just 2 pixels gap)
+    LTEXT           "Package ID:", -1, 12, 64, 60, 10
+    LTEXT           "...", IDC_APP_PACKAGE_ID, 75, 64, 415, 10, SS_NOPREFIX
     
     // Source
-    LTEXT           "Source:", -1, 12, 85, 60, 10
-    LTEXT           "...", IDC_APP_SOURCE, 75, 85, 100, 10
+    LTEXT           "Source:", -1, 12, 79, 60, 10
+    LTEXT           "...", IDC_APP_SOURCE, 75, 79, 100, 10
     
     // Install status
-    LTEXT           "Status:", -1, 12, 100, 60, 10
-    LTEXT           "Not Installed", IDC_APP_STATUS, 75, 100, 200, 10
+    LTEXT           "Status:", -1, 12, 94, 60, 10
+    LTEXT           "Not Installed", IDC_APP_STATUS, 75, 94, 200, 10
     
     // Description (multi-line, scrollable)
-    GROUPBOX        "Description", -1, 12, 120, 396, 90
-    EDITTEXT        IDC_APP_DESCRIPTION, 20, 135, 380, 68, ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL | WS_VSCROLL
+    GROUPBOX        "Description", -1, 12, 111, 476, 75
+    EDITTEXT        IDC_APP_DESCRIPTION, 20, 126, 460, 53, ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL | WS_VSCROLL
     
     // Technical details
-    GROUPBOX        "Technical Information", -1, 12, 215, 396, 65
-    LTEXT           "Homepage:", -1, 20, 230, 60, 10
-    LTEXT           "...", IDC_APP_HOMEPAGE, 85, 230, 315, 10, SS_NOPREFIX
-    LTEXT           "License:", -1, 20, 245, 60, 10
-    LTEXT           "...", IDC_APP_LICENSE, 85, 245, 315, 10
-    LTEXT           "Installer Type:", -1, 20, 260, 60, 10
-    LTEXT           "...", IDC_APP_INSTALLER, 85, 260, 100, 10
-    LTEXT           "Architecture:", -1, 200, 260, 60, 10
-    LTEXT           "...", IDC_APP_ARCH, 265, 260, 100, 10
+    GROUPBOX        "Technical Information", -1, 12, 191, 476, 50
+    LTEXT           "Homepage:", -1, 20, 206, 60, 10
+    EDITTEXT        IDC_APP_HOMEPAGE, 85, 206, 395, 10, ES_READONLY | ES_AUTOHSCROLL
+    LTEXT           "License:", -1, 20, 219, 60, 10
+    LTEXT           "...", IDC_APP_LICENSE, 85, 219, 130, 10
+    LTEXT           "Installer Type:", -1, 230, 219, 60, 10
+    LTEXT           "...", IDC_APP_INSTALLER, 295, 219, 80, 10
+    LTEXT           "Architecture:", -1, 385, 219, 50, 10
+    LTEXT           "...", IDC_APP_ARCH, 440, 219, 40, 10
     
-    // Tags
-    GROUPBOX        "Tags", -1, 12, 285, 396, 55
-    EDITTEXT        IDC_APP_TAGS, 20, 300, 380, 33, ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL | WS_VSCROLL
+    // Tags (single line with proper width to show all text)
+    LTEXT           "Tags:", -1, 12, 248, 30, 10
+    EDITTEXT        IDC_APP_TAGS, 45, 244, 443, 24, ES_MULTILINE | ES_AUTOHSCROLL | WS_HSCROLL
     
-    // Buttons (Install/Uninstall disabled for now)
-    PUSHBUTTON      "Install", IDC_BTN_INSTALL, 12, 350, 70, 14, WS_DISABLED
-    PUSHBUTTON      "Uninstall", IDC_BTN_UNINSTALL, 88, 350, 70, 14, WS_DISABLED
-    DEFPUSHBUTTON   "Close", IDOK, 338, 350, 70, 14
+    // Buttons
+    DEFPUSHBUTTON   "Close", IDOK, 418, 273, 70, 14
 END
 
 // Version information

@@ -1943,14 +1943,79 @@ void OnAppDoubleClick() {
     if (index == -1) return;
     
     LVITEMW lvi = {};
-    lvi.mask = LVIF_PARAM;
+    lvi.mask = LVIF_PARAM | LVIF_IMAGE;
     lvi.iItem = index;
     ListView_GetItem(g_hAppList, &lvi);
     
     AppInfo* app = (AppInfo*)lvi.lParam;
     if (app) {
-        // Show app details dialog
-        ShowAppDetailsDialog(g_mainWindow, g_db, app->packageId);
+        // Get the icon from the image list and scale it up for the details dialog
+        HICON hIcon = nullptr;
+        if (lvi.iImage >= 0) {
+            // Extract the small icon from image list
+            HICON hSmallIcon = ImageList_GetIcon(g_hImageList, lvi.iImage, ILD_NORMAL);
+            if (hSmallIcon) {
+                // Create a 128x128 icon by scaling up
+                // Get icon info
+                ICONINFO iconInfo;
+                if (GetIconInfo(hSmallIcon, &iconInfo)) {
+                    // Create DCs for scaling
+                    HDC hdcScreen = GetDC(NULL);
+                    HDC hdcMem = CreateCompatibleDC(hdcScreen);
+                    HDC hdcMemSrc = CreateCompatibleDC(hdcScreen);
+                    
+                    // Create 50x50 bitmap
+                    HBITMAP hBitmap = CreateCompatibleBitmap(hdcScreen, 50, 50);
+                    HBITMAP hOldBmp = (HBITMAP)SelectObject(hdcMem, hBitmap);
+                    HBITMAP hOldSrc = (HBITMAP)SelectObject(hdcMemSrc, iconInfo.hbmColor);
+                    
+                    // Fill with transparent background
+                    HBRUSH hBrush = (HBRUSH)GetStockObject(WHITE_BRUSH);
+                    RECT rc = {0, 0, 50, 50};
+                    FillRect(hdcMem, &rc, hBrush);
+                    
+                    // Scale and draw
+                    SetStretchBltMode(hdcMem, HALFTONE);
+                    StretchBlt(hdcMem, 0, 0, 50, 50, hdcMemSrc, 0, 0, 21, 19, SRCCOPY);
+                    
+                    // Create mask
+                    SelectObject(hdcMemSrc, iconInfo.hbmMask);
+                    HBITMAP hMask = CreateCompatibleBitmap(hdcScreen, 50, 50);
+                    SelectObject(hdcMem, hMask);
+                    StretchBlt(hdcMem, 0, 0, 50, 50, hdcMemSrc, 0, 0, 21, 19, SRCCOPY);
+                    
+                    // Create the large icon
+                    SelectObject(hdcMem, hBitmap);
+                    ICONINFO newIconInfo;
+                    newIconInfo.fIcon = TRUE;
+                    newIconInfo.xHotspot = 0;
+                    newIconInfo.yHotspot = 0;
+                    newIconInfo.hbmMask = hMask;
+                    newIconInfo.hbmColor = hBitmap;
+                    hIcon = CreateIconIndirect(&newIconInfo);
+                    
+                    // Cleanup
+                    SelectObject(hdcMem, hOldBmp);
+                    SelectObject(hdcMemSrc, hOldSrc);
+                    DeleteObject(hBitmap);
+                    DeleteObject(hMask);
+                    DeleteObject(iconInfo.hbmColor);
+                    DeleteObject(iconInfo.hbmMask);
+                    DeleteDC(hdcMem);
+                    DeleteDC(hdcMemSrc);
+                    ReleaseDC(NULL, hdcScreen);
+                }
+                DestroyIcon(hSmallIcon);
+            }
+        }
+        
+        // Show app details dialog with the scaled icon
+        ShowAppDetailsDialog(g_mainWindow, g_db, app->packageId, hIcon);
+        
+        // Clean up scaled icon
+        if (hIcon) {
+            DestroyIcon(hIcon);
+        }
     }
 }
 

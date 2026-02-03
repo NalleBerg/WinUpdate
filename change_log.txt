@@ -2,6 +2,28 @@
 Notes for future versioned changelog
 
 =====================================
+Date: 2026-02-03 (Update 10 - App Details Dialog UX Enhancement)
+Component: WinProgramManager
+
+APP DETAILS DIALOG: Visual & Usability Improvements
+---------------------------------------------------------
+- Optimized icon display: Scaled from 21x19 to 50x50 pixels using GDI StretchBlt with HALFTONE mode
+- Enhanced readability: Font increased from 9pt to 11pt Segoe UI (~22% larger for high-res displays)
+- Improved layout: Standardized 15px spacing between fields (Package ID, Source, Status)
+- Compact dialog: Reduced dimensions to 500x295 pixels with better space utilization
+- Tags field enhancement: Height increased to 24px with ES_MULTILINE for horizontal scrollbar support
+- Homepage usability: Changed to read-only EDITTEXT control for text selection and copy functionality
+- Icon quality: HALFTONE scaling mode provides optimal clarity for 50x50 display size
+- UX: Users can now select and copy homepage URLs via right-click context menu
+
+TECHNICAL IMPLEMENTATION:
+- GDI icon scaling: CreateCompatibleDC, StretchBlt with HALFTONE, CreateIconIndirect
+- Resource file: Updated IDD_APP_DETAILS with new dimensions and control properties
+- Control styles: ES_READONLY | ES_AUTOHSCROLL for homepage field
+- Font metrics: 11pt provides better visibility on 4K/high-DPI displays
+- Layout coordinates: Icon(12,12) 50x50, Package ID y=64, Source y=79, Status y=94
+
+=====================================
 Date: 2026-02-03 (Update 9 - Extended Metadata & App Details Enhancement)
 Component: WinProgramManager / WinProgramUpdater / Database
 
