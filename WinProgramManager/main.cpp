@@ -158,11 +158,15 @@ DWORD WINAPI LoadingDialogThread(LPVOID lpParam) {
         SendMessageW(hLogo, STM_SETICON, (WPARAM)hIcon, 0);
     }
     
-    // Add label with transparent background
+    // Add label with visible font
     HWND hLabel = CreateWindowExW(0, L"STATIC", g_locale.processing_database.c_str(), 
         WS_CHILD | WS_VISIBLE | SS_CENTER, 50, 160, 400, 30, g_loadingDlg, NULL, hInstance, NULL);
-    // Set black text on transparent background
-    SetBkMode(GetDC(hLabel), TRANSPARENT);
+    
+    // Set font for label (text color handled by WM_CTLCOLORSTATIC)
+    HFONT hLabelFont = CreateFontW(16, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+        CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
+    SendMessageW(hLabel, WM_SETFONT, (WPARAM)hLabelFont, TRUE);
     
     // Add spinner
     g_spinnerCtrl = CreateWindowExW(0, L"STATIC", L"◐", WS_CHILD | WS_VISIBLE | SS_CENTER,

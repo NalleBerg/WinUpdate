@@ -59,8 +59,8 @@ set "BACKUP_DIR=..\DB"
 set "MAX_BACKUP_COUNT=10"
 
 REM BEGIN: Check if production database exists in packaged directory
-if exist "WinProgramManager\WinProgramManager\WinProgramManager.db" (
-    echo Backing up production database from packaged directory...
+if exist "WinProgramManager\WinProgramManager.db" (
+    echo Backing up production database from package directory...
     
     REM BEGIN: Ensure backup directory exists
     if not exist "%BACKUP_DIR%" (
@@ -70,7 +70,7 @@ if exist "WinProgramManager\WinProgramManager\WinProgramManager.db" (
     
     REM Backup with timestamp and cleanup old backups
     REM Peculiarity: PowerShell command wrapped in quotes, handles timestamp formatting and cleanup in single operation
-    powershell -NoProfile -Command "$timestamp = Get-Date -Format 'yyyyMMdd_HHmmss'; Copy-Item 'WinProgramManager\WinProgramManager\WinProgramManager.db' \"%BACKUP_DIR%\WinProgramManager_$timestamp.db\" -Force; Write-Host \"Database backed up to: %BACKUP_DIR%\WinProgramManager_$timestamp.db\"; Get-ChildItem '%BACKUP_DIR%\WinProgramManager_*.db' | Sort-Object LastWriteTime -Descending | Select-Object -Skip %MAX_BACKUP_COUNT% | Remove-Item -Force -ErrorAction SilentlyContinue"
+    powershell -NoProfile -Command "$timestamp = Get-Date -Format 'yyyyMMdd_HHmmss'; Copy-Item 'WinProgramManager\WinProgramManager.db' \"%BACKUP_DIR%\WinProgramManager_$timestamp.db\" -Force; Write-Host \"Database backed up to: %BACKUP_DIR%\WinProgramManager_$timestamp.db\"; Get-ChildItem '%BACKUP_DIR%\WinProgramManager_*.db' | Sort-Object LastWriteTime -Descending | Select-Object -Skip %MAX_BACKUP_COUNT% | Remove-Item -Force -ErrorAction SilentlyContinue"
     
     echo Backup complete.
     echo.
@@ -204,67 +204,21 @@ echo ===========================================================================
 REM Define package directory constant - matches parent directory name
 set "PACKAGE_DIR=WinProgramManager"
 
-REM Define temporary storage for database preservation
-set "TEMP_DB_MAIN=%TEMP%\WinProgramManager_temp.db"
-set "TEMP_DB_SEARCH=%TEMP%\WinProgramsSearch_temp.db"
-
 REM ----------------------------------------------------------------------------
-REM SECTION 7.1: Preserve Existing Databases During Rebuild
+REM SECTION 7.1: Clean Package Directory (Keep Databases)
 REM ----------------------------------------------------------------------------
-REM Purpose: Keep user data when recreating package directory
-REM Peculiarity: Databases are temporarily moved to %TEMP%, then restored after cleanup
-REM This ensures no data loss during packaging
+REM Purpose: Remove old files but keep databases in place
+REM Note: Databases stay untouched in the package directory
 REM ----------------------------------------------------------------------------
 
-REM BEGIN: Check if package directory already exists
-if exist "%PACKAGE_DIR%" (
-    echo Existing package directory found - preserving databases...
-    
-    REM BEGIN: Backup main database if it exists
-    if exist "%PACKAGE_DIR%\WinProgramManager.db" (
-        copy /Y "%PACKAGE_DIR%\WinProgramManager.db" "%TEMP_DB_MAIN%" >nul 2>&1
-        echo - WinProgramManager.db backed up to temp location
-    )
-    REM END: Backup main database if it exists
-    
-    REM BEGIN: Backup search database if it exists
-    if exist "%PACKAGE_DIR%\WinProgramsSearch.db" (
-        copy /Y "%PACKAGE_DIR%\WinProgramsSearch.db" "%TEMP_DB_SEARCH%" >nul 2>&1
-        echo - WinProgramsSearch.db backed up to temp location
-    )
-    REM END: Backup search database if it exists
-    
-    REM Remove file attributes that would prevent deletion
-    attrib -r -s -h "%PACKAGE_DIR%"\*.* /s >nul 2>&1
-    rmdir /s /q "%PACKAGE_DIR%"
-    echo Old package directory removed.
-    
-    REM Create fresh package directory
-    mkdir "%PACKAGE_DIR%"
-    
-    REM BEGIN: Restore main database if it was backed up
-    if exist "%TEMP_DB_MAIN%" (
-        copy /Y "%TEMP_DB_MAIN%" "%PACKAGE_DIR%\WinProgramManager.db" >nul 2>&1
-        del "%TEMP_DB_MAIN%" >nul 2>&1
-        echo - WinProgramManager.db restored from temp location
-    )
-    REM END: Restore main database if it was backed up
-    
-    REM BEGIN: Restore search database if it was backed up
-    if exist "%TEMP_DB_SEARCH%" (
-        copy /Y "%TEMP_DB_SEARCH%" "%PACKAGE_DIR%\WinProgramsSearch.db" >nul 2>&1
-        del "%TEMP_DB_SEARCH%" >nul 2>&1
-        echo - WinProgramsSearch.db restored from temp location
-    )
-    REM END: Restore search database if it was backed up
-    
-    echo Database preservation complete.
-) else (
-    REM Package directory doesn't exist, create it fresh
+REM BEGIN: Package directory handling
+if not exist "%PACKAGE_DIR%" (
     mkdir "%PACKAGE_DIR%"
     echo Fresh package directory created.
+) else (
+    echo Package directory exists - files will be overwritten, databases preserved.
 )
-REM END: Check if package directory already exists
+REM END: Package directory handling
 echo.
 
 REM ----------------------------------------------------------------------------
@@ -511,5 +465,8 @@ echo   %PACKAGE_DIR%\WinProgramUpdaterConsole.exe
 echo.
 echo ============================================================================
 echo.
+
+echo Starting WinProgramManager...
+start "" "%PACKAGE_DIR%\WinProgramManager.exe"
 
 endlocal

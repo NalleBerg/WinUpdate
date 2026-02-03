@@ -293,9 +293,12 @@ void WinProgramUpdater::AddPackage(const PackageInfo& pkg) {
         return;
     }
     
-    std::string sql = "INSERT OR REPLACE INTO apps (package_id, name, version, publisher, moniker, "
-                      "description, homepage, license, author, copyright, "
-                      "license_url, privacy_url, icon_data, icon_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+    std::string sql = "INSERT OR REPLACE INTO apps (package_id, name, version, publisher, description, "
+                      "homepage, publisher_url, publisher_support_url, author, license, license_url, "
+                      "privacy_url, copyright, copyright_url, release_notes_url, moniker, release_date, "
+                      "icon_data, icon_type, source, installer_type, architecture, documentation_url, "
+                      "installer_url, installer_sha256, offline_distribution_supported, commands) "
+                      "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
     
     sqlite3_stmt* stmt;
     if (sqlite3_prepare_v2(db_, sql.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
@@ -303,22 +306,36 @@ void WinProgramUpdater::AddPackage(const PackageInfo& pkg) {
         sqlite3_bind_text(stmt, 2, pkg.name.c_str(), -1, SQLITE_STATIC);
         sqlite3_bind_text(stmt, 3, pkg.version.c_str(), -1, SQLITE_STATIC);
         sqlite3_bind_text(stmt, 4, pkg.publisher.c_str(), -1, SQLITE_STATIC);
-        sqlite3_bind_text(stmt, 5, pkg.moniker.c_str(), -1, SQLITE_STATIC);
-        sqlite3_bind_text(stmt, 6, pkg.description.c_str(), -1, SQLITE_STATIC);
-        sqlite3_bind_text(stmt, 7, pkg.homepage.c_str(), -1, SQLITE_STATIC);
-        sqlite3_bind_text(stmt, 8, pkg.license.c_str(), -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 5, pkg.description.c_str(), -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 6, pkg.homepage.c_str(), -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 7, pkg.publisherUrl.c_str(), -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 8, pkg.publisherSupportUrl.c_str(), -1, SQLITE_STATIC);
         sqlite3_bind_text(stmt, 9, pkg.author.c_str(), -1, SQLITE_STATIC);
-        sqlite3_bind_text(stmt, 10, pkg.copyright.c_str(), -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 10, pkg.license.c_str(), -1, SQLITE_STATIC);
         sqlite3_bind_text(stmt, 11, pkg.licenseUrl.c_str(), -1, SQLITE_STATIC);
         sqlite3_bind_text(stmt, 12, pkg.privacyUrl.c_str(), -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 13, pkg.copyright.c_str(), -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 14, pkg.copyrightUrl.c_str(), -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 15, pkg.releaseNotesUrl.c_str(), -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 16, pkg.moniker.c_str(), -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 17, pkg.releaseDate.c_str(), -1, SQLITE_STATIC);
         
         if (!pkg.iconData.empty()) {
-            sqlite3_bind_blob(stmt, 13, pkg.iconData.data(), pkg.iconData.size(), SQLITE_STATIC);
-            sqlite3_bind_text(stmt, 14, pkg.iconType.c_str(), -1, SQLITE_STATIC);
+            sqlite3_bind_blob(stmt, 18, pkg.iconData.data(), pkg.iconData.size(), SQLITE_STATIC);
+            sqlite3_bind_text(stmt, 19, pkg.iconType.c_str(), -1, SQLITE_STATIC);
         } else {
-            sqlite3_bind_null(stmt, 13);
-            sqlite3_bind_null(stmt, 14);
+            sqlite3_bind_null(stmt, 18);
+            sqlite3_bind_null(stmt, 19);
         }
+        
+        sqlite3_bind_text(stmt, 20, pkg.source.c_str(), -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 21, pkg.installerType.c_str(), -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 22, pkg.architecture.c_str(), -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 23, pkg.documentationUrl.c_str(), -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 24, pkg.installerUrl.c_str(), -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 25, pkg.installerSha256.c_str(), -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 26, pkg.offlineDistributionSupported.c_str(), -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 27, pkg.commands.c_str(), -1, SQLITE_STATIC);
         
         sqlite3_step(stmt);
         sqlite3_finalize(stmt);
@@ -646,6 +663,7 @@ PackageInfo WinProgramUpdater::GetPackageInfo(const std::string& packageId, int 
     std::istringstream stream(output);
     std::string line;
     bool foundName = false;
+    bool inInstallerSection = false;
     
     while (std::getline(stream, line)) {
         // Skip spinner lines (single char or whitespace)
@@ -664,6 +682,17 @@ PackageInfo WinProgramUpdater::GetPackageInfo(const std::string& packageId, int 
             continue;
         }
         
+        // Check if we're entering the Installer section
+        if (Trim(line) == "Installer:") {
+            inInstallerSection = true;
+            continue;
+        }
+        
+        // Check if we're leaving a section (line with no leading space after being in Installer section)
+        if (inInstallerSection && !line.empty() && line[0] != ' ') {
+            inInstallerSection = false;
+        }
+        
         size_t colonPos = line.find(':');
         if (colonPos == std::string::npos) continue;
         
@@ -674,6 +703,10 @@ PackageInfo WinProgramUpdater::GetPackageInfo(const std::string& packageId, int 
             info.version = value;
         } else if (key == "Publisher") {
             info.publisher = value;
+        } else if (key == "Publisher Url") {
+            info.publisherUrl = value;
+        } else if (key == "Publisher Support Url") {
+            info.publisherSupportUrl = value;
         } else if (key == "Moniker") {
             info.moniker = value;
         } else if (key == "Description") {
@@ -688,12 +721,18 @@ PackageInfo WinProgramUpdater::GetPackageInfo(const std::string& packageId, int 
             info.author = value;
         } else if (key == "Copyright") {
             info.copyright = value;
+        } else if (key == "Copyright Url") {
+            info.copyrightUrl = value;
         } else if (key == "License Url") {
             info.licenseUrl = value;
         } else if (key == "Privacy Url") {
             info.privacyUrl = value;
+        } else if (key == "Release Notes Url") {
+            info.releaseNotesUrl = value;
         } else if (key == "Package Url") {
             info.packageUrl = value;
+        } else if (key == "Documentation" && !value.empty()) {
+            info.documentationUrl = value;
         } else if (key == "Tags") {
             std::istringstream tagStream(value);
             std::string tag;
@@ -703,6 +742,19 @@ PackageInfo WinProgramUpdater::GetPackageInfo(const std::string& packageId, int 
                     if (tag.back() == ',') tag.pop_back();
                     info.tags.push_back(tag);
                 }
+            }
+        } else if (inInstallerSection) {
+            // Parse installer-specific fields
+            if (key == "Installer Type") {
+                info.installerType = value;
+            } else if (key == "Installer Url") {
+                info.installerUrl = value;
+            } else if (key == "Installer SHA256") {
+                info.installerSha256 = value;
+            } else if (key == "Release Date") {
+                info.releaseDate = value;
+            } else if (key == "Offline Distribution Supported") {
+                info.offlineDistributionSupported = value;
             }
         }
     }
@@ -716,6 +768,14 @@ PackageInfo WinProgramUpdater::GetPackageInfo(const std::string& packageId, int 
             // Use the part after the first dot if it exists
             info.name = packageId.substr(dotPos + 1);
         }
+    }
+    
+    // Set source to winget since we're querying from winget
+    info.source = "winget";
+    
+    // Default architecture to x64 if not detected (most common on modern systems)
+    if (info.architecture.empty()) {
+        info.architecture = "x64";
     }
     
     // Fetch icon from homepage if available

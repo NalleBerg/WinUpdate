@@ -25,7 +25,12 @@ struct PackageInfo {
     std::vector<unsigned char> iconData;
     std::string iconType;
     std::vector<std::string> tags;
-    // Metadata fields (8 new fields)
+    // Additional metadata fields
+    std::string publisherUrl;
+    std::string publisherSupportUrl;
+    std::string copyrightUrl;
+    std::string releaseNotesUrl;
+    std::string releaseDate;
     std::string source;
     std::string installerType;
     std::string architecture;

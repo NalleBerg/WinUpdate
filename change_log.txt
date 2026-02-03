@@ -2,6 +2,55 @@
 Notes for future versioned changelog
 
 =====================================
+Date: 2026-02-03 (Update 9 - Extended Metadata & App Details Enhancement)
+Component: WinProgramManager / WinProgramUpdater / Database
+
+DATABASE: 29-Column Schema Extension
+---------------------------------------------------------
+- Expanded database from 21 to 29 columns (added 8 metadata fields)
+- New fields: source, installer_type, architecture, documentation_url, installer_url, 
+  installer_sha256, offline_distribution_supported, commands
+- All 10,692 apps now include complete installer and distribution metadata
+- Maintains backward compatibility - SQL queries work with both schemas
+
+WINPROGRAMUPDATER: Enhanced Package Parsing
+---------------------------------------------------------
+- Updated GetPackageInfo() to parse installer section from winget show output
+- Extracts Installer Type (msi, exe, msix, appx, nullsoft, inno, burn, zip, etc.)
+- Captures Architecture (x64, x86, arm64, arm, neutral)
+- Records Documentation URL, Installer URL, SHA256 hash, Offline Distribution Support
+- Default values: source="winget", architecture="x64" for missing data
+- INSERT statement expanded to handle all 27 columns (29 minus auto id/processed_at)
+
+APP DETAILS DIALOG: Installer Metadata Display
+---------------------------------------------------------
+- Added installer_type and architecture fields to app details dialog
+- SQL query updated to retrieve metadata: columns 9-11 (source, installer_type, architecture)
+- Display format: "Installer Type: nullsoft" and "Architecture: x64"
+- Verified with Notepad++ 8.9 (nullsoft, x64) and other packages
+
+LOADING DIALOG: Text Visibility Fix
+---------------------------------------------------------
+- Fixed invisible "Processing database..." text on startup spinner
+- Replaced broken SetBkMode(GetDC()) call with proper WM_SETFONT approach
+- Created 16pt Segoe UI font for label text
+- Text color handled by WM_CTLCOLORSTATIC (black on white background)
+- Loading now shows visible progress message during 10-15 second database load
+
+BUILD SYSTEM: Database Preservation
+---------------------------------------------------------
+- Simplified makeit.bat backup logic - only backs up to ..\DB\timestamp.db
+- Fixed backup path from incorrect nested directory to correct WinProgramManager\WinProgramManager\
+- Databases preserved across rebuilds (no longer moved/restored)
+- Backup rotation maintains last 10 timestamped copies
+
+TESTING & VERIFICATION:
+- All 10,692 apps verified with populated installer_type and architecture
+- Database integrity verified: "ok" from PRAGMA integrity_check
+- Fast 10-15 second startup maintained with all icon loading
+- App details dialog confirmed showing all new fields correctly
+
+=====================================
 Date: 2026-02-02 (Update 8 - WinProgramUpdaterGUI Enhancements)
 Component: WinProgramManager / WinProgramUpdaterGUI
 

@@ -1,10 +1,18 @@
 # WinProgramSuite — Complete Windows Package Management System
 
-**Latest Update:** 2 February 2026 | **WinProgramUpdaterGUI Enhancements**
+**Latest Update:** 3 February 2026 | **Extended Metadata & App Details Enhancement**
 
 **WinProgramSuite** is a comprehensive package management system for Windows, combining database-driven package metadata management with a friendly GUI for updates. Built on Microsoft's `winget` package manager with advanced categorization, search, filtering, and analysis capabilities.
 
-## 🚨 Recent Updates (2026-02-02)
+## 🚨 Recent Updates (2026-02-03)
+
+### Update 9: Extended Metadata & App Details Enhancement
+- **29-COLUMN DATABASE**: Expanded from 21 to 29 columns with 8 new metadata fields
+- **INSTALLER METADATA**: Now captures installer_type (msi, exe, nullsoft, inno, etc.) and architecture (x64, x86, arm64)
+- **ENHANCED PARSING**: WinProgramUpdater extracts complete installer section from winget show
+- **APP DETAILS**: Dialog displays installer type and architecture for all 10,692 packages
+- **LOADING FIX**: Visible "Processing database..." text during startup (proper font handling)
+- **BUILD SAFETY**: Simplified database backup - preserves data across all rebuilds
 
 ### Update 8: WinProgramUpdaterGUI Enhancements
 - **LOG VIEWER**: Fixed button functionality with proper window procedure routing
