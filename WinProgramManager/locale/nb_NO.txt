@@ -13,6 +13,10 @@ all=Alle
 # Window title
 title=WinProgram Manager
 
+# Loading messages
+processing_database=Behandler database, vennligst vent...
+wait_moment=Vent et øyeblikk....
+
 # Updater GUI
 updater_title=WinProgram Databaseoppdaterer
 updater_explanation_line1=Denne oppdateringen vil:

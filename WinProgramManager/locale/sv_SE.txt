@@ -13,6 +13,10 @@ all=Alla
 # Window title
 title=WinProgram Manager
 
+# Loading messages
+processing_database=Bearbetar databas, vänligen vänta...
+wait_moment=Vänta ett ögonblick....
+
 # Updater GUI
 updater_title=WinProgram Databasuppdaterare
 updater_explanation_line1=Denna uppdaterare kommer att:

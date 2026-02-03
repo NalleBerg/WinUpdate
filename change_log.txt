@@ -31,11 +31,13 @@ APP DETAILS DIALOG: Installer Metadata Display
 
 LOADING DIALOG: Text Visibility Fix
 ---------------------------------------------------------
-- Fixed invisible "Processing database..." text on startup spinner
-- Replaced broken SetBkMode(GetDC()) call with proper WM_SETFONT approach
-- Created 16pt Segoe UI font for label text
-- Text color handled by WM_CTLCOLORSTATIC (black on white background)
-- Loading now shows visible progress message during 10-15 second database load
+- Fixed invisible "Processing database, please wait..." text on startup spinner
+- Changed WM_CTLCOLORSTATIC from TRANSPARENT to OPAQUE background mode
+- Increased font size to 18pt bold Segoe UI for better visibility
+- Made font handle static to persist throughout program lifetime
+- Added explicit UpdateWindow() call to force immediate rendering
+- Added processing_database and wait_moment strings to all locale files (en_GB, nb_NO, sv_SE)
+- Full i18n support: English, Norwegian ("Behandler database..."), Swedish ("Bearbetar databas...")
 
 BUILD SYSTEM: Database Preservation
 ---------------------------------------------------------
@@ -49,6 +51,7 @@ TESTING & VERIFICATION:
 - Database integrity verified: "ok" from PRAGMA integrity_check
 - Fast 10-15 second startup maintained with all icon loading
 - App details dialog confirmed showing all new fields correctly
+- Loading text now visible in all supported languages during database initialization
 
 =====================================
 Date: 2026-02-02 (Update 8 - WinProgramUpdaterGUI Enhancements)

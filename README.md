@@ -11,7 +11,7 @@
 - **INSTALLER METADATA**: Now captures installer_type (msi, exe, nullsoft, inno, etc.) and architecture (x64, x86, arm64)
 - **ENHANCED PARSING**: WinProgramUpdater extracts complete installer section from winget show
 - **APP DETAILS**: Dialog displays installer type and architecture for all 10,692 packages
-- **LOADING FIX**: Visible "Processing database..." text during startup (proper font handling)
+- **LOADING FIX**: Visible "Processing database..." text during startup with i18n support (English/Norwegian/Swedish)
 - **BUILD SAFETY**: Simplified database backup - preserves data across all rebuilds
 
 ### Update 8: WinProgramUpdaterGUI Enhancements
