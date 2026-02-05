@@ -1,10 +1,20 @@
 # WinProgramSuite — Complete Windows Package Management System
 
-**Latest Update:** 3 February 2026 | **App Details Dialog UX Enhancement**
+**Latest Update:** 5 February 2026 | **Installed Apps Refresh & i18n Fix**
 
 **WinProgramSuite** is a comprehensive package management system for Windows, combining database-driven package metadata management with a friendly GUI for updates. Built on Microsoft's `winget` package manager with advanced categorization, search, filtering, and analysis capabilities.
 
-## 🚨 Recent Updates (2026-02-03)
+## 🚨 Recent Updates (2026-02-05)
+
+### Update 11: Installed Apps Refresh & i18n Fix
+- **REFRESH BUTTON**: Manual "Refresh Installed Apps" button appears when Installed filter is active
+- **AUTOMATIC CLEANUP**: Registry-based verification removes apps uninstalled outside the manager
+- **EXTERNAL DETECTION**: Full winget list scan discovers apps installed by other tools
+- **i18n CRITICAL FIX**: Locale files now load correctly (.txt not .ini), Windows CRLF line breaks work
+- **MULTI-LINE TEXT**: Startup dialog, tooltips, and manual update dialog display properly
+- **NORWEGIAN READY**: All three locales (English/Norwegian/Swedish) verified working
+- **VISUAL POLISH**: Bold 16pt text in manual update dialog, 60pt spinner matching startup
+- **TOOLTIP SYSTEM**: WinUpdate-style multi-line tooltips with proper positioning
 
 ### Update 10: App Details Dialog UX Enhancement
 - **VISUAL CLARITY**: Icon display scaled to 50x50 pixels with HALFTONE mode for optimal quality

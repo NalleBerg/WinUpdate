@@ -294,6 +294,15 @@ if exist "%BUILD_DIR%\WinProgramUpdaterGUI.exe" (
 )
 REM END: Copy new unified GUI updater
 
+REM BEGIN: Copy winget helper (elevated helper for install/reinstall/uninstall operations)
+if exist "%BUILD_DIR%\winget_helper.exe" (
+    copy /Y "%BUILD_DIR%\winget_helper.exe" "%PACKAGE_DIR%\winget_helper.exe" >nul 2>&1
+    echo - winget_helper.exe packaged (elevated helper for package operations)
+) else (
+    echo [WARN] Winget helper not found: %BUILD_DIR%\winget_helper.exe
+)
+REM END: Copy winget helper
+
 echo.
 
 REM ----------------------------------------------------------------------------

@@ -22,6 +22,7 @@
 #define ID_SEARCH_BTN 1001
 #define ID_END_SEARCH_BTN 1006
 #define ID_INSTALLED_BTN 1007
+#define ID_REFRESH_INSTALLED_BTN 1008
 #define ID_TAG_TREE 1002
 #define ID_APP_LIST 1004
 #define ID_LANG_COMBO 1005
@@ -29,26 +30,12 @@
 // Window class name
 const wchar_t CLASS_NAME[] = L"WinProgramManagerClass";
 
-// Locale structure
-struct Locale {
-    std::wstring lang_name;
-    std::wstring thousands_sep;
-    std::wstring decimal_sep;
-    std::wstring categories;
-    std::wstring apps;
-    std::wstring search_tags;
-    std::wstring search_apps;
-    std::wstring all;
-    std::wstring title;
-    std::wstring processing_database;
-    std::wstring wait_moment;
-    std::wstring repopulating_table;
-};
-
 // Global variables
 HWND g_hSearchBtn = NULL;
 HWND g_hEndSearchBtn = NULL;
 HWND g_hInstalledBtn = NULL;
+HWND g_hRefreshInstalledBtn = NULL;
+HWND g_hRefreshTooltip = NULL;
 HWND g_hTagTree = NULL;
 HWND g_hTagCountLabel = NULL;
 HWND g_hAppList = NULL;
@@ -138,7 +125,7 @@ DWORD WINAPI LoadingDialogThread(LPVOID lpParam) {
     g_loadingDlg = CreateWindowExW(
         WS_EX_DLGMODALFRAME | WS_EX_TOPMOST,
         L"LoadingDialogClass",
-        L"WinProgramManager",
+        g_locale.title.c_str(),
         WS_POPUP | WS_VISIBLE | WS_CAPTION,
         0, 0, 500, 300,
         NULL, NULL, hInstance, NULL
@@ -159,15 +146,18 @@ DWORD WINAPI LoadingDialogThread(LPVOID lpParam) {
         SendMessageW(hLogo, STM_SETICON, (WPARAM)hIcon, 0);
     }
     
-    // Add label with visible font - using i18n locale string
-    HWND hLabel = CreateWindowExW(0, L"STATIC", g_locale.processing_database.c_str(), 
-        WS_CHILD | WS_VISIBLE | SS_CENTER, 50, 160, 400, 35, g_loadingDlg, NULL, hInstance, NULL);
+    // Add label - create empty, set text after applying font (like processing_database pattern)
+    HWND hLabel = CreateWindowExW(0, L"STATIC", L"", 
+        WS_CHILD | WS_VISIBLE | SS_CENTER, 50, 160, 400, 35, g_loadingDlg, (HMENU)102, hInstance, NULL);
     
     // Create persistent font for label (static so it doesn't get destroyed) - larger and bold
     static HFONT hLabelFont = CreateFontW(18, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
         DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
         CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
     SendMessageW(hLabel, WM_SETFONT, (WPARAM)hLabelFont, TRUE);
+    
+    // Set text AFTER font is applied (matches processing_database pattern that works)
+    SetDlgItemTextW(g_loadingDlg, 102, g_locale.querying_winget.c_str());
     
     // Force update
     UpdateWindow(hLabel);
@@ -275,6 +265,9 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
         g_locale.processing_database = L"Processing database...";
         g_locale.wait_moment = L"Wait a moment....";
         g_locale.repopulating_table = L"Repopulating table...";
+        g_locale.querying_winget = L"Checking installed apps with winget.\nThis can take some time...";
+        g_locale.refresh_installed_btn = L"Refresh Installed Apps";
+        g_locale.refresh_installed_tooltip = L"Discover apps installed outside this manager.\nThis may take a while.";
     }
 
     // Initialize common controls
@@ -629,18 +622,49 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         }
         
         case WM_USER + 1: {
-            // Start background thread to open database
+            // Two-phase startup: 1) Discover installed apps via winget list, 2) Process database
+            // Text already set to querying_winget when dialog was created
+            
             std::thread([hwnd]() {
-                // Open database
+                // Phase 1: Open database first (needed for discovery)
                 if (!OpenDatabase()) {
                     MessageBoxW(hwnd, L"Failed to open database!", L"Error", MB_ICONERROR | MB_OK);
                     PostQuitMessage(1);
                     return;
                 }
                 
-                // Database opened - signal main window to continue
+                // Phase 2: Run winget list discovery (this is the slow part - can take 60+ seconds)
+                DiscoverInstalledApps(g_db);
+                
+                // Phase 3: Update spinner text for final UI population
+                if (g_loadingDlg && IsWindow(g_loadingDlg)) {
+                    SetDlgItemTextW(g_loadingDlg, 102, g_locale.processing_database.c_str());
+                }
+                
+                // All phases complete - signal main window to continue
                 PostMessageW(hwnd, WM_USER, 0, 0);
             }).detach();
+            
+            return 0;
+        }
+        
+        case WM_USER + 2: {
+            // Async discovery completed (wParam: 1=success, 0=failure)
+            bool success = (wParam != 0);
+            
+            // Destroy spinner
+            if (g_hIconLoadingDialog) {
+                DestroyWindow(g_hIconLoadingDialog);
+                g_hIconLoadingDialog = nullptr;
+            }
+            
+            if (success) {
+                // Refresh the UI to show newly discovered apps
+                LoadTags();
+                OnTagSelectionChanged();
+            } else {
+                MessageBoxW(hwnd, L"Failed to query winget for installed apps.", L"Discovery Failed", MB_ICONWARNING | MB_OK);
+            }
             
             return 0;
         }
@@ -648,6 +672,11 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         case WM_USER: {
             // Database loaded - create controls and load data
             CreateControls(hwnd);
+            
+            // Force button redraw to show locale text
+            if (g_hRefreshInstalledBtn) {
+                InvalidateRect(g_hRefreshInstalledBtn, NULL, TRUE);
+            }
             
             // Load all icons into ImageList (must happen after ImageList is created)
             LoadAllIcons();
@@ -710,6 +739,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                 // Load installed package IDs if activating filter
                 if (IsInstalledFilterActive()) {
                     LoadInstalledPackageIds(g_db);
+                    // Run cleanup to remove uninstalled apps (fast registry check)
+                    CleanupInstalledApps(g_db);
                 }
                 
                 // Show spinner when deactivating (going back to all apps)
@@ -738,11 +769,43 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                 LoadTags();  // Refresh categories to show only those with installed apps
                 OnTagSelectionChanged();  // Refresh the app list
                 
+                // Update button visibility and layout
+                ResizeControls(hwnd);
+                
                 // Destroy spinner dialog if it was shown
                 if (g_hIconLoadingDialog) {
                     DestroyWindow(g_hIconLoadingDialog);
                     g_hIconLoadingDialog = nullptr;
                 }
+            }
+            else if (LOWORD(wParam) == ID_REFRESH_INSTALLED_BTN) {
+                // Run winget list to discover newly installed apps (slow)
+                // Show spinner during operation
+                g_hIconLoadingDialog = CreateDialog((HINSTANCE)GetWindowLongPtr(g_mainWindow, GWLP_HINSTANCE), 
+                                                    MAKEINTRESOURCE(IDD_LOADING_DIALOG), g_mainWindow, IconLoadingDialogProc);
+                if (g_hIconLoadingDialog) {
+                    SetDlgItemTextW(g_hIconLoadingDialog, IDC_LOADING_TEXT, g_locale.querying_winget.c_str());
+                    ShowWindow(g_hIconLoadingDialog, SW_SHOW);
+                    UpdateWindow(g_hIconLoadingDialog);
+                    
+                    // Process messages to let spinner start
+                    MSG msg;
+                    for (int i = 0; i < 10; i++) {
+                        while (PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE)) {
+                            TranslateMessage(&msg);
+                            DispatchMessageW(&msg);
+                        }
+                        Sleep(16);
+                    }
+                }
+                
+                // Run discovery in background thread
+                std::thread([hwnd]() {
+                    bool success = DiscoverInstalledApps(g_db);
+                    
+                    // Back on main thread, update UI
+                    PostMessageW(hwnd, WM_USER + 2, success ? 1 : 0, 0);
+                }).detach();
             }
             else if (HIWORD(wParam) == CBN_SELCHANGE) {
                 if ((HWND)lParam == g_hLangCombo) {
@@ -940,6 +1003,28 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                 SelectObject(hdc, oldf);
                 if (dis->itemState & ODS_FOCUS) DrawFocusRect(hdc, &rc);
                 return TRUE;
+            } else if (dis->CtlID == ID_REFRESH_INSTALLED_BTN) {
+                HWND hBtn = dis->hwndItem;
+                BOOL hover = (BOOL)GetWindowLongPtrW(hBtn, GWLP_USERDATA);
+                bool pressed = (dis->itemState & ODS_SELECTED) != 0;
+                HDC hdc = dis->hDC;
+                RECT rc = dis->rcItem;
+                // Blue color scheme like Search button
+                COLORREF base = RGB(10,57,129);
+                COLORREF hoverCol = RGB(40,90,170);
+                COLORREF pressCol = RGB(5,40,90);
+                HBRUSH hBrush = CreateSolidBrush(pressed ? pressCol : (hover ? hoverCol : base));
+                FillRect(hdc, &rc, hBrush);
+                DeleteObject(hBrush);
+                // Draw text
+                SetTextColor(hdc, RGB(255,255,255));
+                SetBkMode(hdc, TRANSPARENT);
+                HFONT hf = g_hBoldFont ? g_hBoldFont : (HFONT)GetStockObject(DEFAULT_GUI_FONT);
+                HGDIOBJ oldf = SelectObject(hdc, hf);
+                DrawTextW(hdc, g_locale.refresh_installed_btn.c_str(), -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+                SelectObject(hdc, oldf);
+                if (dis->itemState & ODS_FOCUS) DrawFocusRect(hdc, &rc);
+                return TRUE;
             }
             return FALSE;
         }
@@ -1085,6 +1170,123 @@ void CreateControls(HWND hwnd) {
             case WM_MOUSELEAVE: {
                 SetWindowLongPtrW(h, GWLP_USERDATA, 0);
                 InvalidateRect(h, NULL, TRUE);
+                break;
+            }
+            }
+            return DefSubclassProc(h, msg, wp, lp);
+        }, 0, 0);
+    }
+    
+    // Refresh Installed button (manual winget list discovery)
+    g_hRefreshInstalledBtn = CreateWindowExW(
+        0,
+        L"BUTTON",
+        L"Refresh",
+        WS_CHILD | WS_VISIBLE | BS_OWNERDRAW | WS_TABSTOP,
+        0, 0, 0, 0,
+        hwnd,
+        (HMENU)ID_REFRESH_INSTALLED_BTN,
+        hInst,
+        NULL
+    );
+    SendMessageW(g_hRefreshInstalledBtn, WM_SETFONT, (WPARAM)g_hFont, TRUE);
+    
+    // Create custom tooltip window class (WinUpdate style)
+    static const wchar_t *kTipClass = L"WPMSimpleTooltip";
+    static bool tipRegistered = false;
+    if (!tipRegistered) {
+        WNDCLASSEXW wc = {};
+        wc.cbSize = sizeof(wc);
+        wc.lpfnWndProc = [](HWND hw, UINT um, WPARAM w, LPARAM l)->LRESULT {
+            if (um == WM_PAINT) {
+                PAINTSTRUCT ps; HDC hdc = BeginPaint(hw, &ps);
+                RECT rc; GetClientRect(hw, &rc);
+                // Yellow tooltip background
+                FillRect(hdc, &rc, (HBRUSH)(COLOR_INFOBK + 1));
+                FrameRect(hdc, &rc, (HBRUSH)GetStockObject(BLACK_BRUSH));
+                int len = GetWindowTextLengthW(hw);
+                std::vector<wchar_t> buf(len + 1);
+                if (len > 0) GetWindowTextW(hw, buf.data(), len + 1);
+                SetTextColor(hdc, GetSysColor(COLOR_INFOTEXT));
+                SetBkMode(hdc, TRANSPARENT);
+                HFONT hf = (HFONT)SendMessageW(hw, WM_GETFONT, 0, 0);
+                HGDIOBJ old = NULL; if (hf) old = SelectObject(hdc, hf);
+                RECT inner = rc; inner.left += 4; inner.right -= 4; inner.top += 2; inner.bottom -= 2;
+                // Multi-line support with DT_WORDBREAK
+                DrawTextW(hdc, buf.data(), -1, &inner, DT_LEFT | DT_WORDBREAK | DT_VCENTER);
+                if (old) SelectObject(hdc, old);
+                EndPaint(hw, &ps);
+                return 0;
+            }
+            return DefWindowProcW(hw, um, w, l);
+        };
+        wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+        wc.hInstance = GetModuleHandleW(NULL);
+        wc.hbrBackground = (HBRUSH)(COLOR_INFOBK + 1);
+        wc.lpszClassName = kTipClass;
+        RegisterClassExW(&wc);
+        tipRegistered = true;
+    }
+    
+    // Create tooltip window - empty initially
+    g_hRefreshTooltip = CreateWindowExW(
+        WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
+        kTipClass,
+        L"",
+        WS_POPUP,
+        0, 0, 250, 50,  // Will be resized based on text
+        hwnd,
+        NULL,
+        GetModuleHandleW(NULL),
+        NULL
+    );
+    SendMessageW(g_hRefreshTooltip, WM_SETFONT, (WPARAM)g_hFont, TRUE);
+    // Set text after creation
+    SetWindowTextW(g_hRefreshTooltip, g_locale.refresh_installed_tooltip.c_str());
+    SendMessageW(g_hRefreshTooltip, WM_SETFONT, (WPARAM)g_hFont, TRUE);
+    
+    // Subclass refresh button for hover effects and tooltip
+    if (g_hRefreshInstalledBtn && g_hRefreshTooltip) {
+        SetWindowSubclass(g_hRefreshInstalledBtn, [](HWND h, UINT msg, WPARAM wp, LPARAM lp, UINT_PTR, DWORD_PTR)->LRESULT {
+            switch (msg) {
+            case WM_MOUSEMOVE: {
+                SetWindowLongPtrW(h, GWLP_USERDATA, 1);
+                InvalidateRect(h, NULL, TRUE);
+                TRACKMOUSEEVENT tme{}; tme.cbSize = sizeof(tme); tme.dwFlags = TME_LEAVE; tme.hwndTrack = h; TrackMouseEvent(&tme);
+                
+                // Show tooltip above button (not below cursor)
+                if (g_hRefreshTooltip && !IsWindowVisible(g_hRefreshTooltip)) {
+                    // Get button rect
+                    RECT btnRect;
+                    GetWindowRect(h, &btnRect);
+                    
+                    // Calculate tooltip size based on text
+                    HDC hdc = GetDC(g_hRefreshTooltip);
+                    HFONT hFont = (HFONT)SendMessageW(g_hRefreshTooltip, WM_GETFONT, 0, 0);
+                    HGDIOBJ oldFont = SelectObject(hdc, hFont);
+                    RECT textRect = {0, 0, 250, 0};
+                    DrawTextW(hdc, g_locale.refresh_installed_tooltip.c_str(), -1, &textRect, DT_CALCRECT | DT_LEFT | DT_WORDBREAK);
+                    SelectObject(hdc, oldFont);
+                    ReleaseDC(g_hRefreshTooltip, hdc);
+                    
+                    int tipWidth = textRect.right + 8;  // Add padding
+                    int tipHeight = textRect.bottom + 4;
+                    
+                    // Position tooltip above button, centered
+                    int tipX = btnRect.left + (btnRect.right - btnRect.left - tipWidth) / 2;
+                    int tipY = btnRect.top - tipHeight - 5;  // 5px gap above button
+                    
+                    SetWindowPos(g_hRefreshTooltip, HWND_TOPMOST, tipX, tipY, tipWidth, tipHeight, SWP_SHOWWINDOW | SWP_NOACTIVATE);
+                }
+                break;
+            }
+            case WM_MOUSELEAVE: {
+                SetWindowLongPtrW(h, GWLP_USERDATA, 0);
+                InvalidateRect(h, NULL, TRUE);
+                // Hide tooltip
+                if (g_hRefreshTooltip) {
+                    ShowWindow(g_hRefreshTooltip, SW_HIDE);
+                }
                 break;
             }
             }
@@ -1345,32 +1547,64 @@ void ResizeControls(HWND hwnd) {
     const int langComboWidth = 150;
     const int searchBtnWidth = 100;
     const int installedBtnWidth = 100;
+    const int refreshInstalledBtnWidth = 180;
     const int endSearchBtnWidth = 110;
     const int searchBtnSpacing = 9;  // Extra space between buttons and dropdown
     
     // Language selector (top right)
     MoveWindow(g_hLangCombo, rc.right - margin - langComboWidth, margin, langComboWidth, 200, TRUE);
     
-    // Button layout depends on search state
-    // From right: [Language] ... [End Search?] [Search] [Installed]
+    // Button layout depends on search state and installed filter state
+    // From right: [Language] ... [End Search?] [Search] [Installed] [Refresh Installed (if active)]
+    
+    // Determine if Refresh Installed button should be visible
+    bool showRefreshInstalled = IsInstalledFilterActive();
+    if (g_hRefreshInstalledBtn) {
+        ShowWindow(g_hRefreshInstalledBtn, showRefreshInstalled ? SW_SHOW : SW_HIDE);
+    }
+    
     if (g_searchActive && IsWindowVisible(g_hEndSearchBtn)) {
-        // All buttons visible: [Installed] [Search] [End Search] ... [Language]
-        int totalBtnWidth = installedBtnWidth + spacing + searchBtnWidth + spacing + endSearchBtnWidth;
-        int installedX = rc.right - margin - langComboWidth - searchBtnSpacing - totalBtnWidth;
-        int searchX = installedX + installedBtnWidth + spacing;
-        int endSearchX = searchX + searchBtnWidth + spacing;
-        
-        MoveWindow(g_hInstalledBtn, installedX, margin, installedBtnWidth, btnHeight, TRUE);
-        MoveWindow(g_hSearchBtn, searchX, margin, searchBtnWidth, btnHeight, TRUE);
-        MoveWindow(g_hEndSearchBtn, endSearchX, margin, endSearchBtnWidth, btnHeight, TRUE);
+        // All buttons visible: [Refresh Installed?] [Installed] [Search] [End Search] ... [Language]
+        if (showRefreshInstalled) {
+            int totalBtnWidth = refreshInstalledBtnWidth + spacing + installedBtnWidth + spacing + searchBtnWidth + spacing + endSearchBtnWidth;
+            int refreshInstalledX = rc.right - margin - langComboWidth - searchBtnSpacing - totalBtnWidth;
+            int installedX = refreshInstalledX + refreshInstalledBtnWidth + spacing;
+            int searchX = installedX + installedBtnWidth + spacing;
+            int endSearchX = searchX + searchBtnWidth + spacing;
+            
+            MoveWindow(g_hRefreshInstalledBtn, refreshInstalledX, margin, refreshInstalledBtnWidth, btnHeight, TRUE);
+            MoveWindow(g_hInstalledBtn, installedX, margin, installedBtnWidth, btnHeight, TRUE);
+            MoveWindow(g_hSearchBtn, searchX, margin, searchBtnWidth, btnHeight, TRUE);
+            MoveWindow(g_hEndSearchBtn, endSearchX, margin, endSearchBtnWidth, btnHeight, TRUE);
+        } else {
+            int totalBtnWidth = installedBtnWidth + spacing + searchBtnWidth + spacing + endSearchBtnWidth;
+            int installedX = rc.right - margin - langComboWidth - searchBtnSpacing - totalBtnWidth;
+            int searchX = installedX + installedBtnWidth + spacing;
+            int endSearchX = searchX + searchBtnWidth + spacing;
+            
+            MoveWindow(g_hInstalledBtn, installedX, margin, installedBtnWidth, btnHeight, TRUE);
+            MoveWindow(g_hSearchBtn, searchX, margin, searchBtnWidth, btnHeight, TRUE);
+            MoveWindow(g_hEndSearchBtn, endSearchX, margin, endSearchBtnWidth, btnHeight, TRUE);
+        }
     } else {
-        // Search and Installed buttons visible: [Installed] [Search] ... [Language]
-        int totalBtnWidth = installedBtnWidth + spacing + searchBtnWidth;
-        int installedX = rc.right - margin - langComboWidth - searchBtnSpacing - totalBtnWidth;
-        int searchX = installedX + installedBtnWidth + spacing;
-        
-        MoveWindow(g_hInstalledBtn, installedX, margin, installedBtnWidth, btnHeight, TRUE);
-        MoveWindow(g_hSearchBtn, searchX, margin, searchBtnWidth, btnHeight, TRUE);
+        // Search, Installed, and maybe Refresh Installed buttons visible
+        if (showRefreshInstalled) {
+            int totalBtnWidth = refreshInstalledBtnWidth + spacing + installedBtnWidth + spacing + searchBtnWidth;
+            int refreshInstalledX = rc.right - margin - langComboWidth - searchBtnSpacing - totalBtnWidth;
+            int installedX = refreshInstalledX + refreshInstalledBtnWidth + spacing;
+            int searchX = installedX + installedBtnWidth + spacing;
+            
+            MoveWindow(g_hRefreshInstalledBtn, refreshInstalledX, margin, refreshInstalledBtnWidth, btnHeight, TRUE);
+            MoveWindow(g_hInstalledBtn, installedX, margin, installedBtnWidth, btnHeight, TRUE);
+            MoveWindow(g_hSearchBtn, searchX, margin, searchBtnWidth, btnHeight, TRUE);
+        } else {
+            int totalBtnWidth = installedBtnWidth + spacing + searchBtnWidth;
+            int installedX = rc.right - margin - langComboWidth - searchBtnSpacing - totalBtnWidth;
+            int searchX = installedX + installedBtnWidth + spacing;
+            
+            MoveWindow(g_hInstalledBtn, installedX, margin, installedBtnWidth, btnHeight, TRUE);
+            MoveWindow(g_hSearchBtn, searchX, margin, searchBtnWidth, btnHeight, TRUE);
+        }
     }
     
     // Left panel
@@ -1566,13 +1800,19 @@ INT_PTR CALLBACK IconLoadingDialogProc(HWND hDlg, UINT message, WPARAM wParam, L
             HICON hIcon = LoadIcon(NULL, IDI_INFORMATION);
             SendDlgItemMessage(hDlg, IDC_LOADING_ICON, STM_SETICON, (WPARAM)hIcon, 0);
             
-            // Get text control
+            // Get text control and set bold font
             hText = GetDlgItem(hDlg, IDC_LOADING_TEXT);
+            if (hText) {
+                HFONT hTextFont = CreateFontW(16, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
+                    DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+                    CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
+                SendMessageW(hText, WM_SETFONT, (WPARAM)hTextFont, TRUE);
+            }
             
-            // Get spinner control and set up large font
+            // Get spinner control and set up large font (matches startup spinner)
             hSpinner = GetDlgItem(hDlg, IDC_LOADING_ANIMATE);
             if (hSpinner) {
-                hSpinnerFont = CreateFontW(40, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+                hSpinnerFont = CreateFontW(60, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
                     DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
                     CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
                 SendMessageW(hSpinner, WM_SETFONT, (WPARAM)hSpinnerFont, TRUE);
@@ -2073,8 +2313,8 @@ bool LoadLocale(const std::wstring& lang) {
     // Read key-value pairs
     std::wstring line;
     while (std::getline(file, line)) {
-        // Skip comments and empty lines
-        if (line.empty() || line[0] == L'#') continue;
+        // Skip comments, empty lines, and section headers
+        if (line.empty() || line[0] == L'#' || line[0] == L'[') continue;
 
         // Parse key=value
         size_t eq = line.find(L'=');
@@ -2085,6 +2325,13 @@ bool LoadLocale(const std::wstring& lang) {
             // Trim whitespace
             key = Trim(key);
             value = Trim(value);
+            
+            // Convert escaped \n to Windows line breaks \r\n
+            size_t pos = 0;
+            while ((pos = value.find(L"\\n", pos)) != std::wstring::npos) {
+                value.replace(pos, 2, L"\r\n");
+                pos += 2;  // Skip past the \r\n we just inserted
+            }
 
             // Store in locale struct
             if (key == L"lang_name") g_locale.lang_name = value;
@@ -2097,8 +2344,47 @@ bool LoadLocale(const std::wstring& lang) {
             else if (key == L"all") g_locale.all = value;
             else if (key == L"title") g_locale.title = value;
             else if (key == L"processing_database") g_locale.processing_database = value;
+            else if (key == L"querying_winget") g_locale.querying_winget = value;
             else if (key == L"wait_moment") g_locale.wait_moment = value;
             else if (key == L"repopulating_table") g_locale.repopulating_table = value;
+            else if (key == L"release_notes_title") g_locale.release_notes_title = value;
+            else if (key == L"fetching_release_notes") g_locale.fetching_release_notes = value;
+            else if (key == L"release_notes_unavailable") g_locale.release_notes_unavailable = value;
+            else if (key == L"release_notes_fetch_error") g_locale.release_notes_fetch_error = value;
+            else if (key == L"close") g_locale.close = value;
+            // App Details Dialog
+            else if (key == L"app_details_title") g_locale.app_details_title = value;
+            else if (key == L"publisher_label") g_locale.publisher_label = value;
+            else if (key == L"version_label") g_locale.version_label = value;
+            else if (key == L"package_id_label") g_locale.package_id_label = value;
+            else if (key == L"source_label") g_locale.source_label = value;
+            else if (key == L"status_label") g_locale.status_label = value;
+            else if (key == L"not_installed") g_locale.not_installed = value;
+            else if (key == L"installed") g_locale.installed = value;
+            else if (key == L"description_label") g_locale.description_label = value;
+            else if (key == L"technical_info_label") g_locale.technical_info_label = value;
+            else if (key == L"homepage_label") g_locale.homepage_label = value;
+            else if (key == L"license_label") g_locale.license_label = value;
+            else if (key == L"installer_type_label") g_locale.installer_type_label = value;
+            else if (key == L"architecture_label") g_locale.architecture_label = value;
+            else if (key == L"tags_label") g_locale.tags_label = value;
+            else if (key == L"view_release_notes_btn") g_locale.view_release_notes_btn = value;
+            else if (key == L"no_description") g_locale.no_description = value;
+            else if (key == L"unknown") g_locale.unknown = value;
+            else if (key == L"not_available") g_locale.not_available = value;
+            else if (key == L"no_tags") g_locale.no_tags = value;
+            else if (key == L"install_btn") g_locale.install_btn = value;
+            else if (key == L"uninstall_btn") g_locale.uninstall_btn = value;
+            else if (key == L"reinstall_btn") g_locale.reinstall_btn = value;
+            else if (key == L"confirm_install_title") g_locale.confirm_install_title = value;
+            else if (key == L"confirm_install_msg") g_locale.confirm_install_msg = value;
+            else if (key == L"confirm_uninstall_title") g_locale.confirm_uninstall_title = value;
+            else if (key == L"confirm_uninstall_msg") g_locale.confirm_uninstall_msg = value;
+            else if (key == L"confirm_reinstall_title") g_locale.confirm_reinstall_title = value;
+            else if (key == L"confirm_reinstall_msg") g_locale.confirm_reinstall_msg = value;
+            else if (key == L"cancel_btn") g_locale.cancel_btn = value;
+            else if (key == L"refresh_installed_btn") g_locale.refresh_installed_btn = value;
+            else if (key == L"refresh_installed_tooltip") g_locale.refresh_installed_tooltip = value;
         }
     }
 

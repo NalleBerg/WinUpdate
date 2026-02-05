@@ -9,14 +9,14 @@ IDI_APP_ICON ICON "wpm_logo.ico"
 IDB_PNG1 RCDATA "wpm_logo.png"
 
 // Loading dialog
-IDD_LOADING_DIALOG DIALOGEX 0, 0, 250, 65
+IDD_LOADING_DIALOG DIALOGEX 0, 0, 250, 85
 STYLE DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION
-CAPTION "Wait a moment...."
+CAPTION ""
 FONT 9, "Segoe UI", 700
 BEGIN
     ICON            32516, IDC_LOADING_ICON, 15, 15, 21, 20
-    LTEXT           "Repopulating table...", IDC_LOADING_TEXT, 45, 15, 190, 10, SS_CENTER
-    LTEXT           "", IDC_LOADING_ANIMATE, 45, 30, 190, 30, SS_CENTER
+    LTEXT           "", IDC_LOADING_TEXT, 45, 15, 190, 30, SS_CENTER | SS_NOPREFIX
+    LTEXT           "", IDC_LOADING_ANIMATE, 45, 43, 190, 30, SS_CENTER
 END
 
 // Search dialog
@@ -51,7 +51,7 @@ BEGIN
 END
 
 // App details dialog
-IDD_APP_DETAILS DIALOGEX 0, 0, 500, 295
+IDD_APP_DETAILS DIALOGEX 0, 0, 500, 276
 STYLE DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Application Details"
 FONT 11, "Segoe UI"
@@ -63,46 +63,60 @@ BEGIN
     LTEXT           "App Name", IDC_APP_NAME, 150, 12, 340, 20, SS_NOPREFIX
     
     // Publisher
-    LTEXT           "Publisher:", -1, 150, 35, 60, 10
+    LTEXT           "Publisher:", IDC_LABEL_PUBLISHER, 150, 35, 60, 10
     LTEXT           "...", IDC_APP_PUBLISHER, 215, 35, 275, 10
     
     // Version
-    LTEXT           "Version:", -1, 150, 48, 60, 10
+    LTEXT           "Version:", IDC_LABEL_VERSION, 150, 48, 60, 10
     LTEXT           "...", IDC_APP_VERSION, 215, 48, 120, 10
     
     // Package ID (right after icon with just 2 pixels gap)
-    LTEXT           "Package ID:", -1, 12, 64, 60, 10
+    LTEXT           "Package ID:", IDC_LABEL_PACKAGE_ID, 12, 64, 60, 10
     LTEXT           "...", IDC_APP_PACKAGE_ID, 75, 64, 415, 10, SS_NOPREFIX
     
     // Source
-    LTEXT           "Source:", -1, 12, 79, 60, 10
+    LTEXT           "Source:", IDC_LABEL_SOURCE, 12, 79, 60, 10
     LTEXT           "...", IDC_APP_SOURCE, 75, 79, 100, 10
     
     // Install status
-    LTEXT           "Status:", -1, 12, 94, 60, 10
+    LTEXT           "Status:", IDC_LABEL_STATUS, 12, 94, 60, 10
     LTEXT           "Not Installed", IDC_APP_STATUS, 75, 94, 200, 10
     
     // Description (multi-line, scrollable)
-    GROUPBOX        "Description", -1, 12, 111, 476, 75
-    EDITTEXT        IDC_APP_DESCRIPTION, 20, 126, 460, 53, ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL | WS_VSCROLL
+    GROUPBOX        "Description", IDC_GROUPBOX_DESCRIPTION, 12, 111, 476, 56
+    EDITTEXT        IDC_APP_DESCRIPTION, 20, 126, 460, 34, ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL | WS_VSCROLL
     
     // Technical details
-    GROUPBOX        "Technical Information", -1, 12, 191, 476, 50
-    LTEXT           "Homepage:", -1, 20, 206, 60, 10
-    EDITTEXT        IDC_APP_HOMEPAGE, 85, 206, 395, 10, ES_READONLY | ES_AUTOHSCROLL
-    LTEXT           "License:", -1, 20, 219, 60, 10
-    LTEXT           "...", IDC_APP_LICENSE, 85, 219, 130, 10
-    LTEXT           "Installer Type:", -1, 230, 219, 60, 10
-    LTEXT           "...", IDC_APP_INSTALLER, 295, 219, 80, 10
-    LTEXT           "Architecture:", -1, 385, 219, 50, 10
-    LTEXT           "...", IDC_APP_ARCH, 440, 219, 40, 10
+    GROUPBOX        "Technical Information", IDC_GROUPBOX_TECHNICAL, 12, 172, 476, 50
+    LTEXT           "Homepage:", IDC_LABEL_HOMEPAGE, 20, 187, 60, 10
+    EDITTEXT        IDC_APP_HOMEPAGE, 85, 187, 395, 10, ES_READONLY | ES_AUTOHSCROLL
+    LTEXT           "License:", IDC_LABEL_LICENSE, 20, 200, 60, 10
+    LTEXT           "...", IDC_APP_LICENSE, 85, 200, 130, 10
+    LTEXT           "Installer Type:", IDC_LABEL_INSTALLER_TYPE, 230, 200, 60, 10
+    LTEXT           "...", IDC_APP_INSTALLER, 295, 200, 80, 10
+    LTEXT           "Architecture:", IDC_LABEL_ARCHITECTURE, 385, 200, 50, 10
+    LTEXT           "...", IDC_APP_ARCH, 440, 200, 40, 10
     
     // Tags (single line with proper width to show all text)
-    LTEXT           "Tags:", -1, 12, 248, 30, 10
-    EDITTEXT        IDC_APP_TAGS, 45, 244, 443, 24, ES_MULTILINE | ES_AUTOHSCROLL | WS_HSCROLL
+    LTEXT           "Tags:", IDC_LABEL_TAGS, 12, 229, 30, 10
+    EDITTEXT        IDC_APP_TAGS, 45, 225, 443, 24, ES_MULTILINE | ES_AUTOHSCROLL | WS_HSCROLL
     
     // Buttons
-    DEFPUSHBUTTON   "Close", IDOK, 418, 273, 70, 14
+    PUSHBUTTON      "Install", IDC_BTN_INSTALL, 12, 254, 70, 14
+    PUSHBUTTON      "Reinstall", IDC_BTN_REINSTALL, 12, 254, 70, 14
+    PUSHBUTTON      "Uninstall", IDC_BTN_UNINSTALL, 88, 254, 70, 14
+    DEFPUSHBUTTON   "Close", IDOK, 418, 254, 70, 14
+END
+
+// Confirmation dialog for install/uninstall operations
+IDD_CONFIRM_ACTION DIALOG 0, 0, 300, 110
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Confirm Action"
+FONT 8, "MS Shell Dlg"
+BEGIN
+    LTEXT           "Confirmation message", IDC_CONFIRM_MESSAGE, 14, 14, 272, 40
+    DEFPUSHBUTTON   "OK", IDOK, 135, 80, 70, 14
+    PUSHBUTTON      "Cancel", IDCANCEL, 215, 80, 70, 14
 END
 
 // Version information

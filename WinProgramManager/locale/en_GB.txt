@@ -15,6 +15,7 @@ title=WinProgram Manager
 
 # Loading messages
 processing_database=Processing database, please wait...
+querying_winget=Checking installed apps with winget.\nThis can take some time...
 wait_moment=Wait a moment....
 
 # Updater GUI
@@ -40,3 +41,7 @@ updater_backup_failed=ERROR: Failed to create database backup!\n
 updater_restore_failed=ERROR: Failed to restore database backup!\n
 
 repopulating_table=Repopulating table...
+
+# Installed apps management
+refresh_installed_btn=Refresh Installed Apps
+refresh_installed_tooltip=Discover apps installed outside this manager.\nThis may take a while.

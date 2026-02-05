@@ -50,6 +50,12 @@ foreach ($packageId in $packageList) {
     $packageId = $packageId.Trim()
     if ([string]::IsNullOrWhiteSpace($packageId)) { continue }
     
+    # Skip numeric-only package IDs (like "1.2.3.4")
+    if ($packageId -match '^[0-9.]+$') {
+        Write-Host "    Skipping numeric ID: $packageId" -ForegroundColor Gray
+        continue
+    }
+    
     Write-Host "    Adding: $packageId" -ForegroundColor White
     
     try {
@@ -65,6 +71,18 @@ foreach ($packageId in $packageList) {
         $description = ""
         $homepage = ""
         $license = ""
+        $author = ""
+        $copyright = ""
+        $licenseUrl = ""
+        $privacyUrl = ""
+        $source = "winget"
+        $installerType = "Unknown"
+        $architecture = "x64"
+        $documentationUrl = ""
+        $installerUrl = ""
+        $installerSha256 = ""
+        $offlineDistributionSupported = ""
+        $commands = ""
         $tags = @()
         $inTags = $false
         
@@ -90,6 +108,19 @@ foreach ($packageId in $packageList) {
                     "Description" { $description = $value }
                     "Homepage" { $homepage = $value }
                     "License" { $license = $value }
+                    "Author" { $author = $value }
+                    "Copyright" { $copyright = $value }
+                    "License Url" { $licenseUrl = $value }
+                    "Privacy Url" { $privacyUrl = $value }
+                    "Installer Type" { $installerType = $value }
+                    "Type" { if ([string]::IsNullOrWhiteSpace($installerType) -or $installerType -eq "Unknown") { $installerType = $value } }
+                    "Architecture" { $architecture = $value }
+                    "Platform" { if ([string]::IsNullOrWhiteSpace($architecture) -or $architecture -eq "x64") { $architecture = $value } }
+                    "Documentation" { $documentationUrl = $value }
+                    "Installer Url" { $installerUrl = $value }
+                    "Installer SHA256" { $installerSha256 = $value }
+                    "Offline Distribution Supported" { $offlineDistributionSupported = $value }
+                    "Commands" { $commands = $value }
                     "Tags" { $inTags = $true }
                     "Installer" { $inTags = $false }
                 }
@@ -117,12 +148,24 @@ foreach ($packageId in $packageList) {
         $description = $description -replace "'", "''"
         $homepage = $homepage -replace "'", "''"
         $license = $license -replace "'", "''"
+        $author = $author -replace "'", "''"
+        $copyright = $copyright -replace "'", "''"
+        $licenseUrl = $licenseUrl -replace "'", "''"
+        $privacyUrl = $privacyUrl -replace "'", "''"
+        $source = $source -replace "'", "''"
+        $installerType = $installerType -replace "'", "''"
+        $architecture = $architecture -replace "'", "''"
+        $documentationUrl = $documentationUrl -replace "'", "''"
+        $installerUrl = $installerUrl -replace "'", "''"
+        $installerSha256 = $installerSha256 -replace "'", "''"
+        $offlineDistributionSupported = $offlineDistributionSupported -replace "'", "''"
+        $commands = $commands -replace "'", "''"
         $packageId = $packageId -replace "'", "''"
         
-        # Insert into apps table
+        # Insert into apps table with all 22 fields
         $insertSql = @"
-INSERT OR IGNORE INTO apps (package_id, name, version, publisher, moniker, description, homepage, license)
-VALUES ('$packageId', '$name', '$version', '$publisher', '$moniker', '$description', '$homepage', '$license');
+INSERT OR IGNORE INTO apps (package_id, name, version, publisher, moniker, description, homepage, license, author, copyright, license_url, privacy_url, source, installer_type, architecture, documentation_url, installer_url, installer_sha256, offline_distribution_supported, commands)
+VALUES ('$packageId', '$name', '$version', '$publisher', '$moniker', '$description', '$homepage', '$license', '$author', '$copyright', '$licenseUrl', '$privacyUrl', '$source', '$installerType', '$architecture', '$documentationUrl', '$installerUrl', '$installerSha256', '$offlineDistributionSupported', '$commands');
 "@
         
         & $sqliteExe $DatabasePath $insertSql

@@ -13,6 +13,8 @@ add_executable(WinProgramManager WIN32
     search.cpp
     installed_apps.cpp
     app_details.cpp
+    spinner_dialog.cpp
+    install_dialog.cpp
     winprogrammanager.rc
 )
 
@@ -30,6 +32,8 @@ target_link_libraries(WinProgramManager
     shell32
     shlwapi
     ole32
+    oleaut32
+    winhttp
 )
 
 # Link options for MinGW to properly handle wWinMain
@@ -161,3 +165,15 @@ else()
     target_compile_options(WinProgramUpdaterConsole PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
+# Winget Helper executable (elevated process for install/reinstall/uninstall)
+add_executable(winget_helper WIN32
+    winget_helper.cpp
+)
+
+# Link options for MinGW
+if(MINGW)
+    target_link_options(winget_helper PRIVATE -municode -mwindows)
+endif()
+
+# Enable Unicode
+target_compile_definitions(winget_helper PRIVATE UNICODE _UNICODE)

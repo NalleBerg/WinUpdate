@@ -6,6 +6,61 @@
 // Forward declaration
 struct sqlite3;
 
+// Locale structure (shared with main.cpp)
+struct Locale {
+    std::wstring lang_name;
+    std::wstring thousands_sep;
+    std::wstring decimal_sep;
+    std::wstring categories;
+    std::wstring apps;
+    std::wstring search_tags;
+    std::wstring search_apps;
+    std::wstring all;
+    std::wstring title;
+    std::wstring processing_database;
+    std::wstring querying_winget;
+    std::wstring wait_moment;
+    std::wstring repopulating_table;
+    std::wstring release_notes_title;
+    std::wstring fetching_release_notes;
+    std::wstring release_notes_unavailable;
+    std::wstring release_notes_fetch_error;
+    std::wstring close;
+    // App Details Dialog
+    std::wstring app_details_title;
+    std::wstring publisher_label;
+    std::wstring version_label;
+    std::wstring package_id_label;
+    std::wstring source_label;
+    std::wstring status_label;
+    std::wstring not_installed;
+    std::wstring installed;
+    std::wstring description_label;
+    std::wstring technical_info_label;
+    std::wstring homepage_label;
+    std::wstring license_label;
+    std::wstring installer_type_label;
+    std::wstring architecture_label;
+    std::wstring tags_label;
+    std::wstring view_release_notes_btn;
+    std::wstring no_description;
+    std::wstring unknown;
+    std::wstring not_available;
+    std::wstring no_tags;
+    std::wstring install_btn;
+    std::wstring uninstall_btn;
+    std::wstring reinstall_btn;
+    std::wstring confirm_install_title;
+    std::wstring confirm_install_msg;
+    std::wstring confirm_uninstall_title;
+    std::wstring confirm_uninstall_msg;
+    std::wstring confirm_reinstall_title;
+    std::wstring confirm_reinstall_msg;
+    std::wstring cancel_btn;
+    std::wstring refresh_installed_btn;
+    std::wstring refresh_installed_tooltip;
+};
+
 // App details data structure
 struct AppDetailsData {
     std::wstring package_id;
@@ -24,6 +79,7 @@ struct AppDetailsData {
     std::vector<unsigned char> icon_data;
     std::wstring icon_type;
     HICON hIcon;  // Pre-loaded icon from list view
+    sqlite3* db;  // Database connection for syncing after operations
 };
 
 // Function declarations

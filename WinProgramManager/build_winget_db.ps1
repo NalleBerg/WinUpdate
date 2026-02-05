@@ -389,24 +389,44 @@ foreach ($line in $lines) {
     }
     
     # Parse line: Name Id Version Source/Match
-    # Split by multiple spaces (2 or more)
-    $parts = $line -split '\s{2,}' | Where-Object { ![string]::IsNullOrWhiteSpace($_) }
+    # Parse right-to-left like SyncInstalledApps() in C++
+    # Split by whitespace into tokens
+    $tokens = $line -split '\s+' | Where-Object { ![string]::IsNullOrWhiteSpace($_) }
     
-    if ($parts.Count -ge 2) {
-        $id = $parts[1].Trim()
+    if ($tokens.Count -ge 2) {
+        # Check rightmost token - must NOT contain digits (should be "winget" or similar)
+        $rightmost = $tokens[-1]
+        if ($rightmost -match '\d') {
+            # No source column, rightmost is version
+            # ID is second from right
+            if ($tokens.Count -ge 2) {
+                $id = $tokens[-2].Trim()
+            } else {
+                continue
+            }
+        } else {
+            # Has source column
+            # ID is third from right: Source Version ID Name...
+            if ($tokens.Count -ge 3) {
+                $id = $tokens[-3].Trim()
+            } else {
+                continue
+            }
+        }
+        
         # Skip obviously corrupted IDs (numbers followed by ASCII text without proper separator)
         if ($id -match '^\d+\.\d+[A-Za-z]') {
             Write-Host "  [WARNING] Skipped corrupted ID (encoding issue): $id" -ForegroundColor Yellow
             continue
         }
-        # Skip IDs that are only version numbers (digits, dots, plus signs)
-        if ($id -match '^[0-9.+]+$') {
+        # Skip IDs that are only version numbers (digits, dots)
+        if ($id -match '^[0-9.]+$') {
             Write-Host "  [WARNING] Skipped version-only ID: $id" -ForegroundColor Yellow
             continue
         }
-        # Accept proper package IDs (with Unicode support for Chinese publishers)
-        # Must contain at least one letter or Unicode character
-        if ($id -match '^\S+\.\S+$' -and $id -match '[A-Za-z\p{L}]') {
+        # Accept proper package IDs (with Unicode support)
+        # Must contain at least one dot or backslash AND at least one letter
+        if (($id -match '\.' -or $id -match '\\') -and $id -match '[A-Za-z\p{L}]') {
             $packages += $id
         }
     }

@@ -2,6 +2,49 @@
 Notes for future versioned changelog
 
 =====================================
+Date: 2026-02-05 (Update 11 - Installed Apps Refresh & i18n Fix)
+Component: WinProgramManager
+
+INSTALLED APPS: Automatic Cleanup & Manual Refresh
+---------------------------------------------------------
+- NEW FEATURE: "Refresh Installed Apps" button appears when Installed filter is active
+- Automatic cleanup: CleanupInstalledApps() verifies registry entries for all apps
+- Comprehensive discovery: DiscoverInstalledApps() uses winget list for external installations
+- Button styling: Blue (RGB 10,57,129) matching existing UI, conditionally positioned
+- Two-phase startup: Winget phase → Database phase with proper progress text
+- Manual refresh: Users can detect apps installed outside the manager
+
+INTERNATIONALIZATION: Critical Fixes
+---------------------------------------------------------
+- FIXED: Locale loading now uses .txt extension (was incorrectly looking for .ini)
+- FIXED: Windows line endings (CRLF \r\n) now used for multi-line text display
+- Multi-line support: Startup dialog, button text, and tooltips now display correctly
+- Locale files verified: en_GB.txt, nb_NO.txt, sv_SE.txt all loading properly
+- Norwegian release ready: All UI text uses i18n system with proper formatting
+
+MANUAL UPDATE DIALOG: Visual Enhancements
+---------------------------------------------------------
+- Text styling: 16pt Segoe UI Bold for better visibility
+- Multi-line display: Both message lines now visible ("Checking installed apps..." / "This can take some time...")
+- Spinner sizing: Matched to startup spinner (60pt font) for consistency
+- Dialog dimensions: 250×85 pixels with proper spacing (text at y=15, spinner at y=43)
+- Layout optimization: Spinner positioned to avoid bottom cutoff
+
+TOOLTIP SYSTEM: WinUpdate-Style Implementation
+---------------------------------------------------------
+- Multi-line tooltip: DT_WORDBREAK support with Windows CRLF line breaks
+- Custom tooltip class: WPMSimpleTooltip with COLOR_INFOBK background
+- Positioning: Appears above cursor, auto-hides on mouse leave
+- Content: "Discover apps installed outside this manager.\nThis may take a while."
+
+TECHNICAL IMPLEMENTATION:
+- CleanupInstalledApps(): Registry verification using HKLM/HKCU uninstall keys
+- DiscoverInstalledApps(): Full winget list execution with parsed output
+- LoadLocale(): Converts \\n to \r\n for proper Windows text control display
+- Button visibility: ShowWindow(SW_SHOW/SW_HIDE) based on g_installedFilterActive
+- Dialog resource: IDD_LOADING_DIALOG with proper control dimensions and styles
+
+=====================================
 Date: 2026-02-03 (Update 10 - App Details Dialog UX Enhancement)
 Component: WinProgramManager
 

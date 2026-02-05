@@ -15,6 +15,7 @@ title=WinProgram Manager
 
 # Loading messages
 processing_database=Bearbetar databas, vänligen vänta...
+querying_winget=Kontrollerar installerade appar med winget.\nDetta kan ta en stund...
 wait_moment=Vänta ett ögonblick....
 
 # Updater GUI
@@ -40,3 +41,7 @@ updater_backup_failed=FEL: Kunde inte skapa databassäkerhetskopia!\n
 updater_restore_failed=FEL: Kunde inte återställa databassäkerhetskopia!\n
 
 repopulating_table=Återuppbygger tabell...
+
+# Installed apps management
+refresh_installed_btn=Uppdatera installerade appar
+refresh_installed_tooltip=Upptäck appar installerade utanför detta program.\nDetta kan ta en stund.

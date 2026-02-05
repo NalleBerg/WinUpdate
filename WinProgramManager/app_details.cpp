@@ -1,9 +1,16 @@
 #include "app_details.h"
 #include "resource.h"
+#include "spinner_dialog.h"
+#include "install_dialog.h"
+#include "installed_apps.h"
 #include <sqlite3.h>
 #include <commctrl.h>
 #include <sstream>
 #include <algorithm>
+#include <fstream>
+
+// External locale
+extern Locale g_locale;
 
 // Helper function to convert UTF-8 to wide string
 static std::wstring Utf8ToWide(const char* utf8) {
@@ -133,6 +140,84 @@ bool LoadAppDetails(sqlite3* db, const std::wstring& packageId, AppDetailsData& 
     return true;
 }
 
+// Action type for confirmation dialog
+enum ActionType {
+    ACTION_INSTALL,
+    ACTION_UNINSTALL,
+    ACTION_REINSTALL
+};
+
+// Data structure for confirmation dialog
+struct ConfirmActionData {
+    ActionType action;
+    std::wstring appName;
+};
+
+// Confirmation dialog procedure
+INT_PTR CALLBACK ConfirmActionDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
+    static ConfirmActionData* pConfirmData = nullptr;
+    
+    switch (message) {
+        case WM_INITDIALOG: {
+            pConfirmData = reinterpret_cast<ConfirmActionData*>(lParam);
+            if (!pConfirmData) {
+                EndDialog(hDlg, IDCANCEL);
+                return TRUE;
+            }
+            
+            // Set dialog title and message based on action type
+            std::wstring title, message, buttonText;
+            switch (pConfirmData->action) {
+                case ACTION_INSTALL:
+                    title = g_locale.confirm_install_title;
+                    message = g_locale.confirm_install_msg;
+                    buttonText = g_locale.install_btn;
+                    break;
+                case ACTION_UNINSTALL:
+                    title = g_locale.confirm_uninstall_title;
+                    message = g_locale.confirm_uninstall_msg;
+                    buttonText = g_locale.uninstall_btn;
+                    break;
+                case ACTION_REINSTALL:
+                    title = g_locale.confirm_reinstall_title;
+                    message = g_locale.confirm_reinstall_msg;
+                    buttonText = g_locale.reinstall_btn;
+                    break;
+            }
+            
+            // Replace %s with app name
+            size_t pos = message.find(L"%s");
+            if (pos != std::wstring::npos) {
+                message.replace(pos, 2, pConfirmData->appName);
+            }
+            
+            SetWindowTextW(hDlg, title.c_str());
+            SetDlgItemTextW(hDlg, IDC_CONFIRM_MESSAGE, message.c_str());
+            SetDlgItemTextW(hDlg, IDOK, buttonText.c_str());
+            SetDlgItemTextW(hDlg, IDCANCEL, g_locale.cancel_btn.c_str());
+            
+            // Center dialog
+            RECT rc, rcParent;
+            GetWindowRect(hDlg, &rc);
+            GetWindowRect(GetParent(hDlg), &rcParent);
+            int x = rcParent.left + (rcParent.right - rcParent.left - (rc.right - rc.left)) / 2;
+            int y = rcParent.top + (rcParent.bottom - rcParent.top - (rc.bottom - rc.top)) / 2;
+            SetWindowPos(hDlg, NULL, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+            
+            return TRUE;
+        }
+        
+        case WM_COMMAND:
+            if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL) {
+                EndDialog(hDlg, LOWORD(wParam));
+                return TRUE;
+            }
+            break;
+    }
+    
+    return FALSE;
+}
+
 // Dialog procedure for app details
 INT_PTR CALLBACK AppDetailsDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
     static AppDetailsData* pData = nullptr;
@@ -146,6 +231,23 @@ INT_PTR CALLBACK AppDetailsDialogProc(HWND hDlg, UINT message, WPARAM wParam, LP
                 EndDialog(hDlg, IDCANCEL);
                 return TRUE;
             }
+            
+            // Set dialog title
+            SetWindowTextW(hDlg, g_locale.app_details_title.c_str());
+            
+            // Set all static labels
+            SetDlgItemTextW(hDlg, IDC_LABEL_PUBLISHER, g_locale.publisher_label.c_str());
+            SetDlgItemTextW(hDlg, IDC_LABEL_VERSION, g_locale.version_label.c_str());
+            SetDlgItemTextW(hDlg, IDC_LABEL_PACKAGE_ID, g_locale.package_id_label.c_str());
+            SetDlgItemTextW(hDlg, IDC_LABEL_SOURCE, g_locale.source_label.c_str());
+            SetDlgItemTextW(hDlg, IDC_LABEL_STATUS, g_locale.status_label.c_str());
+            SetDlgItemTextW(hDlg, IDC_GROUPBOX_DESCRIPTION, g_locale.description_label.c_str());
+            SetDlgItemTextW(hDlg, IDC_GROUPBOX_TECHNICAL, g_locale.technical_info_label.c_str());
+            SetDlgItemTextW(hDlg, IDC_LABEL_HOMEPAGE, g_locale.homepage_label.c_str());
+            SetDlgItemTextW(hDlg, IDC_LABEL_LICENSE, g_locale.license_label.c_str());
+            SetDlgItemTextW(hDlg, IDC_LABEL_INSTALLER_TYPE, g_locale.installer_type_label.c_str());
+            SetDlgItemTextW(hDlg, IDC_LABEL_ARCHITECTURE, g_locale.architecture_label.c_str());
+            SetDlgItemTextW(hDlg, IDC_LABEL_TAGS, g_locale.tags_label.c_str());
             
             // Center dialog on parent
             HWND hParent = GetParent(hDlg);
@@ -174,53 +276,53 @@ INT_PTR CALLBACK AppDetailsDialogProc(HWND hDlg, UINT message, WPARAM wParam, LP
             SetDlgItemText(hDlg, IDC_APP_NAME, pData->name.c_str());
             
             // Set publisher
-            SetDlgItemText(hDlg, IDC_APP_PUBLISHER, pData->publisher.empty() ? L"Unknown" : pData->publisher.c_str());
+            SetDlgItemText(hDlg, IDC_APP_PUBLISHER, pData->publisher.empty() ? g_locale.unknown.c_str() : pData->publisher.c_str());
             
             // Set version
-            SetDlgItemText(hDlg, IDC_APP_VERSION, pData->version.empty() ? L"Unknown" : pData->version.c_str());
+            SetDlgItemText(hDlg, IDC_APP_VERSION, pData->version.empty() ? g_locale.unknown.c_str() : pData->version.c_str());
             
             // Set package ID
             SetDlgItemText(hDlg, IDC_APP_PACKAGE_ID, pData->package_id.c_str());
             
             // Set source
-            SetDlgItemText(hDlg, IDC_APP_SOURCE, pData->source.empty() ? L"Unknown" : pData->source.c_str());
+            SetDlgItemText(hDlg, IDC_APP_SOURCE, pData->source.empty() ? g_locale.unknown.c_str() : pData->source.c_str());
             
             // Set install status
             std::wstring status;
             if (pData->is_installed) {
-                status = L"Installed";
+                status = g_locale.installed;
                 if (!pData->installed_version.empty()) {
                     status += L" (v" + pData->installed_version + L")";
                 }
             } else {
-                status = L"Not Installed";
+                status = g_locale.not_installed;
             }
             SetDlgItemText(hDlg, IDC_APP_STATUS, status.c_str());
             
             // Set description
             SetDlgItemText(hDlg, IDC_APP_DESCRIPTION, 
-                          pData->description.empty() ? L"No description available." : pData->description.c_str());
+                          pData->description.empty() ? g_locale.no_description.c_str() : pData->description.c_str());
             
             // Set homepage (plain text)
             SetDlgItemText(hDlg, IDC_APP_HOMEPAGE, 
-                          pData->homepage.empty() ? L"Not available" : pData->homepage.c_str());
+                          pData->homepage.empty() ? g_locale.not_available.c_str() : pData->homepage.c_str());
             
             // Set license
             SetDlgItemText(hDlg, IDC_APP_LICENSE, 
-                          pData->license.empty() ? L"Unknown" : pData->license.c_str());
+                          pData->license.empty() ? g_locale.unknown.c_str() : pData->license.c_str());
             
             // Set installer type
             SetDlgItemText(hDlg, IDC_APP_INSTALLER, 
-                          pData->installer_type.empty() ? L"Unknown" : pData->installer_type.c_str());
+                          pData->installer_type.empty() ? g_locale.unknown.c_str() : pData->installer_type.c_str());
             
             // Set architecture
             SetDlgItemText(hDlg, IDC_APP_ARCH, 
-                          pData->architecture.empty() ? L"Unknown" : pData->architecture.c_str());
+                          pData->architecture.empty() ? g_locale.unknown.c_str() : pData->architecture.c_str());
             
             // Format and set tags
             std::wstring tagsText;
             if (pData->tags.empty()) {
-                tagsText = L"No tags available";
+                tagsText = g_locale.no_tags;
             } else {
                 for (size_t i = 0; i < pData->tags.size(); i++) {
                     if (i > 0) tagsText += L", ";
@@ -258,9 +360,18 @@ INT_PTR CALLBACK AppDetailsDialogProc(HWND hDlg, UINT message, WPARAM wParam, LP
                 }
             }
             
-            // Disable Install/Uninstall buttons for now (will implement later)
-            EnableWindow(GetDlgItem(hDlg, IDC_BTN_INSTALL), FALSE);
-            EnableWindow(GetDlgItem(hDlg, IDC_BTN_UNINSTALL), FALSE);
+            // Show/hide buttons based on installation status
+            if (pData->is_installed) {
+                // App is installed - show Reinstall and Uninstall, hide Install
+                ShowWindow(GetDlgItem(hDlg, IDC_BTN_INSTALL), SW_HIDE);
+                ShowWindow(GetDlgItem(hDlg, IDC_BTN_REINSTALL), SW_SHOW);
+                ShowWindow(GetDlgItem(hDlg, IDC_BTN_UNINSTALL), SW_SHOW);
+            } else {
+                // App is not installed - show Install, hide Reinstall and Uninstall
+                ShowWindow(GetDlgItem(hDlg, IDC_BTN_INSTALL), SW_SHOW);
+                ShowWindow(GetDlgItem(hDlg, IDC_BTN_REINSTALL), SW_HIDE);
+                ShowWindow(GetDlgItem(hDlg, IDC_BTN_UNINSTALL), SW_HIDE);
+            }
             
             return TRUE;
         }
@@ -275,6 +386,144 @@ INT_PTR CALLBACK AppDetailsDialogProc(HWND hDlg, UINT message, WPARAM wParam, LP
                 // Don't delete hIcon - it's owned by the list view or is shared
                 hDefaultIcon = nullptr;
                 EndDialog(hDlg, LOWORD(wParam));
+                return TRUE;
+            }
+            else if (LOWORD(wParam) == IDC_BTN_INSTALL) {
+                // Show confirmation dialog for install
+                ConfirmActionData confirmData;
+                confirmData.action = ACTION_INSTALL;
+                confirmData.appName = pData->name;
+                
+                INT_PTR result = DialogBoxParam(GetModuleHandle(nullptr), 
+                                               MAKEINTRESOURCE(IDD_CONFIRM_ACTION),
+                                               hDlg, ConfirmActionDialogProc, 
+                                               reinterpret_cast<LPARAM>(&confirmData));
+                
+                if (result == IDOK) {
+                    // User confirmed - install the application
+                    std::vector<std::string> packageIds;
+                    // Convert package ID to UTF-8
+                    int size = WideCharToMultiByte(CP_UTF8, 0, pData->package_id.c_str(), -1, NULL, 0, NULL, NULL);
+                    if (size > 0) {
+                        std::string pkgIdUtf8(size - 1, 0);
+                        WideCharToMultiByte(CP_UTF8, 0, pData->package_id.c_str(), -1, &pkgIdUtf8[0], size, NULL, NULL);
+                        packageIds.push_back(pkgIdUtf8);
+                    }
+                    
+                    // Show install dialog with the WinUpdate UI
+                    // Capture values by copy to avoid warnings about static pointer capture
+                    sqlite3* db = pData->db;
+                    std::wstring pkgId = pData->package_id;
+                    HWND hDialog = hDlg;  // Capture dialog handle for UI update
+                    
+                    ShowInstallDialog(hDlg, packageIds, g_locale.close, 
+                                     [](const char* key) -> std::wstring {
+                                         // Simple passthrough - we don't have translation keys from WinUpdate
+                                         return std::wstring(key, key + strlen(key));
+                                     },
+                                     [db, pkgId, hDialog, pDataPtr = pData]() {
+                                         // Sync installed apps after installation completes
+                                         AppDetailsData* pData = pDataPtr;
+                                         if (db) {
+                                             // Ensure table exists
+                                             const char* createTableSql = 
+                                                 "CREATE TABLE IF NOT EXISTS installed_apps ("
+                                                 "    package_id TEXT PRIMARY KEY,"
+                                                 "    installed_date TEXT,"
+                                                 "    last_seen TEXT,"
+                                                 "    installed_version TEXT,"
+                                                 "    source TEXT"
+                                                 ");";
+                                             sqlite3_exec(db, createTableSql, nullptr, nullptr, nullptr);
+                                             
+                                             // Add this package to installed_apps
+                                             int size = WideCharToMultiByte(CP_UTF8, 0, pkgId.c_str(), -1, NULL, 0, NULL, NULL);
+                                             if (size > 0) {
+                                                 std::string pkgIdUtf8(size - 1, 0);
+                                                 WideCharToMultiByte(CP_UTF8, 0, pkgId.c_str(), -1, &pkgIdUtf8[0], size, NULL, NULL);
+                                                 
+                                                 char timestamp[32];
+                                                 time_t now = time(nullptr);
+                                                 struct tm tm_now;
+                                                 localtime_s(&tm_now, &now);
+                                                 strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &tm_now);
+                                                 
+                                                 const char* insertSql = "INSERT OR REPLACE INTO installed_apps (package_id, installed_date, last_seen, source) VALUES (?, ?, ?, 'winget')";
+                                                 sqlite3_stmt* stmt = nullptr;
+                                                 if (sqlite3_prepare_v2(db, insertSql, -1, &stmt, nullptr) == SQLITE_OK) {
+                                                     sqlite3_bind_text(stmt, 1, pkgIdUtf8.c_str(), -1, SQLITE_TRANSIENT);
+                                                     sqlite3_bind_text(stmt, 2, timestamp, -1, SQLITE_TRANSIENT);
+                                                     sqlite3_bind_text(stmt, 3, timestamp, -1, SQLITE_TRANSIENT);
+                                                     sqlite3_step(stmt);
+                                                     sqlite3_finalize(stmt);
+                                                 }
+                                             }
+                                             
+                                             // Run cleanup to sync installed apps list
+                                             CleanupInstalledApps(db);
+                                             
+                                             // Update in-memory data
+                                             pData->is_installed = true;
+                                             pData->installed_version = pData->version;
+                                             
+                                             // Update UI
+                                             if (IsWindow(hDialog)) {
+                                                 HWND hStatusValue = GetDlgItem(hDialog, IDC_APP_STATUS);
+                                                 if (hStatusValue) {
+                                                     SetWindowTextW(hStatusValue, g_locale.installed.c_str());
+                                                 }
+                                                 
+                                                 HWND hInstallBtn = GetDlgItem(hDialog, IDC_BTN_INSTALL);
+                                                 HWND hUninstallBtn = GetDlgItem(hDialog, IDC_BTN_UNINSTALL);
+                                                 HWND hReinstallBtn = GetDlgItem(hDialog, IDC_BTN_REINSTALL);
+                                                 
+                                                 if (hInstallBtn) EnableWindow(hInstallBtn, FALSE);
+                                                 if (hUninstallBtn) EnableWindow(hUninstallBtn, TRUE);
+                                                 if (hReinstallBtn) EnableWindow(hReinstallBtn, TRUE);
+                                             }
+                                         }
+                                     });
+                }
+                return TRUE;
+            }
+            else if (LOWORD(wParam) == IDC_BTN_UNINSTALL) {
+                // Show confirmation dialog for uninstall
+                ConfirmActionData confirmData;
+                confirmData.action = ACTION_UNINSTALL;
+                confirmData.appName = pData->name;
+                
+                INT_PTR result = DialogBoxParam(GetModuleHandle(nullptr), 
+                                               MAKEINTRESOURCE(IDD_CONFIRM_ACTION),
+                                               hDlg, ConfirmActionDialogProc, 
+                                               reinterpret_cast<LPARAM>(&confirmData));
+                
+                if (result == IDOK) {
+                    // User confirmed - uninstall the application
+                    // TODO: Implement actual uninstallation logic
+                    // TODO: After uninstall completes, call: SyncInstalledAppsWithWinget(pData->db);
+                    MessageBoxW(hDlg, L"Uninstallation functionality will be implemented next.", 
+                               g_locale.uninstall_btn.c_str(), MB_OK | MB_ICONINFORMATION);
+                }
+                return TRUE;
+            }
+            else if (LOWORD(wParam) == IDC_BTN_REINSTALL) {
+                // Show confirmation dialog for reinstall
+                ConfirmActionData confirmData;
+                confirmData.action = ACTION_REINSTALL;
+                confirmData.appName = pData->name;
+                
+                INT_PTR result = DialogBoxParam(GetModuleHandle(nullptr), 
+                                               MAKEINTRESOURCE(IDD_CONFIRM_ACTION),
+                                               hDlg, ConfirmActionDialogProc, 
+                                               reinterpret_cast<LPARAM>(&confirmData));
+                
+                if (result == IDOK) {
+                    // User confirmed - reinstall the application
+                    // TODO: Implement actual reinstallation logic (uninstall + install)
+                    // TODO: After reinstall completes, call: SyncInstalledAppsWithWinget(pData->db);
+                    MessageBoxW(hDlg, L"Reinstallation functionality will be implemented next.", 
+                               g_locale.reinstall_btn.c_str(), MB_OK | MB_ICONINFORMATION);
+                }
                 return TRUE;
             }
             break;
@@ -308,6 +557,9 @@ void ShowAppDetailsDialog(HWND hParent, sqlite3* db, const std::wstring& package
         MessageBox(hParent, L"Failed to load application details.", L"Error", MB_OK | MB_ICONERROR);
         return;
     }
+    
+    // Store database pointer for sync after operations
+    data.db = db;
     
     // Pass the already-loaded icon to the dialog
     data.hIcon = hAppIcon;
