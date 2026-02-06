@@ -989,7 +989,7 @@ static void ShowLoading(HWND parent) {
     // ensure our popup window class is registered and create a top-level border popup
     EnsurePopupClassRegistered(hInst);
     // create a top-level border popup (no caption/title bar) positioned centered over parent
-    g_hLoadingPopup = CreateWindowExW(WS_EX_TOOLWINDOW | WS_EX_TOPMOST, L"WUPopupClass", NULL,
+    g_hLoadingPopup = CreateWindowExW(WS_EX_TOOLWINDOW, L"WUPopupClass", NULL,
         WS_POPUP | WS_BORDER | WS_VISIBLE, x, y, w, h, NULL, NULL, hInst, NULL);
     if (g_hLoadingPopup) {
         // Owner-drawn popup: the window procedure paints icon, title/desc and centered dots.

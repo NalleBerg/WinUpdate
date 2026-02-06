@@ -17,14 +17,14 @@
 #include "search.h"
 #include "installed_apps.h"
 #include "app_details.h"
+#include "about.h"
 
 // Control IDs
 #define ID_SEARCH_BTN 1001
 #define ID_END_SEARCH_BTN 1006
 #define ID_INSTALLED_BTN 1007
 #define ID_REFRESH_INSTALLED_BTN 1008
-#define ID_REINSTALL_BTN 1009
-#define ID_UNINSTALL_BTN 1010
+#define ID_ABOUT_BTN 1009
 #define ID_TAG_TREE 1002
 #define ID_APP_LIST 1004
 #define ID_LANG_COMBO 1005
@@ -38,8 +38,7 @@ HWND g_hEndSearchBtn = NULL;
 HWND g_hInstalledBtn = NULL;
 HWND g_hRefreshInstalledBtn = NULL;
 HWND g_hRefreshTooltip = NULL;
-HWND g_hReinstallBtn = NULL;
-HWND g_hUninstallBtn = NULL;
+HWND g_hAboutBtn = NULL;
 HWND g_hTagTree = NULL;
 HWND g_hTagCountLabel = NULL;
 HWND g_hAppList = NULL;
@@ -127,7 +126,7 @@ DWORD WINAPI LoadingDialogThread(LPVOID lpParam) {
     
     // Create dialog
     g_loadingDlg = CreateWindowExW(
-        WS_EX_DLGMODALFRAME | WS_EX_TOPMOST,
+        WS_EX_DLGMODALFRAME,
         L"LoadingDialogClass",
         g_locale.title.c_str(),
         WS_POPUP | WS_VISIBLE | WS_CAPTION,
@@ -140,7 +139,11 @@ DWORD WINAPI LoadingDialogThread(LPVOID lpParam) {
     GetWindowRect(g_loadingDlg, &rc);
     int x = (GetSystemMetrics(SM_CXSCREEN) - (rc.right - rc.left)) / 2;
     int y = (GetSystemMetrics(SM_CYSCREEN) - (rc.bottom - rc.top)) / 2;
-    SetWindowPos(g_loadingDlg, HWND_TOPMOST, x, y, 0, 0, SWP_NOSIZE | SWP_SHOWWINDOW);
+    SetWindowPos(g_loadingDlg, HWND_TOP, x, y, 0, 0, SWP_NOSIZE | SWP_SHOWWINDOW);
+    
+    // Bring to foreground initially but not topmost (allows switching away)
+    SetForegroundWindow(g_loadingDlg);
+    BringWindowToTop(g_loadingDlg);
     
     // Add logo
     HICON hIcon = (HICON)LoadImageW(hInstance, MAKEINTRESOURCEW(IDI_APP_ICON), IMAGE_ICON, 128, 128, LR_DEFAULTCOLOR);
@@ -673,38 +676,6 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             return 0;
         }
         
-        case WM_USER + 3: {
-            // Re-install completed
-            if (g_hIconLoadingDialog) {
-                DestroyWindow(g_hIconLoadingDialog);
-                g_hIconLoadingDialog = nullptr;
-            }
-            
-            MessageBoxW(hwnd, L"Re-installation completed.", L"Success", MB_ICONINFORMATION | MB_OK);
-            return 0;
-        }
-        
-        case WM_USER + 4: {
-            // Uninstall completed (wParam: 1=success, 0=failure)
-            bool success = (wParam != 0);
-            
-            if (g_hIconLoadingDialog) {
-                DestroyWindow(g_hIconLoadingDialog);
-                g_hIconLoadingDialog = nullptr;
-            }
-            
-            if (success) {
-                // Refresh the UI to remove uninstalled app
-                LoadTags();
-                OnTagSelectionChanged();
-                MessageBoxW(hwnd, L"Uninstallation completed successfully.", L"Success", MB_ICONINFORMATION | MB_OK);
-            } else {
-                MessageBoxW(hwnd, L"Uninstallation failed.", L"Error", MB_ICONERROR | MB_OK);
-            }
-            
-            return 0;
-        }
-        
         case WM_USER: {
             // Database loaded - create controls and load data
             CreateControls(hwnd);
@@ -712,6 +683,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             // Force button redraw to show locale text
             if (g_hRefreshInstalledBtn) {
                 InvalidateRect(g_hRefreshInstalledBtn, NULL, TRUE);
+            }
+            if (g_hAboutBtn) {
+                InvalidateRect(g_hAboutBtn, NULL, TRUE);
             }
             
             // Load all icons into ImageList (must happen after ImageList is created)
@@ -738,6 +712,12 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             // Now show the main window with all data loaded
             ShowWindow(hwnd, SW_SHOW);
             UpdateWindow(hwnd);
+            
+            // Force About button to redraw with locale text
+            if (g_hAboutBtn && IsWindow(g_hAboutBtn)) {
+                InvalidateRect(g_hAboutBtn, NULL, TRUE);
+                UpdateWindow(g_hAboutBtn);
+            }
             
             // Bring window to foreground
             SetForegroundWindow(hwnd);
@@ -843,140 +823,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                     PostMessageW(hwnd, WM_USER + 2, success ? 1 : 0, 0);
                 }).detach();
             }
-            else if (LOWORD(wParam) == ID_REINSTALL_BTN) {
-                // Get selected app
-                int index = ListView_GetNextItem(g_hAppList, -1, LVNI_SELECTED);
-                if (index == -1) return 0;
-                
-                LVITEMW lvi = {};
-                lvi.mask = LVIF_PARAM;
-                lvi.iItem = index;
-                ListView_GetItem(g_hAppList, &lvi);
-                
-                AppInfo* app = (AppInfo*)lvi.lParam;
-                if (!app) return 0;
-                
-                // Format confirmation message
-                std::wstring confirmMsg = g_locale.confirm_reinstall_msg;
-                size_t pos = confirmMsg.find(L"%s");
-                if (pos != std::wstring::npos) {
-                    confirmMsg.replace(pos, 2, app->name);
-                }
-                
-                // Show confirmation dialog
-                int result = MessageBoxW(hwnd, confirmMsg.c_str(), 
-                                        g_locale.confirm_reinstall_title.c_str(), 
-                                        MB_YESNO | MB_ICONQUESTION);
-                
-                if (result == IDYES) {
-                    // Run winget install --force
-                    std::wstring cmd = L"winget install --id \"" + app->packageId + L"\" --force --silent --accept-source-agreements --accept-package-agreements";
-                    
-                    // Show progress dialog
-                    g_hIconLoadingDialog = CreateDialog((HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE), 
-                                                        MAKEINTRESOURCE(IDD_LOADING_DIALOG), hwnd, IconLoadingDialogProc);
-                    if (g_hIconLoadingDialog) {
-                        SetDlgItemTextW(g_hIconLoadingDialog, IDC_LOADING_TEXT, (L"Re-installing " + app->name + L"...").c_str());
-                        ShowWindow(g_hIconLoadingDialog, SW_SHOW);
-                        UpdateWindow(g_hIconLoadingDialog);
-                    }
-                    
-                    // Execute command in background thread
-                    std::thread([hwnd, cmd]() {
-                        STARTUPINFOW si = {};
-                        si.cb = sizeof(si);
-                        si.dwFlags = STARTF_USESHOWWINDOW;
-                        si.wShowWindow = SW_HIDE;
-                        PROCESS_INFORMATION pi = {};
-                        
-                        if (CreateProcessW(NULL, (LPWSTR)cmd.c_str(), NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
-                            WaitForSingleObject(pi.hProcess, INFINITE);
-                            CloseHandle(pi.hProcess);
-                            CloseHandle(pi.hThread);
-                        }
-                        
-                        PostMessageW(hwnd, WM_USER + 3, 0, 0);  // Signal completion
-                    }).detach();
-                }
-            }
-            else if (LOWORD(wParam) == ID_UNINSTALL_BTN) {
-                // Get selected app
-                int index = ListView_GetNextItem(g_hAppList, -1, LVNI_SELECTED);
-                if (index == -1) return 0;
-                
-                LVITEMW lvi = {};
-                lvi.mask = LVIF_PARAM;
-                lvi.iItem = index;
-                ListView_GetItem(g_hAppList, &lvi);
-                
-                AppInfo* app = (AppInfo*)lvi.lParam;
-                if (!app) return 0;
-                
-                // Format confirmation message
-                std::wstring confirmMsg = g_locale.confirm_uninstall_msg;
-                size_t pos = confirmMsg.find(L"%s");
-                if (pos != std::wstring::npos) {
-                    confirmMsg.replace(pos, 2, app->name);
-                }
-                
-                // Show confirmation dialog
-                int result = MessageBoxW(hwnd, confirmMsg.c_str(), 
-                                        g_locale.confirm_uninstall_title.c_str(), 
-                                        MB_YESNO | MB_ICONWARNING);
-                
-                if (result == IDYES) {
-                    // Run winget uninstall
-                    std::wstring cmd = L"winget uninstall --id \"" + app->packageId + L"\" --silent --accept-source-agreements";
-                    std::wstring packageId = app->packageId;  // Save for DB update
-                    
-                    // Show progress dialog
-                    g_hIconLoadingDialog = CreateDialog((HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE), 
-                                                        MAKEINTRESOURCE(IDD_LOADING_DIALOG), hwnd, IconLoadingDialogProc);
-                    if (g_hIconLoadingDialog) {
-                        SetDlgItemTextW(g_hIconLoadingDialog, IDC_LOADING_TEXT, (L"Uninstalling " + app->name + L"...").c_str());
-                        ShowWindow(g_hIconLoadingDialog, SW_SHOW);
-                        UpdateWindow(g_hIconLoadingDialog);
-                    }
-                    
-                    // Execute command in background thread
-                    std::thread([hwnd, cmd, packageId]() {
-                        STARTUPINFOW si = {};
-                        si.cb = sizeof(si);
-                        si.dwFlags = STARTF_USESHOWWINDOW;
-                        si.wShowWindow = SW_HIDE;
-                        PROCESS_INFORMATION pi = {};
-                        
-                        bool success = false;
-                        if (CreateProcessW(NULL, (LPWSTR)cmd.c_str(), NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
-                            WaitForSingleObject(pi.hProcess, INFINITE);
-                            
-                            DWORD exitCode = 0;
-                            GetExitCodeProcess(pi.hProcess, &exitCode);
-                            success = (exitCode == 0);
-                            
-                            CloseHandle(pi.hProcess);
-                            CloseHandle(pi.hThread);
-                        }
-                        
-                        // Update database on success
-                        if (success && g_db) {
-                            // Convert package_id to UTF-8
-                            int size = WideCharToMultiByte(CP_UTF8, 0, packageId.c_str(), -1, nullptr, 0, nullptr, nullptr);
-                            std::string packageIdUtf8(size - 1, 0);
-                            WideCharToMultiByte(CP_UTF8, 0, packageId.c_str(), -1, &packageIdUtf8[0], size, nullptr, nullptr);
-                            
-                            sqlite3_stmt* stmt = nullptr;
-                            const char* sql = "DELETE FROM installed_apps WHERE package_id = ?";
-                            if (sqlite3_prepare_v2(g_db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
-                                sqlite3_bind_text(stmt, 1, packageIdUtf8.c_str(), -1, SQLITE_TRANSIENT);
-                                sqlite3_step(stmt);
-                                sqlite3_finalize(stmt);
-                            }
-                        }
-                        
-                        PostMessageW(hwnd, WM_USER + 4, success ? 1 : 0, 0);  // Signal completion
-                    }).detach();
-                }
+            else if (LOWORD(wParam) == ID_ABOUT_BTN) {
+                // Show About dialog
+                ShowAboutDialog(hwnd);
             }
             else if (HIWORD(wParam) == CBN_SELCHANGE) {
                 if ((HWND)lParam == g_hLangCombo) {
@@ -1017,19 +866,6 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                 // Only respond to state changes that involve selection
                 if ((pnmv->uChanged & LVIF_STATE) && (pnmv->uNewState & LVIS_SELECTED)) {
                     OnTagSelectionChanged();
-                }
-            }
-            else if (nmhdr->idFrom == ID_APP_LIST && nmhdr->code == LVN_ITEMCHANGED) {
-                // App list selection changed - update Re-install/Uninstall button visibility
-                LPNMLISTVIEW pnmv = (LPNMLISTVIEW)lParam;
-                if (pnmv->uChanged & LVIF_STATE) {
-                    bool hasSelection = (ListView_GetNextItem(g_hAppList, -1, LVNI_SELECTED) != -1);
-                    bool showButtons = hasSelection && IsInstalledFilterActive();
-                    if (g_hReinstallBtn) ShowWindow(g_hReinstallBtn, showButtons ? SW_SHOW : SW_HIDE);
-                    if (g_hUninstallBtn) ShowWindow(g_hUninstallBtn, showButtons ? SW_SHOW : SW_HIDE);
-                    // Trigger layout update
-                    RECT rc; GetClientRect(hwnd, &rc);
-                    PostMessage(hwnd, WM_SIZE, 0, MAKELPARAM(rc.right, rc.bottom));
                 }
             }
             else if (nmhdr->idFrom == ID_APP_LIST && nmhdr->code == NM_DBLCLK) {
@@ -1209,13 +1045,13 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                 SelectObject(hdc, oldf);
                 if (dis->itemState & ODS_FOCUS) DrawFocusRect(hdc, &rc);
                 return TRUE;
-            } else if (dis->CtlID == ID_REINSTALL_BTN) {
+            } else if (dis->CtlID == ID_ABOUT_BTN) {
                 HWND hBtn = dis->hwndItem;
                 BOOL hover = (BOOL)GetWindowLongPtrW(hBtn, GWLP_USERDATA);
                 bool pressed = (dis->itemState & ODS_SELECTED) != 0;
                 HDC hdc = dis->hDC;
                 RECT rc = dis->rcItem;
-                // Blue color scheme
+                // Blue color scheme like Search button
                 COLORREF base = RGB(10,57,129);
                 COLORREF hoverCol = RGB(40,90,170);
                 COLORREF pressCol = RGB(5,40,90);
@@ -1227,29 +1063,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                 SetBkMode(hdc, TRANSPARENT);
                 HFONT hf = g_hBoldFont ? g_hBoldFont : (HFONT)GetStockObject(DEFAULT_GUI_FONT);
                 HGDIOBJ oldf = SelectObject(hdc, hf);
-                DrawTextW(hdc, g_locale.reinstall_btn.c_str(), -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-                SelectObject(hdc, oldf);
-                if (dis->itemState & ODS_FOCUS) DrawFocusRect(hdc, &rc);
-                return TRUE;
-            } else if (dis->CtlID == ID_UNINSTALL_BTN) {
-                HWND hBtn = dis->hwndItem;
-                BOOL hover = (BOOL)GetWindowLongPtrW(hBtn, GWLP_USERDATA);
-                bool pressed = (dis->itemState & ODS_SELECTED) != 0;
-                HDC hdc = dis->hDC;
-                RECT rc = dis->rcItem;
-                // Blue color scheme
-                COLORREF base = RGB(10,57,129);
-                COLORREF hoverCol = RGB(40,90,170);
-                COLORREF pressCol = RGB(5,40,90);
-                HBRUSH hBrush = CreateSolidBrush(pressed ? pressCol : (hover ? hoverCol : base));
-                FillRect(hdc, &rc, hBrush);
-                DeleteObject(hBrush);
-                // Draw text
-                SetTextColor(hdc, RGB(255,255,255));
-                SetBkMode(hdc, TRANSPARENT);
-                HFONT hf = g_hBoldFont ? g_hBoldFont : (HFONT)GetStockObject(DEFAULT_GUI_FONT);
-                HGDIOBJ oldf = SelectObject(hdc, hf);
-                DrawTextW(hdc, g_locale.uninstall_btn.c_str(), -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+                DrawTextW(hdc, g_locale.about_btn.c_str(), -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
                 SelectObject(hdc, oldf);
                 if (dis->itemState & ODS_FOCUS) DrawFocusRect(hdc, &rc);
                 return TRUE;
@@ -1458,7 +1272,7 @@ void CreateControls(HWND hwnd) {
     
     // Create tooltip window - empty initially
     g_hRefreshTooltip = CreateWindowExW(
-        WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
+        WS_EX_TOOLWINDOW,
         kTipClass,
         L"",
         WS_POPUP,
@@ -1504,7 +1318,7 @@ void CreateControls(HWND hwnd) {
                     int tipX = btnRect.left + (btnRect.right - btnRect.left - tipWidth) / 2;
                     int tipY = btnRect.top - tipHeight - 5;  // 5px gap above button
                     
-                    SetWindowPos(g_hRefreshTooltip, HWND_TOPMOST, tipX, tipY, tipWidth, tipHeight, SWP_SHOWWINDOW | SWP_NOACTIVATE);
+                    SetWindowPos(g_hRefreshTooltip, HWND_TOP, tipX, tipY, tipWidth, tipHeight, SWP_SHOWWINDOW | SWP_NOACTIVATE);
                 }
                 break;
             }
@@ -1522,55 +1336,23 @@ void CreateControls(HWND hwnd) {
         }, 0, 0);
     }
     
-    // Re-install button
-    g_hReinstallBtn = CreateWindowExW(
+    // About button (far right after language dropdown)
+    g_hAboutBtn = CreateWindowExW(
         0,
         L"BUTTON",
-        L"Re-install",
-        WS_CHILD | BS_OWNERDRAW | WS_TABSTOP,  // Hidden by default
+        g_locale.about_btn.c_str(),
+        WS_CHILD | WS_VISIBLE | BS_OWNERDRAW | WS_TABSTOP,
         0, 0, 0, 0,
         hwnd,
-        (HMENU)ID_REINSTALL_BTN,
+        (HMENU)ID_ABOUT_BTN,
         hInst,
         NULL
     );
-    SendMessageW(g_hReinstallBtn, WM_SETFONT, (WPARAM)g_hFont, TRUE);
-    // Subclass for hover effects
-    if (g_hReinstallBtn) {
-        SetWindowSubclass(g_hReinstallBtn, [](HWND h, UINT msg, WPARAM wp, LPARAM lp, UINT_PTR, DWORD_PTR)->LRESULT {
-            switch (msg) {
-            case WM_MOUSEMOVE: {
-                SetWindowLongPtrW(h, GWLP_USERDATA, 1);
-                InvalidateRect(h, NULL, TRUE);
-                TRACKMOUSEEVENT tme{}; tme.cbSize = sizeof(tme); tme.dwFlags = TME_LEAVE; tme.hwndTrack = h; TrackMouseEvent(&tme);
-                break;
-            }
-            case WM_MOUSELEAVE: {
-                SetWindowLongPtrW(h, GWLP_USERDATA, 0);
-                InvalidateRect(h, NULL, TRUE);
-                break;
-            }
-            }
-            return DefSubclassProc(h, msg, wp, lp);
-        }, 0, 0);
-    }
+    SendMessageW(g_hAboutBtn, WM_SETFONT, (WPARAM)g_hFont, TRUE);
     
-    // Uninstall button
-    g_hUninstallBtn = CreateWindowExW(
-        0,
-        L"BUTTON",
-        L"Uninstall",
-        WS_CHILD | BS_OWNERDRAW | WS_TABSTOP,  // Hidden by default
-        0, 0, 0, 0,
-        hwnd,
-        (HMENU)ID_UNINSTALL_BTN,
-        hInst,
-        NULL
-    );
-    SendMessageW(g_hUninstallBtn, WM_SETFONT, (WPARAM)g_hFont, TRUE);
-    // Subclass for hover effects
-    if (g_hUninstallBtn) {
-        SetWindowSubclass(g_hUninstallBtn, [](HWND h, UINT msg, WPARAM wp, LPARAM lp, UINT_PTR, DWORD_PTR)->LRESULT {
+    // Subclass About button for hover effects
+    if (g_hAboutBtn) {
+        SetWindowSubclass(g_hAboutBtn, [](HWND h, UINT msg, WPARAM wp, LPARAM lp, UINT_PTR, DWORD_PTR)->LRESULT {
             switch (msg) {
             case WM_MOUSEMOVE: {
                 SetWindowLongPtrW(h, GWLP_USERDATA, 1);
@@ -1839,19 +1621,19 @@ void ResizeControls(HWND hwnd) {
     const int labelHeight = 24;
     const int spacing = 4;
     const int langComboWidth = 150;
+    const int aboutBtnWidth = 70;
     const int searchBtnWidth = 100;
     const int installedBtnWidth = 100;
     const int refreshInstalledBtnWidth = 180;
-    const int reinstallBtnWidth = 100;
-    const int uninstallBtnWidth = 100;
     const int endSearchBtnWidth = 110;
     const int searchBtnSpacing = 9;  // Extra space between buttons and dropdown
     
-    // Language selector (top right)
-    MoveWindow(g_hLangCombo, rc.right - margin - langComboWidth, margin, langComboWidth, 200, TRUE);
+    // Language selector and About button (top right) - About is at far right
+    MoveWindow(g_hLangCombo, rc.right - margin - langComboWidth - spacing - aboutBtnWidth, margin, langComboWidth, 200, TRUE);
+    MoveWindow(g_hAboutBtn, rc.right - margin - aboutBtnWidth, margin, aboutBtnWidth, btnHeight, TRUE);
     
     // Button layout depends on search state and installed filter state
-    // From right: [Language] ... [End Search?] [Search] [Installed] [Refresh Installed (if active)]
+    // From right: [About] [Language] ... [End Search?] [Search] [Installed] [Refresh Installed (if active)]
     
     // Determine if Refresh Installed button should be visible
     bool showRefreshInstalled = IsInstalledFilterActive();
@@ -1860,10 +1642,10 @@ void ResizeControls(HWND hwnd) {
     }
     
     if (g_searchActive && IsWindowVisible(g_hEndSearchBtn)) {
-        // All buttons visible: [Refresh Installed?] [Installed] [Search] [End Search] ... [Language]
+        // All buttons visible: [Refresh Installed?] [Installed] [Search] [End Search] ... [Language] [About]
         if (showRefreshInstalled) {
             int totalBtnWidth = refreshInstalledBtnWidth + spacing + installedBtnWidth + spacing + searchBtnWidth + spacing + endSearchBtnWidth;
-            int refreshInstalledX = rc.right - margin - langComboWidth - searchBtnSpacing - totalBtnWidth;
+            int refreshInstalledX = rc.right - margin - aboutBtnWidth - spacing - langComboWidth - searchBtnSpacing - totalBtnWidth;
             int installedX = refreshInstalledX + refreshInstalledBtnWidth + spacing;
             int searchX = installedX + installedBtnWidth + spacing;
             int endSearchX = searchX + searchBtnWidth + spacing;
@@ -1874,7 +1656,7 @@ void ResizeControls(HWND hwnd) {
             MoveWindow(g_hEndSearchBtn, endSearchX, margin, endSearchBtnWidth, btnHeight, TRUE);
         } else {
             int totalBtnWidth = installedBtnWidth + spacing + searchBtnWidth + spacing + endSearchBtnWidth;
-            int installedX = rc.right - margin - langComboWidth - searchBtnSpacing - totalBtnWidth;
+            int installedX = rc.right - margin - aboutBtnWidth - spacing - langComboWidth - searchBtnSpacing - totalBtnWidth;
             int searchX = installedX + installedBtnWidth + spacing;
             int endSearchX = searchX + searchBtnWidth + spacing;
             
@@ -1886,7 +1668,7 @@ void ResizeControls(HWND hwnd) {
         // Search, Installed, and maybe Refresh Installed buttons visible
         if (showRefreshInstalled) {
             int totalBtnWidth = refreshInstalledBtnWidth + spacing + installedBtnWidth + spacing + searchBtnWidth;
-            int refreshInstalledX = rc.right - margin - langComboWidth - searchBtnSpacing - totalBtnWidth;
+            int refreshInstalledX = rc.right - margin - aboutBtnWidth - spacing - langComboWidth - searchBtnSpacing - totalBtnWidth;
             int installedX = refreshInstalledX + refreshInstalledBtnWidth + spacing;
             int searchX = installedX + installedBtnWidth + spacing;
             
@@ -1895,7 +1677,7 @@ void ResizeControls(HWND hwnd) {
             MoveWindow(g_hSearchBtn, searchX, margin, searchBtnWidth, btnHeight, TRUE);
         } else {
             int totalBtnWidth = installedBtnWidth + spacing + searchBtnWidth;
-            int installedX = rc.right - margin - langComboWidth - searchBtnSpacing - totalBtnWidth;
+            int installedX = rc.right - margin - aboutBtnWidth - spacing - langComboWidth - searchBtnSpacing - totalBtnWidth;
             int searchX = installedX + installedBtnWidth + spacing;
             
             MoveWindow(g_hInstalledBtn, installedX, margin, installedBtnWidth, btnHeight, TRUE);
@@ -1921,21 +1703,11 @@ void ResizeControls(HWND hwnd) {
     MoveWindow(g_hCategoryLabel, rightX + categoryPadding, margin + btnHeight + spacing, categoryWidth, labelHeight, TRUE);
     MoveWindow(g_hAppCountLabel, rightX + categoryWidth + spacing, margin + btnHeight + spacing, countWidth, labelHeight, TRUE);
     
-    // Re-install and Uninstall buttons (shown only when app selected and installed filter active)
-    int actionBtnY = margin + btnHeight + spacing + labelHeight + spacing;
-    int actionBtnHeight = 28;
-    bool showActionButtons = (g_hReinstallBtn && IsWindowVisible(g_hReinstallBtn)) || 
-                             (g_hUninstallBtn && IsWindowVisible(g_hUninstallBtn));
-    if (showActionButtons) {
-        int reinstallX = rightX;
-        int uninstallX = reinstallX + reinstallBtnWidth + spacing;
-        MoveWindow(g_hReinstallBtn, reinstallX, actionBtnY, reinstallBtnWidth, actionBtnHeight, TRUE);
-        MoveWindow(g_hUninstallBtn, uninstallX, actionBtnY, uninstallBtnWidth, actionBtnHeight, TRUE);
-        actionBtnY += actionBtnHeight + spacing;
-    }
+    // App list starts right after labels
+    int appListY = margin + btnHeight + spacing + labelHeight + spacing;
     
-    MoveWindow(g_hAppList, rightX, actionBtnY,
-               rc.right - rightX - margin, rc.bottom - actionBtnY - margin, TRUE);
+    MoveWindow(g_hAppList, rightX, appListY,
+               rc.right - rightX - margin, rc.bottom - appListY - margin, TRUE);
 }
 
 bool OpenDatabase() {
@@ -2101,7 +1873,7 @@ INT_PTR CALLBACK IconLoadingDialogProc(HWND hDlg, UINT message, WPARAM wParam, L
             GetWindowRect(hDlg, &rc);
             int x = (GetSystemMetrics(SM_CXSCREEN) - (rc.right - rc.left)) / 2;
             int y = (GetSystemMetrics(SM_CYSCREEN) - (rc.bottom - rc.top)) / 2;
-            SetWindowPos(hDlg, HWND_TOPMOST, x, y, 0, 0, SWP_NOSIZE);
+            SetWindowPos(hDlg, HWND_TOP, x, y, 0, 0, SWP_NOSIZE);
             
             // Set localized title
             SetWindowTextW(hDlg, g_locale.wait_moment.c_str());
@@ -2695,6 +2467,21 @@ bool LoadLocale(const std::wstring& lang) {
             else if (key == L"cancel_btn") g_locale.cancel_btn = value;
             else if (key == L"refresh_installed_btn") g_locale.refresh_installed_btn = value;
             else if (key == L"refresh_installed_tooltip") g_locale.refresh_installed_tooltip = value;
+            // About Dialog
+            else if (key == L"about_btn") g_locale.about_btn = value;
+            else if (key == L"about_title") g_locale.about_title = value;
+            else if (key == L"about_subtitle") g_locale.about_subtitle = value;
+            else if (key == L"about_published") g_locale.about_published = value;
+            else if (key == L"about_version") g_locale.about_version = value;
+            else if (key == L"about_suite_desc") g_locale.about_suite_desc = value;
+            else if (key == L"about_author") g_locale.about_author = value;
+            else if (key == L"about_copyright") g_locale.about_copyright = value;
+            else if (key == L"about_wpm_title") g_locale.about_wpm_title = value;
+            else if (key == L"about_wpm_usage") g_locale.about_wpm_usage = value;
+            else if (key == L"about_license_info") g_locale.about_license_info = value;
+            else if (key == L"about_github") g_locale.about_github = value;
+            else if (key == L"about_view_license") g_locale.about_view_license = value;
+            else if (key == L"about_close") g_locale.about_close = value;
         }
     }
 
@@ -2742,8 +2529,7 @@ void OnLanguageChanged() {
 
         // Redraw buttons to update text
         if (g_hRefreshInstalledBtn) InvalidateRect(g_hRefreshInstalledBtn, NULL, TRUE);
-        if (g_hReinstallBtn) InvalidateRect(g_hReinstallBtn, NULL, TRUE);
-        if (g_hUninstallBtn) InvalidateRect(g_hUninstallBtn, NULL, TRUE);
+        if (g_hAboutBtn) InvalidateRect(g_hAboutBtn, NULL, TRUE);
 
         // Reload tags and apps to update counts and "All" label
         LoadTags();

@@ -1,35 +1,45 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
-<span style="color: #0066cc;">📦 WinProgramManager — Databashanteringskomponent</span>
+<span style="color: #0066cc;">📦 WinProgramManager — Database Management Component</span>
 </h2>
 <p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;">
-<strong>Senaste uppdatering:</strong> 19 januari 2026 | <strong>Första utgåvan</strong><br/>
-Denna ändringslogg omfattar <strong>WinProgramManager</strong>, databashanteringskomponenten av WinProgramSuite.<br/>
-För GUI-applikationen, se <strong>WinUpdate</strong> dokumentation.
+<strong>Latest Update:</strong> 06 February 2026 | <strong>About Dialog & UI Polish</strong><br/>
+This changelog covers <strong>WinProgramManager</strong>, the database management component of WinProgramSuite.<br/>
+For the GUI application, see <strong>WinUpdate</strong> documentation.
 </p>
 
 <h3 style="text-align: center;">&nbsp;</h3>
-<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Version 2026.01.19</span></h3>
-<p><strong>Nytt i denna version (19 januari 2026, 09:00 GMT+1):</strong></p>
+<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Version 2026.02.06.09</span></h3>
+<p><strong>New in this version (06 February 2026, 09:00 GMT+1):</strong></p>
 <ul>
-<li><strong>Första utgåvan:</strong> Första publika utgåvan av databashanteringskomponenten</li>
-<li><strong>Automatiserade databasuppdateringar:</strong> WinProgramUpdater synkroniserar automatiskt paketdatabas med winget-repositoriet</li>
-<li><strong>Tyst bakgrundsoperation:</strong> Uppdateringar körs utan synliga fönster, lämplig för schemalagda uppgifter</li>
-<li><strong>Komplett uppdateringspipeline:</strong> Hämtar paket, hanterar tillägg/borttagningar, filtrerar ogiltiga ID:n, frågar efter taggar</li>
-<li><strong>Tagginferenssystem:</strong> 45 namnbaserade mönster för automatisk kategorisering av paket</li>
-<li><strong>Korrelationsanalys:</strong> Smart taggförslag baserat på 66,67% likhetströskel</li>
-<li><strong>Automatiskt säkerhetskopieringssystem:</strong> Rullande 10-säkerhetskopieringssystem med tidsstämplade databasfiler</li>
-<li><strong>Konfigurerbar loggning:</strong> Aktivera/inaktivera loggning via ENABLE_LOGGING-flagga i header-filen</li>
-<li><strong>Relativ loggmapp:</strong> Loggar skrivna till ..\log-mapp relativt till körbar plats</li>
-<li><strong>90-dagars loggbevarande:</strong> Automatisk beskärning av gamla loggposter för att upprätthålla hanterbar filstorlek</li>
-<li><strong>Konsoltestläge:</strong> WinProgramUpdaterTest.exe ger detaljerad utmatning för felsökning</li>
-<li><strong>Dolt produktionsläge:</strong> WinProgramUpdater.exe körs tyst för schemalagda uppgifter</li>
-<li><strong>PowerShell-byggskript:</strong> Komplett databasåteruppbyggnad och inkrementella återställningsskript</li>
-<li><strong>SQLite3-integration:</strong> Full SQLite3-databas med omfattande paketmetadataschema</li>
-<li><strong>Ignorera tagg-databas:</strong> Separat databas för filtrering av oönskade generiska taggar</li>
+<li><strong>About Dialog:</strong> Complete About dialog with WinProgramSuite logo, version 2026.02.06.09, published date 06.02.2026</li>
+<li><strong>License Viewer:</strong> Full GPLv2 license display with GNU logo, syntax highlighting, and formatted text</li>
+<li><strong>About Button:</strong> Blue-themed button at far right (after language selector) with locale support: "About" / "Om" / "Om"</li>
+<li><strong>Copyleft Information:</strong> Changed from "Copyright ©" to "Copyleft" for proper open-source terminology</li>
+<li><strong>Internationalization:</strong> 17 new locale strings (about_btn, about_title, about_subtitle, about_published, about_version, etc.) in English, Norwegian, and Swedish</li>
+<li><strong>Asset Packaging:</strong> Added GPLv2.md, GnuLogo.bmp, and wpm_logo.png to build output (makeit.bat updated)</li>
+<li><strong>Window Behavior Fix:</strong> Removed WS_EX_TOPMOST from all dialogs - startup spinner, tooltips, and progress windows now allow switching to other apps</li>
+<li><strong>Foreground Initialization:</strong> Startup spinner uses SetForegroundWindow() and BringWindowToTop() to appear initially, then allows normal window switching</li>
+<li><strong>Locale File Fixes:</strong> Fixed missing newlines in en_GB.txt and nb_NO.txt that prevented about_btn from loading correctly</li>
+</ul>
+
+<h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Version 2026.02.05</span></h3>
+<p><strong>New in this version (05 February 2026, 12:00 GMT+1):</strong></p>
+<ul>
+<li><strong>Re-install Button:</strong> Reinstalls apps using winget install --force with confirmation dialog</li>
+<li><strong>Uninstall Button:</strong> Removes apps with winget uninstall, updates database, shows warning confirmation</li>
+<li><strong>Button Visibility:</strong> Re-install and Uninstall buttons appear only when Installed filter is active AND an app is selected</li>
+<li><strong>Database Integration:</strong> Automatic DELETE FROM installed_apps after successful uninstall</li>
+<li><strong>Progress Feedback:</strong> Loading dialog shows "Re-installing..." or "Uninstalling..." with app name</li>
+<li><strong>Refresh Installed Apps:</strong> Manual button triggers full winget list scan to discover externally installed apps</li>
+<li><strong>Automatic Cleanup:</strong> Registry-based verification removes apps uninstalled outside the manager</li>
+<li><strong>i18n Critical Fix:</strong> Locale files now load correctly from .txt files (was incorrectly looking for .ini)</li>
+<li><strong>Multi-line Text Support:</strong> Windows CRLF line breaks now work in tooltips and dialogs</li>
+<li><strong>Tooltip System:</strong> WinUpdate-style multi-line tooltips with proper positioning and auto-hide</li>
 </ul>
 
 <h3 style="text-align: center;">&nbsp;</h3>
 <p style="text-align: center; font-size: 12px; color: #888; margin-top: 30px;">
-Del av <strong>WinProgramSuite</strong> — Ett omfattande Windows-pakethanteringssystem<br/>
-Komponenter: WinUpdate (GUI) | WinProgramManager (Databas) | WinProgramUpdater (Automatisering)
+Part of <strong>WinProgramSuite</strong> — A comprehensive Windows package management system<br/>
+Components: WinUpdate (GUI) | WinProgramManager (Database) | WinProgramUpdater (Automation)
 </p>

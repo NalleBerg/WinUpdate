@@ -15,6 +15,7 @@ add_executable(WinProgramManager WIN32
     app_details.cpp
     spinner_dialog.cpp
     install_dialog.cpp
+    about.cpp
     winprogrammanager.rc
 )
 
@@ -29,6 +30,7 @@ target_link_libraries(WinProgramManager
     comctl32
     user32
     gdi32
+    gdiplus
     shell32
     shlwapi
     ole32

@@ -1,43 +1,59 @@
-#include "About.h"
-#include "ctrlw.h"
-#include "../resource.h"
+// ============================================================================
+// ABOUT DIALOG - WinProgramManager
+// Complete Windows Package Management System - About Information
+// Shows version, author, and application-specific usage details
+// Includes WPM logo at top with GDI+ rendering and scroll support
+// ============================================================================
+
+#include "about.h"
+#include "resource.h"
+#include "app_details.h"
 #include <windows.h>
 #include <richedit.h>
 #include <string>
 #include <sstream>
 #include <shlobj.h>
-#include <atomic>
 #include <gdiplus.h>
-#pragma comment(lib, "gdiplus.lib")
 
 using namespace Gdiplus;
 
-// Version info
+// ============================================================================
+// VERSION INFORMATION
+// Updated: 2026-02-06
+// ============================================================================
 const wchar_t ABOUT_PUBLISHED[] = L"06.02.2026";
 const wchar_t ABOUT_VERSION[] = L"2026.02.06.09";
 
-// External i18n function
-extern std::wstring t(const char *key);
+// External locale
+extern Locale g_locale;
 
 // Forward declarations
 static LRESULT CALLBACK AboutDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 void AppendRichText(HWND hEdit, const std::wstring& text, bool bold, COLORREF color, int fontSize = 9, bool centered = false);
-int GetWingetPackageCount();
 std::wstring FormatNumber(int num, bool useComma);
 
 // Global for logo image
 static Image* g_logoImage = nullptr;
-static ULONG_PTR g_gdiplusToken = 0;
 static HWND g_hEditCtrl = NULL;
 
-// Simple helper to append formatted text to RichEdit control
+// ============================================================================
+// RICH TEXT FORMATTING HELPER
+// Appends formatted text to RichEdit20W control with color, style, and alignment
+// Parameters:
+//   - hEdit: Handle to RichEdit control
+//   - text: Text content to append
+//   - bold: Apply bold formatting
+//   - color: RGB text color
+//   - fontSize: Font size in points
+//   - centered: Center text alignment
+// ============================================================================
 void AppendRichText(HWND hEdit, const std::wstring& text, bool bold, COLORREF color, int fontSize, bool centered) {
     CHARFORMAT2W cf = {};
     cf.cbSize = sizeof(CHARFORMAT2W);
     cf.dwMask = CFM_COLOR | CFM_BOLD | CFM_SIZE | CFM_FACE;
     cf.crTextColor = color;
     cf.dwEffects = bold ? CFE_BOLD : 0;
-    cf.yHeight = fontSize * 20; // twips
+    cf.yHeight = fontSize * 20; // twips (1/1440 inch)
     wcscpy_s(cf.szFaceName, L"Segoe UI");
     
     // Get current text length and select end
@@ -70,14 +86,11 @@ void AppendRichText(HWND hEdit, const std::wstring& text, bool bold, COLORREF co
     }
 }
 
-// Get winget package count (from last scan)
-extern std::atomic<int> g_total_winget_packages;
-
-int GetWingetPackageCount() {
-    // Return the count from the last scan (updated during winget upgrade)
-    return g_total_winget_packages.load();
-}
-
+// ============================================================================
+// NUMBER FORMATTING HELPER
+// Formats integer with thousands separator (comma or space based on locale)
+// Example: 10692 -> "10,692" (English) or "10 692" (Norwegian)
+// ============================================================================
 std::wstring FormatNumber(int num, bool useComma) {
     std::wstring str = std::to_wstring(num);
     std::wstring result;
@@ -93,7 +106,11 @@ std::wstring FormatNumber(int num, bool useComma) {
     return result;
 }
 
-// Subclass procedure for RichEdit to draw logo at top
+// ============================================================================
+// RICHEDIT SUBCLASS PROCEDURE
+// Draws WPM logo at top of scrollable content
+// Logo scrolls with text to maintain visual consistency
+// ============================================================================
 static WNDPROC g_origEditProc = NULL;
 
 static LRESULT CALLBACK EditSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
@@ -128,7 +145,10 @@ static LRESULT CALLBACK EditSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPA
     return CallWindowProcW(g_origEditProc, hwnd, msg, wParam, lParam);
 }
 
-// Window procedure
+// ============================================================================
+// ABOUT DIALOG WINDOW PROCEDURE
+// Handles button clicks and window close events
+// ============================================================================
 static LRESULT CALLBACK AboutDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
         case WM_COMMAND:
@@ -144,11 +164,25 @@ static LRESULT CALLBACK AboutDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
         case WM_CLOSE:
             PostQuitMessage(0);
             return 0;
+        case WM_KEYDOWN:
+            if (wParam == VK_ESCAPE) {
+                PostQuitMessage(0);
+                return 0;
+            }
+            break;
     }
     return DefWindowProcW(hwnd, msg, wParam, lParam);
 }
 
-// Main About dialog function
+// ============================================================================
+// MAIN ABOUT DIALOG FUNCTION
+// Creates and displays modal About dialog with:
+// - WPM logo at top (scrollable)
+// - Version and publish date
+// - Shared WinProgramSuite description
+// - WinProgramManager-specific usage information
+// - License and Close buttons
+// ============================================================================
 void ShowAboutDialog(HWND parent) {
     LoadLibraryW(L"Riched20.dll");
     
@@ -157,18 +191,18 @@ void ShowAboutDialog(HWND parent) {
     ULONG_PTR gdiplusToken;
     GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
     
-    // Load logo image with transparency
+    // Load WPM logo image with transparency
     wchar_t logoPath[MAX_PATH];
     GetModuleFileNameW(NULL, logoPath, MAX_PATH);
     wchar_t* lastSlash = wcsrchr(logoPath, L'\\');
     if (lastSlash) {
         *(lastSlash + 1) = 0;
-        wcscat_s(logoPath, L"winupdate_logo.png");
+        wcscat_s(logoPath, L"wpm_logo.png");
     }
     g_logoImage = Image::FromFile(logoPath);
     
     // Create window
-    const int W = 420, H = 560; // Increased height for logo
+    const int W = 420, H = 560;
     RECT pr = {0,0,0,0};
     if (parent && IsWindow(parent)) GetWindowRect(parent, &pr);
     int px = (pr.right + pr.left) / 2;
@@ -184,13 +218,13 @@ void ShowAboutDialog(HWND parent) {
     wc.lpfnWndProc = AboutDlgProc;
     wc.hInstance = hi;
     wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
-    wc.lpszClassName = L"WUPAboutDlgClass";
+    wc.lpszClassName = L"WPMAboutDlgClass";
     if (!GetClassInfoW(hi, wc.lpszClassName, &wc)) {
         RegisterClassW(&wc);
     }
 
     HWND dlg = CreateWindowExW(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE, 
-        wc.lpszClassName, L"About WinUpdate", 
+        wc.lpszClassName, g_locale.about_title.c_str(), 
         WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_VISIBLE, 
         x, y, W, H, parent, NULL, hi, NULL);
     
@@ -200,7 +234,7 @@ void ShowAboutDialog(HWND parent) {
     }
     
     // Set app icon
-    HICON hIcon = (HICON)LoadImageW(hi, MAKEINTRESOURCEW(IDI_APP_ICON), IMAGE_ICON, 0, 0, LR_DEFAULTSIZE | LR_SHARED);
+    HICON hIcon = LoadIcon(hi, MAKEINTRESOURCE(IDI_APP_ICON));
     if (hIcon) {
         SendMessageW(dlg, WM_SETICON, ICON_SMALL, (LPARAM)hIcon);
         SendMessageW(dlg, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
@@ -234,69 +268,51 @@ void ShowAboutDialog(HWND parent) {
     
     // Build formatted About content
     AppendRichText(hEdit, L"WinProgramSuite\r\n", true, RGB(0, 70, 140), 16, true);
-    AppendRichText(hEdit, t("about_subtitle") + L"\r\n\r\n", false, RGB(80, 80, 80), 10, true);
+    AppendRichText(hEdit, g_locale.about_subtitle + L"\r\n\r\n", false, RGB(80, 80, 80), 10, true);
     
     // Version info divider
     AppendRichText(hEdit, L"═════════════════════════════\r\n", false, RGB(100, 140, 180), 9, true);
-    AppendRichText(hEdit, t("about_published") + L" ", true, RGB(0, 0, 0), 9, true);
+    AppendRichText(hEdit, g_locale.about_published + L" ", true, RGB(0, 0, 0), 9, true);
     AppendRichText(hEdit, std::wstring(ABOUT_PUBLISHED) + L"\r\n", false, RGB(0, 0, 0), 9, true);
-    AppendRichText(hEdit, t("about_version") + L" ", true, RGB(0, 0, 0), 9, true);
+    AppendRichText(hEdit, g_locale.about_version + L" ", true, RGB(0, 0, 0), 9, true);
     AppendRichText(hEdit, std::wstring(ABOUT_VERSION) + L"\r\n", false, RGB(0, 0, 0), 9, true);
     AppendRichText(hEdit, L"═════════════════════════════\r\n\r\n", false, RGB(100, 140, 180), 9, true);
     
-    // Main description with dynamic package count
-    int pkgCount = GetWingetPackageCount();
-    wchar_t localeName[LOCALE_NAME_MAX_LENGTH];
-    GetUserDefaultLocaleName(localeName, LOCALE_NAME_MAX_LENGTH);
-    bool useComma = (wcsstr(localeName, L"nb") != localeName && wcsstr(localeName, L"no") != localeName);
-    std::wstring formattedCount = FormatNumber(pkgCount, useComma);
+    // Shared description
+    AppendRichText(hEdit, g_locale.about_suite_desc + L"\r\n\r\n", false, RGB(40, 40, 40), 9, false);
     
-    std::wstring desc = t("about_intro");
-    size_t pos = desc.find(L"<xx xxx>");
-    if (pos != std::wstring::npos) {
-        desc.replace(pos, 8, formattedCount);
-    }
-    AppendRichText(hEdit, desc + L"\r\n\r\n", false, RGB(40, 40, 40), 9, false);
+    // Author and copyleft
+    AppendRichText(hEdit, g_locale.about_author + L" ", true, RGB(0, 0, 0), 9, false);
+    AppendRichText(hEdit, L"Nalle Berg\r\n", false, RGB(40, 40, 40), 9, false);
+    AppendRichText(hEdit, g_locale.about_copyright + L" 2026 Nalle Berg\r\n\r\n", false, RGB(40, 40, 40), 9, false);
     
-    // Three modes
-    AppendRichText(hEdit, t("about_modes_intro") + L"\r\n\r\n", false, RGB(40, 40, 40), 9, false);
-    
-    AppendRichText(hEdit, L"1: ", true, RGB(0, 70, 140), 9, false);
-    AppendRichText(hEdit, t("about_mode1_title") + L"\r\n", true, RGB(0, 0, 0), 9, false);
-    AppendRichText(hEdit, t("about_mode1_desc") + L"\r\n\r\n", false, RGB(60, 60, 60), 9, false);
-    
-    AppendRichText(hEdit, L"2: ", true, RGB(0, 70, 140), 9, false);
-    AppendRichText(hEdit, t("about_mode2_title") + L"\r\n", true, RGB(0, 0, 0), 9, false);
-    AppendRichText(hEdit, t("about_mode2_desc") + L"\r\n\r\n", false, RGB(60, 60, 60), 9, false);
-    
-    AppendRichText(hEdit, L"3: ", true, RGB(0, 70, 140), 9, false);
-    AppendRichText(hEdit, t("about_mode3_title") + L"\r\n", true, RGB(0, 0, 0), 9, false);
-    AppendRichText(hEdit, t("about_mode3_desc") + L"\r\n\r\n", false, RGB(60, 60, 60), 9, false);
-    
-    AppendRichText(hEdit, t("about_no_ms_account") + L"\r\n\r\n", false, RGB(0, 100, 0), 9, false);
-    AppendRichText(hEdit, t("about_conclusion") + L"\r\n\r\n", false, RGB(40, 40, 40), 9, false);
+    // WinProgramManager-specific usage
+    AppendRichText(hEdit, g_locale.about_wpm_title + L"\r\n", true, RGB(0, 70, 140), 11, false);
+    AppendRichText(hEdit, g_locale.about_wpm_usage + L"\r\n\r\n", false, RGB(40, 40, 40), 9, false);
     
     // License divider
     AppendRichText(hEdit, L"═════════════════════════════\r\n\r\n", false, RGB(100, 140, 180), 9, true);
-    AppendRichText(hEdit, t("about_license_info") + L"\r\n\r\n", true, RGB(0, 70, 140), 9, false);
+    AppendRichText(hEdit, g_locale.about_license_info + L"\r\n\r\n", true, RGB(0, 70, 140), 9, false);
+    AppendRichText(hEdit, g_locale.about_github + L"\r\n", false, RGB(0, 100, 200), 9, false);
+    AppendRichText(hEdit, L"https://github.com/NalleBerg/WinProgramSuite\r\n\r\n", false, RGB(40, 40, 40), 9, false);
     
     // Scroll to top
     SendMessageW(hEdit, EM_SETSEL, 0, 0);
     SendMessageW(hEdit, EM_SCROLLCARET, 0, 0);
     
     // Create buttons at bottom (centered with gap)
-    int btnY = H - 65;  // Account for title bar and borders
+    int btnY = H - 65;
     int btnWidth = 90;
     int btnGap = 10;
     int totalWidth = btnWidth * 2 + btnGap;
     int startX = (W - totalWidth) / 2;
     
-    HWND btnLicense = CreateWindowExW(0, L"Button", t("about_view_license").c_str(),
+    HWND btnLicense = CreateWindowExW(0, L"Button", g_locale.about_view_license.c_str(),
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP,
         startX, btnY, btnWidth, 30,
         dlg, (HMENU)1001, hi, NULL);
     
-    HWND btnClose = CreateWindowExW(0, L"Button", t("about_close").c_str(),
+    HWND btnClose = CreateWindowExW(0, L"Button", g_locale.about_close.c_str(),
         WS_CHILD | WS_VISIBLE | BS_DEFPUSHBUTTON | WS_TABSTOP,
         startX + btnWidth + btnGap, btnY, btnWidth, 30,
         dlg, (HMENU)IDOK, hi, NULL);
@@ -312,7 +328,7 @@ void ShowAboutDialog(HWND parent) {
     
     MSG msg;
     while (GetMessageW(&msg, NULL, 0, 0)) {
-        if (HandleCtrlW(dlg, msg.message, msg.wParam, msg.lParam)) {
+        if (msg.message == WM_KEYDOWN && msg.wParam == VK_ESCAPE) {
             break;
         }
         if (!IsDialogMessageW(dlg, &msg)) {
@@ -337,7 +353,10 @@ void ShowAboutDialog(HWND parent) {
     }
 }
 
-// License dialog window procedure
+// ============================================================================
+// LICENSE DIALOG WINDOW PROCEDURE
+// Handles OK/Cancel and Escape key to close
+// ============================================================================
 static LRESULT CALLBACK LicenseDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
         case WM_COMMAND:
@@ -349,15 +368,24 @@ static LRESULT CALLBACK LicenseDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
         case WM_CLOSE:
             PostQuitMessage(0);
             return 0;
+        case WM_KEYDOWN:
+            if (wParam == VK_ESCAPE) {
+                PostQuitMessage(0);
+                return 0;
+            }
+            break;
     }
     return DefWindowProcW(hwnd, msg, wParam, lParam);
 }
 
-// License dialog - load GPLv2.md file with formatted content
+// ============================================================================
+// LICENSE DIALOG
+// Displays GPLv2 license text with formatting
+// Loads from GPLv2.md file and applies syntax highlighting
+// ============================================================================
 void ShowLicenseDialog(HWND parent) {
     LoadLibraryW(L"Riched20.dll");
     
-    // Create license window - larger to accommodate full GPL text
     const int W = 650, H = 600;
     RECT pr = {0,0,0,0};
     if (parent && IsWindow(parent)) GetWindowRect(parent, &pr);
@@ -371,7 +399,7 @@ void ShowLicenseDialog(HWND parent) {
     wc.lpfnWndProc = LicenseDlgProc;
     wc.hInstance = hi;
     wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
-    wc.lpszClassName = L"WUPLicenseDlgClass";
+    wc.lpszClassName = L"WPMLicenseDlgClass";
     if (!GetClassInfoW(hi, wc.lpszClassName, &wc)) {
         RegisterClassW(&wc);
     }
@@ -387,12 +415,12 @@ void ShowLicenseDialog(HWND parent) {
     }
     
     // Set app icon
-    HICON hIcon = (HICON)LoadImageW(hi, MAKEINTRESOURCEW(IDI_APP_ICON), IMAGE_ICON, 0, 0, LR_DEFAULTSIZE | LR_SHARED);
+    HICON hIcon = LoadIcon(hi, MAKEINTRESOURCE(IDI_APP_ICON));
     if (hIcon) {
         SendMessageW(dlg, WM_SETICON, ICON_SMALL, (LPARAM)hIcon);
         SendMessageW(dlg, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
     }
-    
+
     // Load and display GNU logo at top
     wchar_t exePath[MAX_PATH];
     GetModuleFileNameW(NULL, exePath, MAX_PATH);
@@ -402,7 +430,7 @@ void ShowLicenseDialog(HWND parent) {
         exeDir = exeDir.substr(0, lastSlash);
     }
     
-    // Try to load GNU logo (now converted to BMP)
+    // Try to load GNU logo
     std::wstring logoPath = exeDir + L"\\GnuLogo.bmp";
     HBITMAP hLogoBitmap = (HBITMAP)LoadImageW(NULL, logoPath.c_str(), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
     int logoHeight = 0;
@@ -440,58 +468,35 @@ void ShowLicenseDialog(HWND parent) {
     
     if (hFile != INVALID_HANDLE_VALUE) {
         DWORD fileSize = GetFileSize(hFile, NULL);
-        if (fileSize > 0 && fileSize < 1024*1024) { // Max 1MB
+        if (fileSize > 0 && fileSize < 1024*1024) {
             char* buffer = new char[fileSize + 1];
             DWORD bytesRead;
             if (ReadFile(hFile, buffer, fileSize, &bytesRead, NULL)) {
                 buffer[bytesRead] = '\0';
                 
-                // Convert to wide string
                 int wideSize = MultiByteToWideChar(CP_UTF8, 0, buffer, bytesRead, NULL, 0);
                 wchar_t* wideBuffer = new wchar_t[wideSize + 1];
                 MultiByteToWideChar(CP_UTF8, 0, buffer, bytesRead, wideBuffer, wideSize);
                 wideBuffer[wideSize] = L'\0';
                 
-                // Parse and format the license text
                 std::wstring text(wideBuffer);
                 delete[] wideBuffer;
                 
-                // Add title
                 AppendRichText(hEdit, L"GNU GENERAL PUBLIC LICENSE\r\n", true, RGB(0, 70, 140), 14, true);
                 AppendRichText(hEdit, L"Version 2, June 1991\r\n\r\n", false, RGB(0, 70, 140), 10, true);
                 
-                // Parse the content
-                size_t pos = 0;
-                std::wstring line;
                 std::wstringstream ss(text);
+                std::wstring line;
                 
                 while (std::getline(ss, line)) {
-                    // Remove carriage return if present
-                    if (!line.empty() && line.back() == L'\r') {
-                        line.pop_back();
-                    }
+                    if (!line.empty() && line.back() == L'\r') line.pop_back();
                     
-                    // Check for major section headers (all caps)
-                    if (line.find(L"TERMS AND CONDITIONS") != std::wstring::npos) {
-                        AppendRichText(hEdit, L"\r\n" + line + L"\r\n", true, RGB(139, 0, 0), 11, false);
-                    } else if (line.find(L"NO WARRANTY") != std::wstring::npos) {
+                    if (line.find(L"TERMS AND CONDITIONS") != std::wstring::npos || 
+                        line.find(L"NO WARRANTY") != std::wstring::npos) {
                         AppendRichText(hEdit, L"\r\n" + line + L"\r\n", true, RGB(139, 0, 0), 11, false);
                     } else if (line == L"Preamble") {
                         AppendRichText(hEdit, L"\r\n" + line + L"\r\n", true, RGB(0, 70, 140), 12, false);
-                    } else if (line.length() > 0 && line.length() < 100 && 
-                               (line.find(L"0.") == 0 || line.find(L"1.") == 0 || line.find(L"2.") == 0 || 
-                                line.find(L"3.") == 0 || line.find(L"4.") == 0 || line.find(L"5.") == 0 || 
-                                line.find(L"6.") == 0 || line.find(L"7.") == 0 || line.find(L"8.") == 0 || 
-                                line.find(L"9.") == 0 || line.find(L"10.") == 0 || line.find(L"11.") == 0 || 
-                                line.find(L"12.") == 0)) {
-                        // Numbered sections
-                        AppendRichText(hEdit, L"\r\n" + line + L"\r\n", true, RGB(0, 0, 139), 10, false);
-                    } else if (line.length() > 0 && line.length() < 50 && 
-                               (line.find(L"a)") == 0 || line.find(L"b)") == 0 || line.find(L"c)") == 0)) {
-                        // Sub-sections
-                        AppendRichText(hEdit, line + L"\r\n", true, RGB(0, 0, 0), 9, false);
                     } else {
-                        // Regular text
                         AppendRichText(hEdit, line + L"\r\n", false, RGB(40, 40, 40), 9, false);
                     }
                 }
@@ -504,11 +509,9 @@ void ShowLicenseDialog(HWND parent) {
         AppendRichText(hEdit, L"Please see the GPLv2.md file in the installation directory.", false, RGB(40, 40, 40), 9, false);
     }
     
-    // Scroll to top
     SendMessageW(hEdit, EM_SETSEL, 0, 0);
     SendMessageW(hEdit, EM_SCROLLCARET, 0, 0);
     
-    // Create OK button
     int btnWidth = 80;
     int btnX = (W - btnWidth) / 2;
     int btnY = H - 61;
@@ -521,13 +524,12 @@ void ShowLicenseDialog(HWND parent) {
     HFONT hFont = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
     SendMessageW(btnOK, WM_SETFONT, (WPARAM)hFont, TRUE);
     
-    // Modal loop
     if (parent && IsWindow(parent)) EnableWindow(parent, FALSE);
     SetFocus(btnOK);
     
     MSG msg;
     while (GetMessageW(&msg, NULL, 0, 0)) {
-        if (HandleCtrlW(dlg, msg.message, msg.wParam, msg.lParam)) {
+        if (msg.message == WM_KEYDOWN && msg.wParam == VK_ESCAPE) {
             break;
         }
         if (!IsDialogMessageW(dlg, &msg)) {
@@ -543,3 +545,6 @@ void ShowLicenseDialog(HWND parent) {
         BringWindowToTop(parent);
     }
 }
+
+// End of About Dialog Implementation
+// ============================================================================

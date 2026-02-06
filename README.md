@@ -1,10 +1,28 @@
 # WinProgramSuite — Complete Windows Package Management System
 
-**Latest Update:** 5 February 2026 | **Installed Apps Refresh & i18n Fix**
+**Latest Update:** 6 February 2026 | **About Dialog & UI Polish**
 
 **WinProgramSuite** is a comprehensive package management system for Windows, combining database-driven package metadata management with a friendly GUI for updates. Built on Microsoft's `winget` package manager with advanced categorization, search, filtering, and analysis capabilities.
 
-## 🚨 Recent Updates (2026-02-05)
+## 🚨 Recent Updates (2026-02-06)
+
+### Update 13: About Dialog & UI Polish
+- **ABOUT DIALOG**: Complete About dialog with WinProgramSuite logo (wpm_logo.png), version 2026.02.06.09, published 06.02.2026
+- **LICENSE VIEWER**: Full GPLv2 license display with GNU logo, syntax highlighting, and formatted text
+- **ABOUT BUTTON**: Blue-themed button at far right (after language selector) with locale support: "About" / "Om" / "Om"
+- **COPYLEFT**: Changed from "Copyright ©" to "Copyleft" for proper open-source terminology
+- **17 NEW STRINGS**: Complete i18n for About system in English, Norwegian, and Swedish
+- **ASSET PACKAGING**: GPLv2.md, GnuLogo.bmp, wpm_logo.png now included in build output
+- **WINDOW BEHAVIOR**: Removed WS_EX_TOPMOST - startup spinner and dialogs allow switching to other apps
+- **FOREGROUND INIT**: Startup spinner appears initially via SetForegroundWindow() then allows normal switching
+- **LOCALE FIXES**: Fixed missing newlines preventing about_btn from loading correctly
+
+### Update 12: Re-install & Uninstall Actions
+- **RE-INSTALL BUTTON**: Reinstalls apps using winget install --force with confirmation dialog
+- **UNINSTALL BUTTON**: Removes apps with winget uninstall, updates database, shows warning
+- **SMART VISIBILITY**: Buttons appear only when Installed filter active AND app selected
+- **DB INTEGRATION**: Automatic DELETE FROM installed_apps after successful uninstall
+- **PROGRESS FEEDBACK**: Loading dialog shows "Re-installing..." or "Uninstalling..." with app name
 
 ### Update 11: Installed Apps Refresh & i18n Fix
 - **REFRESH BUTTON**: Manual "Refresh Installed Apps" button appears when Installed filter is active

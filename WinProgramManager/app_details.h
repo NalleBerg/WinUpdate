@@ -59,6 +59,21 @@ struct Locale {
     std::wstring cancel_btn;
     std::wstring refresh_installed_btn;
     std::wstring refresh_installed_tooltip;
+    // About Dialog
+    std::wstring about_btn;
+    std::wstring about_title;
+    std::wstring about_subtitle;
+    std::wstring about_published;
+    std::wstring about_version;
+    std::wstring about_suite_desc;
+    std::wstring about_author;
+    std::wstring about_copyright;
+    std::wstring about_wpm_title;
+    std::wstring about_wpm_usage;
+    std::wstring about_license_info;
+    std::wstring about_github;
+    std::wstring about_view_license;
+    std::wstring about_close;
 };
 
 // App details data structure

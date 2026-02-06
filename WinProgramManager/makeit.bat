@@ -342,6 +342,13 @@ if exist "GnuLogo.bmp" (
 )
 REM END: Copy GNU logo bitmap
 
+REM BEGIN: Copy WinProgramManager logo
+if exist "wpm_logo.png" (
+    copy /Y "wpm_logo.png" "%PACKAGE_DIR%\wpm_logo.png" >nul 2>&1
+    echo - wpm_logo.png packaged
+)
+REM END: Copy WinProgramManager logo
+
 REM BEGIN: Copy closed folder icon
 if exist "gr_folder.icon_closed.ico" (
     copy /Y "gr_folder.icon_closed.ico" "%PACKAGE_DIR%\gr_folder.icon_closed.ico" >nul 2>&1
