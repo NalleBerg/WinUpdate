@@ -45,3 +45,9 @@ repopulating_table=Återuppbygger tabell...
 # Installed apps management
 refresh_installed_btn=Uppdatera installerade appar
 refresh_installed_tooltip=Upptäck appar installerade utanför detta program.\nDetta kan ta en stund.
+reinstall_btn=Ominstallera
+uninstall_btn=Avinstallera
+confirm_reinstall_title=Bekräfta ominstallation
+confirm_reinstall_msg=Är du säker på att du vill ominstallera detta program?\n\n%s
+confirm_uninstall_title=Bekräfta avinstallering
+confirm_uninstall_msg=Är du säker på att du vill avinstallera detta program?\n\n%s\n\nDetta kommer att ta bort programmet från ditt system.

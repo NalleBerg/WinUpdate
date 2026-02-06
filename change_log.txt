@@ -2,6 +2,60 @@
 Notes for future versioned changelog
 
 =====================================
+Date: 2026-02-05 (Update 12 - Re-install & Uninstall Actions)
+Component: WinProgramManager
+
+APP MANAGEMENT: Re-install and Uninstall Functionality
+---------------------------------------------------------
+- NEW FEATURE: "Re-install" button for reinstalling apps (winget install --force)
+- NEW FEATURE: "Uninstall" button for removing apps (winget uninstall)
+- Button visibility: Shown when Installed filter is active AND an app is selected
+- Button placement: Above app list, left-aligned (Re-install, then Uninstall)
+- Button styling: Blue (RGB 10,57,129) matching refresh button, with hover effects
+- Conditional display: Hidden when no app selected or filter not active
+
+CONFIRMATION DIALOGS: User Safety
+---------------------------------------------------------
+- Re-install confirmation: Shows app name, requires Yes to proceed
+- Uninstall confirmation: Warning icon, shows app name and consequences
+- Internationalized: All dialog text uses locale system (en_GB, nb_NO, sv_SE)
+- Format strings: %s placeholder replaced with actual app name
+
+DATABASE INTEGRATION: Uninstall Tracking
+---------------------------------------------------------
+- Automatic cleanup: DELETE FROM installed_apps WHERE package_id = ? on successful uninstall
+- Registry verification: CleanupInstalledApps() ensures DB reflects actual state
+- UI refresh: LoadTags() and OnTagSelectionChanged() update display after operations
+- Exit code checking: Uninstall verifies success before DB update
+
+BACKGROUND OPERATIONS: Progress Feedback
+---------------------------------------------------------
+- Loading dialog: Spinner shows "Re-installing <app>..." or "Uninstalling <app>..."
+- Threaded execution: Commands run in background without blocking UI
+- Completion messages: MessageBox confirms success/failure after operation
+- Command format: winget install --force --silent, winget uninstall --silent
+
+LOCALE SUPPORT: Full i18n Implementation
+---------------------------------------------------------
+- Added to all 3 locale files:
+  * reinstall_btn, uninstall_btn (button labels)
+  * confirm_reinstall_title, confirm_reinstall_msg (Re-install confirmation)
+  * confirm_uninstall_title, confirm_uninstall_msg (Uninstall confirmation)
+- English: "Re-install" (with hyphen as requested)
+- Norwegian: "Installer på nytt", "Avinstaller"
+- Swedish: "Ominstallera", "Avinstallera"
+- Language switching: InvalidateRect() redraws buttons with new text
+
+TECHNICAL IMPLEMENTATION:
+- Button IDs: ID_REINSTALL_BTN (1009), ID_UNINSTALL_BTN (1010)
+- Global handles: g_hReinstallBtn, g_hUninstallBtn
+- Selection tracking: LVN_ITEMCHANGED notification triggers visibility update
+- WM_COMMAND handlers: Execute winget commands in background threads
+- WM_USER messages: WM_USER+3 (reinstall done), WM_USER+4 (uninstall done)
+- Custom drawing: WM_DRAWITEM with hover effects and locale text
+- Button dimensions: 100px width, 28px height (slightly smaller than top buttons)
+
+=====================================
 Date: 2026-02-05 (Update 11 - Installed Apps Refresh & i18n Fix)
 Component: WinProgramManager
 

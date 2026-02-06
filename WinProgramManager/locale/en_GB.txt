@@ -45,3 +45,9 @@ repopulating_table=Repopulating table...
 # Installed apps management
 refresh_installed_btn=Refresh Installed Apps
 refresh_installed_tooltip=Discover apps installed outside this manager.\nThis may take a while.
+reinstall_btn=Re-install
+uninstall_btn=Uninstall
+confirm_reinstall_title=Confirm Re-install
+confirm_reinstall_msg=Are you sure you want to re-install this application?\n\n%s
+confirm_uninstall_title=Confirm Uninstall
+confirm_uninstall_msg=Are you sure you want to uninstall this application?\n\n%s\n\nThis will remove the application from your system.

@@ -68,6 +68,8 @@ Database builder and metadata management system for Windows packages.
 - **Intelligent cross-referencing**: SQL-based missing package detection (instant vs 4+ hours)
 - **Safe database operations**: Absolute path protection prevents accidental data loss
 - **Robust winget parsing**: Handles both interactive and batch mode output formats
+- **App management actions**: Re-install (winget --force) and Uninstall with DB updates
+- **Refresh installed apps**: Manual winget list scan to discover external installations
 - **7-step update process**: Optimized from original 8-step process
 - Parses winget list and winget search output using right-to-left tokenization
 - Handles regional latency (tested with Greek Windows, 60+ second delays)
