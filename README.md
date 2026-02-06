@@ -4,6 +4,37 @@
 
 **WinProgramSuite** is a comprehensive package management system for Windows, combining database-driven package metadata management with a friendly GUI for updates. Built on Microsoft's `winget` package manager with advanced categorization, search, filtering, and analysis capabilities.
 
+## 📥 Getting Started
+
+### Quick Start (Recommended)
+
+**WinProgramManager** requires a pre-built database to function. Building the database from scratch takes several days of continuous winget queries, so we provide a current database for download:
+
+**Download the Database:**
+- **URL:** [https://prog.nalle.no/user/data/apps/WinProgramManager.db](https://prog.nalle.no/user/data/apps/WinProgramManager.db)
+- **Size:** ~115 MB (too large for GitHub)
+- **Contains:** 10,800+ packages with complete metadata, icons, tags, and categories
+
+**Installation Steps:**
+1. Download `WinProgramManager.db` from the link above
+2. Place it in your WinProgramManager installation directory
+3. Run `WinProgramUpdaterGUI.exe` to update the database to current packages
+4. Launch `WinProgramManager.exe` - your installed apps will be automatically detected
+
+**Note:** The GitHub repository includes the complete WinProgramManager package directory (executables, DLLs, locale files) but excludes the database due to size constraints. The application is currently in testing phase - use at your own discretion.
+
+## 🏗️ Suite Components
+
+### 📦 WinProgramManager (Database Management)
+Browse, search, and manage 10,800+ Windows packages with complete metadata.
+
+**Current Status:** ⚠️ Testing phase - Core features implemented, undergoing validation
+
+### 🔄 WinUpdate (Automatic Updates)
+Published and stable GUI for automatic Windows package updates.
+
+**Current Status:** ✅ Published and production-ready
+
 ## 🚨 Recent Updates (2026-02-06)
 
 ### Update 13: About Dialog & UI Polish
@@ -65,9 +96,7 @@
 - **PACKAGE SUPPORT**: Verified support for packages with + character (Microsoft.VCRedist.2015+.x86, Notepad++.Notepad++)
 - **DATABASE**: Restored and verified 10,707 apps with full metadata
 
-> **Note:** Currently only **WinUpdate** (the GUI component) is published and available. WinProgramManager (database management) is under active development.
-
-## 🏗️ Suite Components
+## 🏗️ Suite Components (Continued)
 
 ### 📦 WinProgramManager
 Database builder and metadata management system for Windows packages.
