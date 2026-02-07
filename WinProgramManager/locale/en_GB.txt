@@ -11,7 +11,7 @@ search_apps=Search applications...
 all=All
 
 # Window title
-title=WinProgram Manager
+title=WinProgramManager
 
 # Loading messages
 processing_database=Processing database, please wait...
@@ -45,7 +45,15 @@ repopulating_table=Repopulating table...
 # Installed apps management
 refresh_installed_btn=Refresh Installed Apps
 refresh_installed_tooltip=Discover apps installed outside this manager.\nThis may take a while.
+search_btn=🔍 Search
+end_search_btn=End Search
+installed_btn=Installed
 about_btn=About
+quit_btn=Quit
+quit_title=Quit WinProgramManager?
+quit_message=Are you sure you want to quit?
+yes_btn=Yes
+no_btn=No
 about_title=About WinProgramSuite
 about_subtitle=Complete Windows Package Management System
 about_published=Published:
@@ -65,3 +73,17 @@ confirm_reinstall_title=Confirm Re-install
 confirm_reinstall_msg=Are you sure you want to re-install this application?\n\n%s
 confirm_uninstall_title=Confirm Uninstall
 confirm_uninstall_msg=Are you sure you want to uninstall this application?\n\n%s\n\nThis will remove the application from your system.
+
+# Error messages
+error_title=Error
+window_registration_failed=Window registration failed!
+window_creation_failed=Window creation failed!
+database_open_failed=Failed to open database!
+database_error_title=Database Error
+discovery_failed_title=Discovery Failed
+discovery_failed_msg=Failed to query winget for installed apps.
+about_window_error=Unable to create About window.
+license_window_error=Unable to create License window.
+wait_for_update=Please wait for the update to complete or click Cancel.
+cancel_installation=Cancelling installation...\n\nPlease wait while the process terminates.
+preparing_installation=Preparing installation...

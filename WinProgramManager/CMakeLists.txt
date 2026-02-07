@@ -16,6 +16,7 @@ add_executable(WinProgramManager WIN32
     spinner_dialog.cpp
     install_dialog.cpp
     about.cpp
+    quit_handler.cpp
     winprogrammanager.rc
 )
 

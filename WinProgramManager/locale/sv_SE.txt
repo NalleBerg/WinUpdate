@@ -11,7 +11,7 @@ search_apps=Sök program...
 all=Alla
 
 # Window title
-title=WinProgram Manager
+title=WinProgramManager
 
 # Loading messages
 processing_database=Bearbetar databas, vänligen vänta...
@@ -45,7 +45,15 @@ repopulating_table=Återuppbygger tabell...
 # Installed apps management
 refresh_installed_btn=Uppdatera installerade appar
 refresh_installed_tooltip=Upptäck appar installerade utanför detta program.\nDetta kan ta en stund.
+search_btn=🔍 Sök
+end_search_btn=Avsluta sökning
+installed_btn=Installerad
 about_btn=Om
+quit_btn=Avsluta
+quit_title=Avsluta WinProgramManager?
+quit_message=Är du säker på att du vill avsluta?
+yes_btn=Ja
+no_btn=Nej
 about_title=Om WinProgramSuite
 about_subtitle=Komplett Windows Pakethanteringssystem
 about_published=Publicerad:
@@ -65,3 +73,17 @@ confirm_reinstall_title=Bekräfta ominstallation
 confirm_reinstall_msg=Är du säker på att du vill ominstallera detta program?\n\n%s
 confirm_uninstall_title=Bekräfta avinstallering
 confirm_uninstall_msg=Är du säker på att du vill avinstallera detta program?\n\n%s\n\nDetta kommer att ta bort programmet från ditt system.
+
+# Felmeddelanden
+error_title=Fel
+window_registration_failed=Fönsterregistrering misslyckades!
+window_creation_failed=Fönstergenerering misslyckades!
+database_open_failed=Kunde inte öppna databasen!
+database_error_title=Databasfel
+discovery_failed_title=Upptäckt misslyckades
+discovery_failed_msg=Kunde inte fråga winget om installerade appar.
+about_window_error=Kunde inte skapa Om-fönster.
+license_window_error=Kunde inte skapa licensfönster.
+wait_for_update=Vänligen vänta tills uppdateringen är klar eller klicka på Avbryt.
+cancel_installation=Avbryter installation...\n\nVänligen vänta medan processen avslutas.
+preparing_installation=Förbereder installation...

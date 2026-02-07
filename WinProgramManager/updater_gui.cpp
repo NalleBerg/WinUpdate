@@ -640,7 +640,7 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
                 UnregisterClassW(L"LogViewerDialog", GetModuleHandle(NULL));
                 
                 if (!RegisterClassExW(&wc)) {
-                    MessageBoxW(hwnd, L"Failed to register window class", L"Error", MB_OK | MB_ICONERROR);
+                    MessageBoxW(hwnd, t("window_registration_failed").c_str(), t("error_title").c_str(), MB_OK | MB_ICONERROR);
                     return 0;
                 }
                 
@@ -810,7 +810,7 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
         case WM_CLOSE: {
             // Don't allow close while update is running
             if (g_updateRunning) {
-                MessageBoxW(hwnd, L"Please wait for the update to complete or click Cancel.", 
+                MessageBoxW(hwnd, t("wait_for_update").c_str(), 
                            t("updater_title").c_str(), MB_OK | MB_ICONINFORMATION);
                 return 0;
             }

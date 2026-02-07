@@ -229,7 +229,7 @@ void ShowAboutDialog(HWND parent) {
         x, y, W, H, parent, NULL, hi, NULL);
     
     if (!dlg) {
-        MessageBoxW(parent, L"Unable to create About window.", L"Error", MB_OK | MB_ICONERROR);
+        MessageBoxW(parent, g_locale.about_window_error.c_str(), g_locale.error_title.c_str(), MB_OK | MB_ICONERROR);
         return;
     }
     
@@ -410,7 +410,7 @@ void ShowLicenseDialog(HWND parent) {
         x, y, W, H, parent, NULL, hi, NULL);
     
     if (!dlg) {
-        MessageBoxW(parent, L"Unable to create License window.", L"Error", MB_OK | MB_ICONERROR);
+        MessageBoxW(parent, g_locale.license_window_error.c_str(), g_locale.error_title.c_str(), MB_OK | MB_ICONERROR);
         return;
     }
     

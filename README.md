@@ -1,6 +1,6 @@
 # WinProgramSuite — Complete Windows Package Management System
 
-**Latest Update:** 7 February 2026 | **Suite Version Alignment**
+**Latest Update:** 7 February 2026 | **Internationalization & Quit System**
 
 **WinProgramSuite** is a comprehensive package management system for Windows, combining database-driven package metadata management with a friendly GUI for updates. Built on Microsoft's `winget` package manager with advanced categorization, search, filtering, and analysis capabilities.
 
@@ -37,6 +37,20 @@ Published and stable GUI for automatic Windows package updates.
 
 ## 🚨 Recent Updates (2026-02-07)
 
+### Update 15: Complete Internationalization & Quit System (v2026.02.07.08)
+- **COMPLETE i18n**: 90+ locale strings covering all UI elements, error messages, and dialogs
+- **QUIT SYSTEM**: Professional quit confirmation with "Yes/No" buttons for all exit methods
+- **QUIT BUTTON**: Red-themed button at far left with "Quit" / "Avslutt" / "Avsluta" translations
+- **CTRL+W SHORTCUT**: Windows accelerator table for Ctrl+W keyboard shortcut (works globally)
+- **SMART QUIT**: Child dialogs (app details) close without confirmation, main window asks first
+- **CONFIG PERSISTENCE**: Language preference saved to %APPDATA%\WinProgramManager\WinProgramManager.ini
+- **UTF-8 ENCODING**: Fixed locale file reading with MultiByteToWideChar (CP_UTF8) for proper character display
+- **BUTTON i18n**: Search/End Search/Installed buttons now fully translated (removed hardcoded L"" strings)
+- **ERROR MESSAGES**: 15+ error/warning messages now localized in all 3 languages
+- **quit_handler MODULE**: Centralized quit logic in quit_handler.cpp/.h for maintainability
+- **TITLE FIX**: Removed space from "WinProgram Manager" → "WinProgramManager"
+- **NORWEGIAN FIX**: "Behandler database" → "Behandler databasen" (definite form)
+
 ### Update 14: Suite Version Alignment (v2026.02.07.08)
 - **UNIFIED VERSIONING**: Both WinProgramManager and WinUpdate now use synchronized version 2026.02.07.08
 - **SCANNER VISIBILITY FIX**: WinUpdate scanner popup now follows main window when it gains focus
@@ -53,13 +67,6 @@ Published and stable GUI for automatic Windows package updates.
 - **WINDOW BEHAVIOR**: Removed WS_EX_TOPMOST - startup spinner and dialogs allow switching to other apps
 - **FOREGROUND INIT**: Startup spinner appears initially via SetForegroundWindow() then allows normal switching
 - **LOCALE FIXES**: Fixed missing newlines preventing about_btn from loading correctly
-
-### Update 12: Re-install & Uninstall Actions
-- **RE-INSTALL BUTTON**: Reinstalls apps using winget install --force with confirmation dialog
-- **UNINSTALL BUTTON**: Removes apps with winget uninstall, updates database, shows warning
-- **SMART VISIBILITY**: Buttons appear only when Installed filter active AND app selected
-- **DB INTEGRATION**: Automatic DELETE FROM installed_apps after successful uninstall
-- **PROGRESS FEEDBACK**: Loading dialog shows "Re-installing..." or "Uninstalling..." with app name
 
 ### Update 11: Installed Apps Refresh & i18n Fix
 - **REFRESH BUTTON**: Manual "Refresh Installed Apps" button appears when Installed filter is active

@@ -2,13 +2,41 @@
 <span style="color: #0066cc;">📦 WinProgramSuite — Komplett Windows Pakethanteringssystem</span>
 </h2>
 <p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;">
-<strong>Senaste uppdatering:</strong> 19 januari 2026 | <strong>Databasdriven arkitektur</strong><br/>
-Denna ändringslogg omfattar <strong>WinUpdate</strong>, GUI-applikationskomponenten av WinProgramSuite.<br/>
-För databashanteringsfunktioner, se <strong>WinProgramManager</strong> dokumentation.
+<strong>Senaste uppdatering:</strong> 7 februari 2026 | <strong>Komplett internationalisering och avslutsystem</strong><br/>
+Denna ändringslogg omfattar <strong>WinProgramManager</strong>, databashanteringskomponenten av WinProgramSuite.<br/>
+För automatiska uppdateringsfunktioner, se <strong>WinUpdate</strong> dokumentation.
 </p>
 
 <h3 style="text-align: center;">&nbsp;</h3>
-<h3 style="text-align: center;"><span style="color: #ff0000;">WinUpdate Version 2026.01.19.10</span></h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Version 2026.02.07.08 — Uppdatering 15</span></h3>
+<p><strong>Komplett internationalisering och avslutsystem (7 februari 2026):</strong></p>
+<ul>
+<li><strong>Komplett i18n-implementering:</strong> 90+ lokalsträngar som täcker alla UI-element, felmeddelanden och dialoger på 3 språk</li>
+<li><strong>Professionellt avslutsystem:</strong> Avslutbekräftelse med "Ja/Nej"-knappar för alla avslutmetoder (X-knapp, avslutknapp, Ctrl+W)</li>
+<li><strong>Avslutknapp:</strong> Röd-tematiserad knapp längst till vänster med översättningar: "Quit" (engelska), "Avslutt" (norska), "Avsluta" (svenska)</li>
+<li><strong>Ctrl+W tangentbordsgenväg:</strong> Windows acceleratortabell säkerställer att Ctrl+W fungerar globalt oavsett fokus</li>
+<li><strong>Smart hantering av underdialoger:</strong> Underdialoger (appdetaljer) stängs utan bekräftelse, huvudfönster kräver bekräftelse</li>
+<li><strong>Konfigurationsfilpersistering:</strong> Språkpreferens sparad i %APPDATA%\WinProgramManager\WinProgramManager.ini</li>
+<li><strong>UTF-8-kodningsfixering:</strong> Fixade läsning av lokalfiler med MultiByteToWideChar (CP_UTF8) för korrekta norska/svenska tecken</li>
+<li><strong>Knappinternationalisering:</strong> Sök-, Avsluta sökning- och Installerade-knapparna är nu helt översatta (tog bort hårdkodade strängar)</li>
+<li><strong>Lokaliserade felmeddelanden:</strong> 15+ fel-/varningsmeddelanden nu tillgängliga på alla 3 språk</li>
+<li><strong>quit_handler modul:</strong> Centraliserad avslutlogik i quit_handler.cpp/.h för bättre kodorganisation</li>
+<li><strong>Titelfixering:</strong> Tog bort mellanslag från "WinProgram Manager" → "WinProgramManager" i spinner och dialoger</li>
+<li><strong>Norsk språkfixering:</strong> Korrigerad "Behandler database" → "Behandler databasen" (bestämd form)</li>
+</ul>
+
+<h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Version 2026.02.07.08 — Uppdatering 14</span></h3>
+<p><strong>Suite versionsjustering (7 februari 2026):</strong></p>
+<ul>
+<li><strong>Enhetlig versionering:</strong> WinProgramManager och WinUpdate delar nu version 2026.02.07.08 för suite-konsistens</li>
+<li><strong>WinUpdate skanner-synlighet:</strong> Skanner-popup följer nu huvudfönstret när det får fokus (WM_ACTIVATE handler)</li>
+<li><strong>Förbättrad användarupplevelse:</strong> Inget behov av att minimera andra appar för att se skanningsframsteg - popup visas automatiskt överst</li>
+<li><strong>Suite-identitet:</strong> Alla komponenter visar samma versionsnummer och publiceringsdatum (07.02.2026)</li>
+</ul>
+
+<h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">Version 2026.01.19.10</span></h3>
 <p><strong>Nytt i denna version (19 januari 2026, 10:00 GMT+1):</strong></p>
 <ul>
 <li><strong>Microsoft Store källavtal:</strong> Lade till --accept-source-agreements flagga till alla winget upgrade-kommandon för att automatiskt acceptera geografiska regiondatakrav för msstore-källa</li>

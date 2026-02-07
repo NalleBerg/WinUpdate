@@ -59,8 +59,16 @@ struct Locale {
     std::wstring cancel_btn;
     std::wstring refresh_installed_btn;
     std::wstring refresh_installed_tooltip;
+    std::wstring search_btn;
+    std::wstring end_search_btn;
+    std::wstring installed_btn;
     // About Dialog
     std::wstring about_btn;
+    std::wstring quit_btn;
+    std::wstring quit_title;
+    std::wstring quit_message;
+    std::wstring yes_btn;
+    std::wstring no_btn;
     std::wstring about_title;
     std::wstring about_subtitle;
     std::wstring about_published;
@@ -74,6 +82,19 @@ struct Locale {
     std::wstring about_github;
     std::wstring about_view_license;
     std::wstring about_close;
+    // Error messages
+    std::wstring error_title;
+    std::wstring window_registration_failed;
+    std::wstring window_creation_failed;
+    std::wstring database_open_failed;
+    std::wstring database_error_title;
+    std::wstring discovery_failed_title;
+    std::wstring discovery_failed_msg;
+    std::wstring about_window_error;
+    std::wstring license_window_error;
+    std::wstring wait_for_update;
+    std::wstring cancel_installation;
+    std::wstring preparing_installation;
 };
 
 // App details data structure

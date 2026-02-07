@@ -62,3 +62,7 @@
 #define IDD_CONFIRM_ACTION 107
 #define IDC_CONFIRM_MESSAGE 330
 
+// Accelerators
+#define IDR_ACCELERATOR1 108
+#define ID_ACCEL_QUIT 1011
+

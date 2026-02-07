@@ -3,6 +3,7 @@
 #include <commctrl.h>
 #include <shellapi.h>
 #include <shlwapi.h>
+#include <shlobj.h>
 #include <sqlite3.h>
 #include <string>
 #include <vector>
@@ -10,6 +11,7 @@
 #include <set>
 #include <algorithm>
 #include <fstream>
+#include <sstream>
 #include <thread>
 #include <atomic>
 #include <regex>
@@ -18,6 +20,7 @@
 #include "installed_apps.h"
 #include "app_details.h"
 #include "about.h"
+#include "quit_handler.h"
 
 // Control IDs
 #define ID_SEARCH_BTN 1001
@@ -25,6 +28,7 @@
 #define ID_INSTALLED_BTN 1007
 #define ID_REFRESH_INSTALLED_BTN 1008
 #define ID_ABOUT_BTN 1009
+#define ID_QUIT_BTN 1010
 #define ID_TAG_TREE 1002
 #define ID_APP_LIST 1004
 #define ID_LANG_COMBO 1005
@@ -39,6 +43,7 @@ HWND g_hInstalledBtn = NULL;
 HWND g_hRefreshInstalledBtn = NULL;
 HWND g_hRefreshTooltip = NULL;
 HWND g_hAboutBtn = NULL;
+HWND g_hQuitBtn = NULL;
 HWND g_hTagTree = NULL;
 HWND g_hTagCountLabel = NULL;
 HWND g_hAppList = NULL;
@@ -250,12 +255,17 @@ bool MatchString(const std::wstring& text, const std::wstring& pattern);
 bool LoadLocale(const std::wstring& lang);
 std::wstring FormatNumber(int num);
 std::wstring CapitalizeFirst(const std::wstring& str);
+void SaveConfig();
+void LoadConfig();
 
 // WinMain - Entry point
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow) {
     (void)hPrevInstance;
     (void)pCmdLine;
     (void)nCmdShow;
+
+    // Load saved preferences (language)
+    LoadConfig();
 
     // Load default locale - if fails, use fallback defaults
     if (!LoadLocale(g_currentLang)) {
@@ -268,7 +278,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
         g_locale.search_tags = L"Search tags...";
         g_locale.search_apps = L"Search applications...";
         g_locale.all = L"All";
-        g_locale.title = L"WinProgram Manager";
+        g_locale.title = L"WinProgramManager";
         g_locale.processing_database = L"Processing database...";
         g_locale.wait_moment = L"Wait a moment....";
         g_locale.repopulating_table = L"Repopulating table...";
@@ -293,7 +303,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     wc.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_APP_ICON));
 
     if (!RegisterClassW(&wc)) {
-        MessageBoxW(NULL, L"Window registration failed!", L"Error", MB_ICONERROR | MB_OK);
+        MessageBoxW(NULL, g_locale.window_registration_failed.c_str(), g_locale.error_title.c_str(), MB_ICONERROR | MB_OK);
         return 0;
     }
 
@@ -328,18 +338,23 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     );
 
     if (hwnd == NULL) {
-        MessageBoxW(NULL, L"Window creation failed!", L"Error", MB_ICONERROR | MB_OK);
+        MessageBoxW(NULL, g_locale.window_creation_failed.c_str(), g_locale.error_title.c_str(), MB_ICONERROR | MB_OK);
         return 0;
     }
 
     g_mainWindow = hwnd;
     // Don't show main window yet - will be shown by WM_USER after loading completes
     
-    // Message loop
+    // Load accelerator table
+    HACCEL hAccel = LoadAcceleratorsW(hInstance, MAKEINTRESOURCEW(IDR_ACCELERATOR1));
+    
+    // Message loop with accelerator support
     MSG msg = {};
     while (GetMessage(&msg, NULL, 0, 0)) {
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
+        if (!TranslateAcceleratorW(hwnd, hAccel, &msg)) {
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
     }
 
     return (int)msg.wParam;
@@ -635,7 +650,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             std::thread([hwnd]() {
                 // Phase 1: Open database first (needed for discovery)
                 if (!OpenDatabase()) {
-                    MessageBoxW(hwnd, L"Failed to open database!", L"Error", MB_ICONERROR | MB_OK);
+                    MessageBoxW(hwnd, g_locale.database_open_failed.c_str(), g_locale.error_title.c_str(), MB_ICONERROR | MB_OK);
                     PostQuitMessage(1);
                     return;
                 }
@@ -670,7 +685,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                 LoadTags();
                 OnTagSelectionChanged();
             } else {
-                MessageBoxW(hwnd, L"Failed to query winget for installed apps.", L"Discovery Failed", MB_ICONWARNING | MB_OK);
+                MessageBoxW(hwnd, g_locale.discovery_failed_msg.c_str(), g_locale.discovery_failed_title.c_str(), MB_ICONWARNING | MB_OK);
             }
             
             return 0;
@@ -735,6 +750,15 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         }
 
         case WM_COMMAND: {
+            // Handle accelerator for Ctrl+W
+            if (LOWORD(wParam) == ID_ACCEL_QUIT && HIWORD(wParam) == 1) {
+                if (!HandleCtrlW(hwnd)) {
+                    // No child dialogs - post WM_CLOSE to trigger confirmation
+                    PostMessageW(hwnd, WM_CLOSE, 0, 0);
+                }
+                return 0;
+            }
+            
             if (LOWORD(wParam) == ID_SEARCH_BTN) {
                 // Open search dialog
                 INT_PTR result = DialogBoxW(GetModuleHandle(NULL), MAKEINTRESOURCEW(IDD_SEARCH_DIALOG), hwnd, SearchDialogProc);
@@ -826,6 +850,10 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             else if (LOWORD(wParam) == ID_ABOUT_BTN) {
                 // Show About dialog
                 ShowAboutDialog(hwnd);
+            }
+            else if (LOWORD(wParam) == ID_QUIT_BTN) {
+                // Post WM_CLOSE which will show quit confirmation
+                PostMessageW(hwnd, WM_CLOSE, 0, 0);
             }
             else if (HIWORD(wParam) == CBN_SELCHANGE) {
                 if ((HWND)lParam == g_hLangCombo) {
@@ -974,7 +1002,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                 SetBkMode(hdc, TRANSPARENT);
                 HFONT hf = g_hBoldFont ? g_hBoldFont : (HFONT)GetStockObject(DEFAULT_GUI_FONT);
                 HGDIOBJ oldf = SelectObject(hdc, hf);
-                DrawTextW(hdc, L"🔍 Search", -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+                DrawTextW(hdc, g_locale.search_btn.c_str(), -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
                 SelectObject(hdc, oldf);
                 if (dis->itemState & ODS_FOCUS) DrawFocusRect(hdc, &rc);
                 return TRUE;
@@ -996,7 +1024,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                 SetBkMode(hdc, TRANSPARENT);
                 HFONT hf = g_hBoldFont ? g_hBoldFont : (HFONT)GetStockObject(DEFAULT_GUI_FONT);
                 HGDIOBJ oldf = SelectObject(hdc, hf);
-                DrawTextW(hdc, L"End Search", -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+                DrawTextW(hdc, g_locale.end_search_btn.c_str(), -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
                 SelectObject(hdc, oldf);
                 if (dis->itemState & ODS_FOCUS) DrawFocusRect(hdc, &rc);
                 return TRUE;
@@ -1018,7 +1046,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                 SetBkMode(hdc, TRANSPARENT);
                 HFONT hf = g_hBoldFont ? g_hBoldFont : (HFONT)GetStockObject(DEFAULT_GUI_FONT);
                 HGDIOBJ oldf = SelectObject(hdc, hf);
-                std::wstring btnText = IsInstalledFilterActive() ? L"✓ Installed" : L"Installed";
+                std::wstring btnText = IsInstalledFilterActive() ? (L"✓ " + g_locale.installed_btn) : g_locale.installed_btn;
                 DrawTextW(hdc, btnText.c_str(), -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
                 SelectObject(hdc, oldf);
                 if (dis->itemState & ODS_FOCUS) DrawFocusRect(hdc, &rc);
@@ -1067,8 +1095,39 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                 SelectObject(hdc, oldf);
                 if (dis->itemState & ODS_FOCUS) DrawFocusRect(hdc, &rc);
                 return TRUE;
+            } else if (dis->CtlID == ID_QUIT_BTN) {
+                HWND hBtn = dis->hwndItem;
+                BOOL hover = (BOOL)GetWindowLongPtrW(hBtn, GWLP_USERDATA);
+                bool pressed = (dis->itemState & ODS_SELECTED) != 0;
+                HDC hdc = dis->hDC;
+                RECT rc = dis->rcItem;
+                // Red color scheme for Quit button
+                COLORREF base = RGB(180,40,40);
+                COLORREF hoverCol = RGB(220,60,60);
+                COLORREF pressCol = RGB(120,20,20);
+                HBRUSH hBrush = CreateSolidBrush(pressed ? pressCol : (hover ? hoverCol : base));
+                FillRect(hdc, &rc, hBrush);
+                DeleteObject(hBrush);
+                // Draw text
+                SetTextColor(hdc, RGB(255,255,255));
+                SetBkMode(hdc, TRANSPARENT);
+                HFONT hf = g_hBoldFont ? g_hBoldFont : (HFONT)GetStockObject(DEFAULT_GUI_FONT);
+                HGDIOBJ oldf = SelectObject(hdc, hf);
+                DrawTextW(hdc, g_locale.quit_btn.c_str(), -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+                SelectObject(hdc, oldf);
+                if (dis->itemState & ODS_FOCUS) DrawFocusRect(hdc, &rc);
+                return TRUE;
             }
             return FALSE;
+        }
+        
+        case WM_CLOSE: {
+            // Show quit confirmation dialog
+            if (ShowQuitConfirmation(hwnd, g_locale.quit_title, g_locale.quit_message,
+                                    g_locale.yes_btn, g_locale.no_btn)) {
+                DestroyWindow(hwnd);
+            }
+            return 0;
         }
 
         case WM_DESTROY:
@@ -1121,7 +1180,7 @@ void CreateControls(HWND hwnd) {
     g_hSearchBtn = CreateWindowExW(
         0,
         L"BUTTON",
-        L"🔍 Search",
+        L"",
         WS_CHILD | WS_VISIBLE | BS_OWNERDRAW | WS_TABSTOP,
         0, 0, 0, 0,
         hwnd,
@@ -1129,6 +1188,7 @@ void CreateControls(HWND hwnd) {
         hInst,
         NULL
     );
+    SetWindowTextW(g_hSearchBtn, g_locale.search_btn.c_str());
     SendMessageW(g_hSearchBtn, WM_SETFONT, (WPARAM)g_hFont, TRUE);
     
     // Subclass search button for hover effects (matching WinUpdate About button)
@@ -1155,7 +1215,7 @@ void CreateControls(HWND hwnd) {
     g_hEndSearchBtn = CreateWindowExW(
         0,
         L"BUTTON",
-        L"End Search",
+        L"",
         WS_CHILD | BS_OWNERDRAW | WS_TABSTOP,  // Hidden by default
         0, 0, 0, 0,
         hwnd,
@@ -1163,6 +1223,7 @@ void CreateControls(HWND hwnd) {
         hInst,
         NULL
     );
+    SetWindowTextW(g_hEndSearchBtn, g_locale.end_search_btn.c_str());
     SendMessageW(g_hEndSearchBtn, WM_SETFONT, (WPARAM)g_hFont, TRUE);
     
     // Subclass end search button for hover effects
@@ -1189,7 +1250,7 @@ void CreateControls(HWND hwnd) {
     g_hInstalledBtn = CreateWindowExW(
         0,
         L"BUTTON",
-        L"Installed",
+        L"",
         WS_CHILD | WS_VISIBLE | BS_OWNERDRAW | WS_TABSTOP,
         0, 0, 0, 0,
         hwnd,
@@ -1197,6 +1258,7 @@ void CreateControls(HWND hwnd) {
         hInst,
         NULL
     );
+    SetWindowTextW(g_hInstalledBtn, g_locale.installed_btn.c_str());
     SendMessageW(g_hInstalledBtn, WM_SETFONT, (WPARAM)g_hFont, TRUE);
     
     // Subclass installed button for hover effects
@@ -1329,6 +1391,41 @@ void CreateControls(HWND hwnd) {
                 if (g_hRefreshTooltip) {
                     ShowWindow(g_hRefreshTooltip, SW_HIDE);
                 }
+                break;
+            }
+            }
+            return DefSubclassProc(h, msg, wp, lp);
+        }, 0, 0);
+    }
+    
+    // Quit button (far left at beginning of button row)
+    g_hQuitBtn = CreateWindowExW(
+        0,
+        L"BUTTON",
+        L"",
+        WS_CHILD | WS_VISIBLE | BS_OWNERDRAW | WS_TABSTOP,
+        0, 0, 0, 0,
+        hwnd,
+        (HMENU)ID_QUIT_BTN,
+        hInst,
+        NULL
+    );
+    SetWindowTextW(g_hQuitBtn, g_locale.quit_btn.c_str());
+    SendMessageW(g_hQuitBtn, WM_SETFONT, (WPARAM)g_hFont, TRUE);
+    
+    // Subclass Quit button for hover effects
+    if (g_hQuitBtn) {
+        SetWindowSubclass(g_hQuitBtn, [](HWND h, UINT msg, WPARAM wp, LPARAM lp, UINT_PTR, DWORD_PTR)->LRESULT {
+            switch (msg) {
+            case WM_MOUSEMOVE: {
+                SetWindowLongPtrW(h, GWLP_USERDATA, 1);
+                InvalidateRect(h, NULL, TRUE);
+                TRACKMOUSEEVENT tme{}; tme.cbSize = sizeof(tme); tme.dwFlags = TME_LEAVE; tme.hwndTrack = h; TrackMouseEvent(&tme);
+                break;
+            }
+            case WM_MOUSELEAVE: {
+                SetWindowLongPtrW(h, GWLP_USERDATA, 0);
+                InvalidateRect(h, NULL, TRUE);
                 break;
             }
             }
@@ -1622,11 +1719,15 @@ void ResizeControls(HWND hwnd) {
     const int spacing = 4;
     const int langComboWidth = 150;
     const int aboutBtnWidth = 70;
+    const int quitBtnWidth = 70;
     const int searchBtnWidth = 100;
     const int installedBtnWidth = 100;
     const int refreshInstalledBtnWidth = 180;
     const int endSearchBtnWidth = 110;
     const int searchBtnSpacing = 9;  // Extra space between buttons and dropdown
+    
+    // Quit button (far left)
+    MoveWindow(g_hQuitBtn, margin, margin, quitBtnWidth, btnHeight, TRUE);
     
     // Language selector and About button (top right) - About is at far right
     MoveWindow(g_hLangCombo, rc.right - margin - langComboWidth - spacing - aboutBtnWidth, margin, langComboWidth, 200, TRUE);
@@ -1730,7 +1831,7 @@ bool OpenDatabase() {
     if (result != SQLITE_OK) {
         std::wstring msg = L"Failed to open database at:\n" + dbPath + L"\n\nError: " + 
                            std::wstring(sqlite3_errmsg(g_db), sqlite3_errmsg(g_db) + strlen(sqlite3_errmsg(g_db)));
-        MessageBoxW(NULL, msg.c_str(), L"Database Error", MB_ICONERROR | MB_OK);
+        MessageBoxW(NULL, msg.c_str(), g_locale.database_error_title.c_str(), MB_ICONERROR | MB_OK);
         return false;
     }
     
@@ -1743,7 +1844,7 @@ bool OpenDatabase() {
         std::wstring errMsg(wsize - 1, 0);
         MultiByteToWideChar(CP_UTF8, 0, err, -1, &errMsg[0], wsize);
         msg += errMsg;
-        MessageBoxW(NULL, msg.c_str(), L"Database Error", MB_ICONERROR | MB_OK);
+        MessageBoxW(NULL, msg.c_str(), g_locale.database_error_title.c_str(), MB_ICONERROR | MB_OK);
         return false;
     }
     sqlite3_finalize(stmt);
@@ -2251,7 +2352,7 @@ void OnTagSelectionChanged() {
     
     // Update category label (show with spaces)
     if (item.lParam == 0) {
-        SetWindowTextW(g_hCategoryLabel, L"All");
+        SetWindowTextW(g_hCategoryLabel, g_locale.all.c_str());
     } else {
         SetWindowTextW(g_hCategoryLabel, (*(std::wstring*)item.lParam).c_str());
     }
@@ -2377,6 +2478,46 @@ HICON LoadIconFromMemory(const unsigned char* data, int size) {
     // Return NULL if format not supported
     return NULL;
 }
+
+// Save configuration to INI file
+void SaveConfig() {
+    wchar_t* appDataPath = nullptr;
+    HRESULT hr = SHGetKnownFolderPath(FOLDERID_RoamingAppData, 0, nullptr, &appDataPath);
+    
+    if (FAILED(hr) || !appDataPath) {
+        return;
+    }
+    
+    std::wstring wAppDataPath(appDataPath);
+    CoTaskMemFree(appDataPath);
+    
+    // Create WinProgramManager directory
+    std::wstring baseDir = wAppDataPath + L"\\WinProgramManager";
+    CreateDirectoryW(baseDir.c_str(), nullptr);
+    
+    std::wstring configFile = baseDir + L"\\WinProgramManager.ini";
+    WritePrivateProfileStringW(L"Settings", L"Language", g_currentLang.c_str(), configFile.c_str());
+}
+
+// Load configuration from INI file
+void LoadConfig() {
+    wchar_t* appDataPath = nullptr;
+    HRESULT hr = SHGetKnownFolderPath(FOLDERID_RoamingAppData, 0, nullptr, &appDataPath);
+    
+    if (FAILED(hr) || !appDataPath) {
+        return;
+    }
+    
+    std::wstring wAppDataPath(appDataPath);
+    CoTaskMemFree(appDataPath);
+    
+    std::wstring configFile = wAppDataPath + L"\\WinProgramManager\\WinProgramManager.ini";
+    
+    wchar_t langBuf[50] = {0};
+    GetPrivateProfileStringW(L"Settings", L"Language", L"en_GB", langBuf, 50, configFile.c_str());
+    g_currentLang = langBuf;
+}
+
 // Load locale from file
 bool LoadLocale(const std::wstring& lang) {
     // Build file path
@@ -2386,15 +2527,32 @@ bool LoadLocale(const std::wstring& lang) {
     size_t lastSlash = exePath.find_last_of(L"\\/");
     std::wstring localeFile = exePath.substr(0, lastSlash + 1) + L"locale\\" + lang + L".txt";
 
-    // Open file
-    std::wifstream file(localeFile.c_str());
+    // Read file as UTF-8 bytes
+    std::ifstream file(localeFile.c_str(), std::ios::binary);
     if (!file.is_open()) {
         return false;
     }
 
-    // Read key-value pairs
+    // Read entire file into buffer
+    file.seekg(0, std::ios::end);
+    size_t size = file.tellg();
+    file.seekg(0, std::ios::beg);
+    std::string utf8Buffer(size, '\0');
+    file.read(&utf8Buffer[0], size);
+    file.close();
+
+    // Convert UTF-8 to wide string
+    int wideSize = MultiByteToWideChar(CP_UTF8, 0, utf8Buffer.c_str(), -1, NULL, 0);
+    if (wideSize == 0) {
+        return false;
+    }
+    std::wstring wideBuffer(wideSize, L'\0');
+    MultiByteToWideChar(CP_UTF8, 0, utf8Buffer.c_str(), -1, &wideBuffer[0], wideSize);
+
+    // Parse lines
+    std::wistringstream stream(wideBuffer);
     std::wstring line;
-    while (std::getline(file, line)) {
+    while (std::getline(stream, line)) {
         // Skip comments, empty lines, and section headers
         if (line.empty() || line[0] == L'#' || line[0] == L'[') continue;
 
@@ -2467,8 +2625,16 @@ bool LoadLocale(const std::wstring& lang) {
             else if (key == L"cancel_btn") g_locale.cancel_btn = value;
             else if (key == L"refresh_installed_btn") g_locale.refresh_installed_btn = value;
             else if (key == L"refresh_installed_tooltip") g_locale.refresh_installed_tooltip = value;
+            else if (key == L"search_btn") g_locale.search_btn = value;
+            else if (key == L"end_search_btn") g_locale.end_search_btn = value;
+            else if (key == L"installed_btn") g_locale.installed_btn = value;
             // About Dialog
             else if (key == L"about_btn") g_locale.about_btn = value;
+            else if (key == L"quit_btn") g_locale.quit_btn = value;
+            else if (key == L"quit_title") g_locale.quit_title = value;
+            else if (key == L"quit_message") g_locale.quit_message = value;
+            else if (key == L"yes_btn") g_locale.yes_btn = value;
+            else if (key == L"no_btn") g_locale.no_btn = value;
             else if (key == L"about_title") g_locale.about_title = value;
             else if (key == L"about_subtitle") g_locale.about_subtitle = value;
             else if (key == L"about_published") g_locale.about_published = value;
@@ -2482,10 +2648,22 @@ bool LoadLocale(const std::wstring& lang) {
             else if (key == L"about_github") g_locale.about_github = value;
             else if (key == L"about_view_license") g_locale.about_view_license = value;
             else if (key == L"about_close") g_locale.about_close = value;
+            // Error messages
+            else if (key == L"error_title") g_locale.error_title = value;
+            else if (key == L"window_registration_failed") g_locale.window_registration_failed = value;
+            else if (key == L"window_creation_failed") g_locale.window_creation_failed = value;
+            else if (key == L"database_open_failed") g_locale.database_open_failed = value;
+            else if (key == L"database_error_title") g_locale.database_error_title = value;
+            else if (key == L"discovery_failed_title") g_locale.discovery_failed_title = value;
+            else if (key == L"discovery_failed_msg") g_locale.discovery_failed_msg = value;
+            else if (key == L"about_window_error") g_locale.about_window_error = value;
+            else if (key == L"license_window_error") g_locale.license_window_error = value;
+            else if (key == L"wait_for_update") g_locale.wait_for_update = value;
+            else if (key == L"cancel_installation") g_locale.cancel_installation = value;
+            else if (key == L"preparing_installation") g_locale.preparing_installation = value;
         }
     }
 
-    file.close();
     g_currentLang = lang;
     return true;
 }
@@ -2524,12 +2702,25 @@ void OnLanguageChanged() {
 
     // Load new locale
     if (LoadLocale(newLang)) {
+        // Save language preference
+        SaveConfig();
+        
         // Update window title
         SetWindowTextW(GetParent(g_hLangCombo), g_locale.title.c_str());
 
+        // Update button texts explicitly for owner-drawn buttons
+        if (g_hSearchBtn) SetWindowTextW(g_hSearchBtn, g_locale.search_btn.c_str());
+        if (g_hEndSearchBtn) SetWindowTextW(g_hEndSearchBtn, g_locale.end_search_btn.c_str());
+        if (g_hInstalledBtn) SetWindowTextW(g_hInstalledBtn, g_locale.installed_btn.c_str());
+        if (g_hQuitBtn) SetWindowTextW(g_hQuitBtn, g_locale.quit_btn.c_str());
+
         // Redraw buttons to update text
+        if (g_hSearchBtn) InvalidateRect(g_hSearchBtn, NULL, TRUE);
+        if (g_hEndSearchBtn) InvalidateRect(g_hEndSearchBtn, NULL, TRUE);
+        if (g_hInstalledBtn) InvalidateRect(g_hInstalledBtn, NULL, TRUE);
         if (g_hRefreshInstalledBtn) InvalidateRect(g_hRefreshInstalledBtn, NULL, TRUE);
         if (g_hAboutBtn) InvalidateRect(g_hAboutBtn, NULL, TRUE);
+        if (g_hQuitBtn) InvalidateRect(g_hQuitBtn, NULL, TRUE);
 
         // Reload tags and apps to update counts and "All" label
         LoadTags();
