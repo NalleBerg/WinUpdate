@@ -3151,6 +3151,15 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         break;
     }
     
+    case WM_ACTIVATE:
+        // When main window is activated, bring the loading popup to the front if it exists
+        if (LOWORD(wParam) != WA_INACTIVE) {
+            if (g_hLoadingPopup && IsWindow(g_hLoadingPopup)) {
+                SetWindowPos(g_hLoadingPopup, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+            }
+        }
+        break;
+    
     case WM_CLOSE:
         // Force close any open dialogs first
         EnumThreadWindows(GetCurrentThreadId(), [](HWND hwndEnum, LPARAM lParam) -> BOOL {

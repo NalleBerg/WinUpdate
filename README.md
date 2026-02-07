@@ -1,6 +1,6 @@
 # WinProgramSuite — Complete Windows Package Management System
 
-**Latest Update:** 6 February 2026 | **About Dialog & UI Polish**
+**Latest Update:** 7 February 2026 | **Suite Version Alignment**
 
 **WinProgramSuite** is a comprehensive package management system for Windows, combining database-driven package metadata management with a friendly GUI for updates. Built on Microsoft's `winget` package manager with advanced categorization, search, filtering, and analysis capabilities.
 
@@ -35,9 +35,15 @@ Published and stable GUI for automatic Windows package updates.
 
 **Current Status:** ✅ Published and production-ready
 
-## 🚨 Recent Updates (2026-02-06)
+## 🚨 Recent Updates (2026-02-07)
 
-### Update 13: About Dialog & UI Polish
+### Update 14: Suite Version Alignment (v2026.02.07.08)
+- **UNIFIED VERSIONING**: Both WinProgramManager and WinUpdate now use synchronized version 2026.02.07.08
+- **SCANNER VISIBILITY FIX**: WinUpdate scanner popup now follows main window when it gains focus
+- **IMPROVED UX**: No need to minimize other apps to see scan progress - popup automatically appears on top
+- **SUITE IDENTITY**: All components now share the same version number and publish date (07.02.2026)
+
+### Update 13: About Dialog & UI Polish (v2026.02.06.09)
 - **ABOUT DIALOG**: Complete About dialog with WinProgramSuite logo (wpm_logo.png), version 2026.02.06.09, published 06.02.2026
 - **LICENSE VIEWER**: Full GPLv2 license display with GNU logo, syntax highlighting, and formatted text
 - **ABOUT BUTTON**: Blue-themed button at far right (after language selector) with locale support: "About" / "Om" / "Om"
