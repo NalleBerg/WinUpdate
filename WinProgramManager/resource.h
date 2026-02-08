@@ -62,6 +62,11 @@
 #define IDD_CONFIRM_ACTION 107
 #define IDC_CONFIRM_MESSAGE 330
 
+// Quit dialog
+#define IDD_QUIT_DIALOG 109
+#define IDC_QUIT_MESSAGE 331
+#define IDC_QUIT_ICON 332
+
 // Accelerators
 #define IDR_ACCELERATOR1 108
 #define ID_ACCEL_QUIT 1011

@@ -12,16 +12,16 @@
 // External locale
 extern Locale g_locale;
 
-// Button hover tracking
-static HWND g_hHoverButton = nullptr;
+// Button hover tracking - matches main window style
 static WNDPROC g_oldButtonProc = nullptr;
 
 // Button subclass procedure for hover effects
 LRESULT CALLBACK ButtonSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
         case WM_MOUSEMOVE: {
-            if (g_hHoverButton != hwnd) {
-                g_hHoverButton = hwnd;
+            BOOL isHover = (BOOL)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
+            if (!isHover) {
+                SetWindowLongPtrW(hwnd, GWLP_USERDATA, TRUE);
                 InvalidateRect(hwnd, NULL, TRUE);
                 
                 // Track mouse leave
@@ -34,10 +34,8 @@ LRESULT CALLBACK ButtonSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM l
             break;
         }
         case WM_MOUSELEAVE: {
-            if (g_hHoverButton == hwnd) {
-                g_hHoverButton = nullptr;
-                InvalidateRect(hwnd, NULL, TRUE);
-            }
+            SetWindowLongPtrW(hwnd, GWLP_USERDATA, FALSE);
+            InvalidateRect(hwnd, NULL, TRUE);
             break;
         }
     }
@@ -411,12 +409,7 @@ INT_PTR CALLBACK AppDetailsDialogProc(HWND hDlg, UINT message, WPARAM wParam, LP
             SetWindowTextW(GetDlgItem(hDlg, IDC_BTN_UNINSTALL), g_locale.uninstall_btn.c_str());
             SetWindowTextW(GetDlgItem(hDlg, IDOK), g_locale.about_close.c_str());
             
-            // Prevent description field from being auto-selected
-            HWND hDescription = GetDlgItem(hDlg, IDC_APP_DESCRIPTION);
-            if (hDescription) {
-                SendMessage(hDescription, EM_SETSEL, -1, 0);  // Deselect all
-            }
-            
+
             // Subclass owner-drawn buttons for hover effects
             HWND hInstall = GetDlgItem(hDlg, IDC_BTN_INSTALL);
             HWND hReinstall = GetDlgItem(hDlg, IDC_BTN_REINSTALL);
@@ -435,8 +428,8 @@ INT_PTR CALLBACK AppDetailsDialogProc(HWND hDlg, UINT message, WPARAM wParam, LP
                 SetWindowLongPtr(hClose, GWLP_WNDPROC, (LONG_PTR)ButtonSubclassProc);
             }
             
-            // Set focus to dialog itself to prevent field auto-selection
-            SetFocus(hDlg);
+            // Set focus to Close button to prevent description field auto-selection
+            SetFocus(hClose);
             
             return FALSE;  // We handled focus ourselves
         }
@@ -465,37 +458,34 @@ INT_PTR CALLBACK AppDetailsDialogProc(HWND hDlg, UINT message, WPARAM wParam, LP
         case WM_DRAWITEM: {
             DRAWITEMSTRUCT* pDIS = (DRAWITEMSTRUCT*)lParam;
             if (pDIS->CtlType == ODT_BUTTON) {
+                HWND hBtn = pDIS->hwndItem;
+                BOOL hover = (BOOL)GetWindowLongPtrW(hBtn, GWLP_USERDATA);
+                bool pressed = (pDIS->itemState & ODS_SELECTED) != 0;
                 HDC hdc = pDIS->hDC;
                 RECT rc = pDIS->rcItem;
-                bool isPressed = (pDIS->itemState & ODS_SELECTED);
-                bool isHover = (g_hHoverButton == pDIS->hwndItem);
                 
-                // Determine button color based on ID
-                COLORREF baseColor, hoverColor, pressedColor;
+                // Determine button color based on ID - matching About button style
+                COLORREF base, hoverCol, pressCol;
+                
                 if (pDIS->CtlID == IDC_BTN_INSTALL) {
                     // Green for Install
-                    baseColor = RGB(40, 180, 40);
-                    hoverColor = RGB(60, 200, 60);
-                    pressedColor = RGB(30, 140, 30);
-                } else if (pDIS->CtlID == IDC_BTN_REINSTALL || pDIS->CtlID == IDOK) {
-                    // Blue for Reinstall and Close
-                    baseColor = RGB(40, 120, 200);
-                    hoverColor = RGB(60, 140, 220);
-                    pressedColor = RGB(30, 100, 160);
+                    base = RGB(40, 180, 40);
+                    hoverCol = RGB(60, 200, 60);
+                    pressCol = RGB(20, 130, 20);
                 } else if (pDIS->CtlID == IDC_BTN_UNINSTALL) {
                     // Red for Uninstall
-                    baseColor = RGB(180, 40, 40);
-                    hoverColor = RGB(200, 60, 60);
-                    pressedColor = RGB(140, 30, 30);
+                    base = RGB(180, 40, 40);
+                    hoverCol = RGB(220, 60, 60);
+                    pressCol = RGB(120, 20, 20);
                 } else {
-                    return FALSE;
+                    // Blue for Reinstall and Close - same as About button
+                    base = RGB(10, 57, 129);
+                    hoverCol = RGB(40, 90, 170);
+                    pressCol = RGB(5, 40, 90);
                 }
                 
-                // Select color based on state
-                COLORREF bgColor = isPressed ? pressedColor : (isHover ? hoverColor : baseColor);
-                
-                // Draw button background
-                HBRUSH hBrush = CreateSolidBrush(bgColor);
+                // Fill button background
+                HBRUSH hBrush = CreateSolidBrush(pressed ? pressCol : (hover ? hoverCol : base));
                 FillRect(hdc, &rc, hBrush);
                 DeleteObject(hBrush);
                 
@@ -504,13 +494,15 @@ INT_PTR CALLBACK AppDetailsDialogProc(HWND hDlg, UINT message, WPARAM wParam, LP
                 GetWindowTextW(pDIS->hwndItem, text, 64);
                 SetBkMode(hdc, TRANSPARENT);
                 SetTextColor(hdc, RGB(255, 255, 255));
+                extern HFONT g_hBoldFont;
+                HFONT hf = g_hBoldFont ? g_hBoldFont : (HFONT)GetStockObject(DEFAULT_GUI_FONT);
+                HGDIOBJ oldf = SelectObject(hdc, hf);
                 DrawTextW(hdc, text, -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+                SelectObject(hdc, oldf);
                 
-                // Draw focus rectangle if focused
+                // Draw focus rectangle
                 if (pDIS->itemState & ODS_FOCUS) {
-                    RECT rcFocus = rc;
-                    InflateRect(&rcFocus, -3, -3);
-                    DrawFocusRect(hdc, &rcFocus);
+                    DrawFocusRect(hdc, &rc);
                 }
                 
                 return TRUE;
