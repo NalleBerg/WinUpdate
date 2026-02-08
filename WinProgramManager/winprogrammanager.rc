@@ -107,11 +107,11 @@ BEGIN
     LTEXT           "Tags:", IDC_LABEL_TAGS, 12, 229, 30, 10
     EDITTEXT        IDC_APP_TAGS, 45, 225, 443, 24, ES_MULTILINE | ES_AUTOHSCROLL | WS_HSCROLL
     
-    // Buttons
-    PUSHBUTTON      "Install", IDC_BTN_INSTALL, 12, 254, 70, 14
-    PUSHBUTTON      "Reinstall", IDC_BTN_REINSTALL, 12, 254, 70, 14
-    PUSHBUTTON      "Uninstall", IDC_BTN_UNINSTALL, 88, 254, 70, 14
-    DEFPUSHBUTTON   "Close", IDOK, 418, 254, 70, 14
+    // Buttons (owner-drawn for consistent styling)
+    CONTROL         "", IDC_BTN_INSTALL, "Button", BS_OWNERDRAW | WS_TABSTOP, 12, 254, 70, 14
+    CONTROL         "", IDC_BTN_REINSTALL, "Button", BS_OWNERDRAW | WS_TABSTOP, 12, 254, 70, 14
+    CONTROL         "", IDC_BTN_UNINSTALL, "Button", BS_OWNERDRAW | WS_TABSTOP, 88, 254, 70, 14
+    CONTROL         "", IDOK, "Button", BS_OWNERDRAW | WS_TABSTOP, 418, 254, 70, 14
 END
 
 // Confirmation dialog for install/uninstall operations

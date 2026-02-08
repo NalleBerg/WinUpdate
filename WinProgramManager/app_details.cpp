@@ -12,6 +12,38 @@
 // External locale
 extern Locale g_locale;
 
+// Button hover tracking
+static HWND g_hHoverButton = nullptr;
+static WNDPROC g_oldButtonProc = nullptr;
+
+// Button subclass procedure for hover effects
+LRESULT CALLBACK ButtonSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    switch (msg) {
+        case WM_MOUSEMOVE: {
+            if (g_hHoverButton != hwnd) {
+                g_hHoverButton = hwnd;
+                InvalidateRect(hwnd, NULL, TRUE);
+                
+                // Track mouse leave
+                TRACKMOUSEEVENT tme = {};
+                tme.cbSize = sizeof(tme);
+                tme.dwFlags = TME_LEAVE;
+                tme.hwndTrack = hwnd;
+                TrackMouseEvent(&tme);
+            }
+            break;
+        }
+        case WM_MOUSELEAVE: {
+            if (g_hHoverButton == hwnd) {
+                g_hHoverButton = nullptr;
+                InvalidateRect(hwnd, NULL, TRUE);
+            }
+            break;
+        }
+    }
+    return CallWindowProc(g_oldButtonProc, hwnd, msg, wParam, lParam);
+}
+
 // Helper function to convert UTF-8 to wide string
 static std::wstring Utf8ToWide(const char* utf8) {
     if (!utf8 || *utf8 == '\0') return L"";
@@ -373,7 +405,117 @@ INT_PTR CALLBACK AppDetailsDialogProc(HWND hDlg, UINT message, WPARAM wParam, LP
                 ShowWindow(GetDlgItem(hDlg, IDC_BTN_UNINSTALL), SW_HIDE);
             }
             
-            return TRUE;
+            // Set button texts dynamically from locale
+            SetWindowTextW(GetDlgItem(hDlg, IDC_BTN_INSTALL), g_locale.install_btn.c_str());
+            SetWindowTextW(GetDlgItem(hDlg, IDC_BTN_REINSTALL), g_locale.reinstall_btn.c_str());
+            SetWindowTextW(GetDlgItem(hDlg, IDC_BTN_UNINSTALL), g_locale.uninstall_btn.c_str());
+            SetWindowTextW(GetDlgItem(hDlg, IDOK), g_locale.about_close.c_str());
+            
+            // Prevent description field from being auto-selected
+            HWND hDescription = GetDlgItem(hDlg, IDC_APP_DESCRIPTION);
+            if (hDescription) {
+                SendMessage(hDescription, EM_SETSEL, -1, 0);  // Deselect all
+            }
+            
+            // Subclass owner-drawn buttons for hover effects
+            HWND hInstall = GetDlgItem(hDlg, IDC_BTN_INSTALL);
+            HWND hReinstall = GetDlgItem(hDlg, IDC_BTN_REINSTALL);
+            HWND hUninstall = GetDlgItem(hDlg, IDC_BTN_UNINSTALL);
+            HWND hClose = GetDlgItem(hDlg, IDOK);
+            if (hInstall && !g_oldButtonProc) {
+                g_oldButtonProc = (WNDPROC)SetWindowLongPtr(hInstall, GWLP_WNDPROC, (LONG_PTR)ButtonSubclassProc);
+            }
+            if (hReinstall && g_oldButtonProc) {
+                SetWindowLongPtr(hReinstall, GWLP_WNDPROC, (LONG_PTR)ButtonSubclassProc);
+            }
+            if (hUninstall && g_oldButtonProc) {
+                SetWindowLongPtr(hUninstall, GWLP_WNDPROC, (LONG_PTR)ButtonSubclassProc);
+            }
+            if (hClose && g_oldButtonProc) {
+                SetWindowLongPtr(hClose, GWLP_WNDPROC, (LONG_PTR)ButtonSubclassProc);
+            }
+            
+            // Set focus to dialog itself to prevent field auto-selection
+            SetFocus(hDlg);
+            
+            return FALSE;  // We handled focus ourselves
+        }
+        
+        case WM_CTLCOLORSTATIC: {
+            // Set white background and black text for all static and edit controls
+            HDC hdcStatic = (HDC)wParam;
+            SetBkColor(hdcStatic, RGB(255, 255, 255));
+            SetTextColor(hdcStatic, RGB(0, 0, 0));
+            return (LRESULT)GetStockObject(WHITE_BRUSH);
+        }
+        
+        case WM_CTLCOLOREDIT: {
+            // Set white background for edit controls
+            HDC hdcEdit = (HDC)wParam;
+            SetBkColor(hdcEdit, RGB(255, 255, 255));
+            SetTextColor(hdcEdit, RGB(0, 0, 0));
+            return (LRESULT)GetStockObject(WHITE_BRUSH);
+        }
+        
+        case WM_CTLCOLORDLG: {
+            // Set white background for dialog itself
+            return (LRESULT)GetStockObject(WHITE_BRUSH);
+        }
+        
+        case WM_DRAWITEM: {
+            DRAWITEMSTRUCT* pDIS = (DRAWITEMSTRUCT*)lParam;
+            if (pDIS->CtlType == ODT_BUTTON) {
+                HDC hdc = pDIS->hDC;
+                RECT rc = pDIS->rcItem;
+                bool isPressed = (pDIS->itemState & ODS_SELECTED);
+                bool isHover = (g_hHoverButton == pDIS->hwndItem);
+                
+                // Determine button color based on ID
+                COLORREF baseColor, hoverColor, pressedColor;
+                if (pDIS->CtlID == IDC_BTN_INSTALL) {
+                    // Green for Install
+                    baseColor = RGB(40, 180, 40);
+                    hoverColor = RGB(60, 200, 60);
+                    pressedColor = RGB(30, 140, 30);
+                } else if (pDIS->CtlID == IDC_BTN_REINSTALL || pDIS->CtlID == IDOK) {
+                    // Blue for Reinstall and Close
+                    baseColor = RGB(40, 120, 200);
+                    hoverColor = RGB(60, 140, 220);
+                    pressedColor = RGB(30, 100, 160);
+                } else if (pDIS->CtlID == IDC_BTN_UNINSTALL) {
+                    // Red for Uninstall
+                    baseColor = RGB(180, 40, 40);
+                    hoverColor = RGB(200, 60, 60);
+                    pressedColor = RGB(140, 30, 30);
+                } else {
+                    return FALSE;
+                }
+                
+                // Select color based on state
+                COLORREF bgColor = isPressed ? pressedColor : (isHover ? hoverColor : baseColor);
+                
+                // Draw button background
+                HBRUSH hBrush = CreateSolidBrush(bgColor);
+                FillRect(hdc, &rc, hBrush);
+                DeleteObject(hBrush);
+                
+                // Draw button text
+                wchar_t text[64];
+                GetWindowTextW(pDIS->hwndItem, text, 64);
+                SetBkMode(hdc, TRANSPARENT);
+                SetTextColor(hdc, RGB(255, 255, 255));
+                DrawTextW(hdc, text, -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+                
+                // Draw focus rectangle if focused
+                if (pDIS->itemState & ODS_FOCUS) {
+                    RECT rcFocus = rc;
+                    InflateRect(&rcFocus, -3, -3);
+                    DrawFocusRect(hdc, &rcFocus);
+                }
+                
+                return TRUE;
+            }
+            break;
         }
         
         case WM_COMMAND:

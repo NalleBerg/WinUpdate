@@ -1,6 +1,6 @@
 # WinProgramSuite — Complete Windows Package Management System
 
-**Latest Update:** 7 February 2026 | **Internationalization & Quit System**
+**Latest Update:** 8 February 2026 | **App Details Dialog Redesign**
 
 **WinProgramSuite** is a comprehensive package management system for Windows, combining database-driven package metadata management with a friendly GUI for updates. Built on Microsoft's `winget` package manager with advanced categorization, search, filtering, and analysis capabilities.
 
@@ -35,7 +35,18 @@ Published and stable GUI for automatic Windows package updates.
 
 **Current Status:** ✅ Published and production-ready
 
-## 🚨 Recent Updates (2026-02-07)
+## 🚨 Recent Updates (2026-02-08)
+
+### Update 16: Professional App Details Dialog (v2026.02.08.01)
+- **OWNER-DRAWN BUTTONS**: Custom-styled buttons with color themes - Install (green), Uninstall (red), Reinstall/Close (blue)
+- **HOVER EFFECTS**: Button subclassing with TrackMouseEvent for lighter colors on hover
+- **PURE WHITE BACKGROUND**: Consistent RGB(255,255,255) background matching spinner and main window
+- **COMPLETE i18n**: All labels localized - Publisher, Version, Package ID, Source, Status, Description, Technical Information, Homepage, License, Installer Type, Architecture, Tags in 3 languages
+- **VALUE LOCALIZATION**: Status values (Installed/Not Installed), placeholder texts (Unknown, Not available, No tags, No description) translated
+- **CLOSE BUTTON FIX**: Blue-themed Close button with proper localized text ("Close"/"Lukk"/"Stäng")
+- **IMPROVED UX**: Description field no longer auto-selected on dialog open
+- **CONSISTENT STYLING**: Black text (RGB 0,0,0) on white backgrounds via WM_CTLCOLORSTATIC, WM_CTLCOLOREDIT, WM_CTLCOLORDLG
+- **LOCALE EXTENSION**: 19 new locale keys (app_details_title, publisher_label, version_label, etc.) with LoadLocale parsing
 
 ### Update 15: Complete Internationalization & Quit System (v2026.02.07.08)
 - **COMPLETE i18n**: 90+ locale strings covering all UI elements, error messages, and dialogs
