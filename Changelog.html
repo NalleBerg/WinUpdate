@@ -2,10 +2,29 @@
 <span style="color: #0066cc;">📦 WinProgramSuite — Complete Windows Package Management System</span>
 </h2>
 <p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;">
-<strong>Latest Update:</strong> 8 February 2026 | <strong>Design & Layout Complete</strong><br/>
+<strong>Latest Update:</strong> 9 February 2026 | <strong>Search Dialog Complete & Installation Status Fixed</strong><br/>
 This changelog covers <strong>WinProgramManager</strong>, the database management component of the WinProgramSuite.<br/>
 For automatic update features, see <strong>WinUpdate</strong> documentation.
 </p>
+
+<h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Version 2026.02.09.01 — Update 18</span></h3>
+<p><strong>Search Dialog Polish & Critical Fixes (9 February 2026):</strong></p>
+<ul>
+<li><strong>Search Dialog Internationalization:</strong> Added 15 locale keys (search_dialog_title, search_in_categories, search_options, etc.) translated to English, Norwegian, and Swedish</li>
+<li><strong>Search Dialog Visual Overhaul:</strong> White background (RGB 255,255,255), 11pt Segoe UI font, owner-drawn buttons matching main window styling</li>
+<li><strong>Two-Column Layout:</strong> Reorganized radio buttons into efficient 50/50 split - left column (Case Insensitive, Contains, Use Regex, Search All), right column (Case Sensitive, Exact Match, Refine Previous Results)</li>
+<li><strong>Dialog Unit Conversion:</strong> Search dialog buttons properly sized at 60x14 DLU (≈88x30 pixels for 11pt font), matching main window button proportions</li>
+<li><strong>Button Hover Effects:</strong> Implemented GWLP_USERDATA hover tracking with TrackMouseEvent (TME_LEAVE), RGB(25,95,210) hover color matching Search button exactly</li>
+<li><strong>Universal Icon System:</strong> Added Unicode icons to all buttons throughout application - 🔍 Search, ⏹ End Search, 📦 Installed, 🔄 Refresh, ℹ About, ⏻ Quit, ⬇ Install, 🗑 Uninstall, ✓ Yes, ✖ No/Cancel</li>
+<li><strong>Installation Status Bug Fix:</strong> Fixed critical bug where installed apps showed "Install" instead of "Reinstall/Uninstall" in details dialog - now checks i.package_id column from LEFT JOIN instead of installed_version (which can be empty string)</li>
+<li><strong>Confirmation Dialog Improvements:</strong> Added white background, blue question mark icon (IDI_QUESTION), wider buttons (75 DLU ≈110px), proper button icons</li>
+<li><strong>Simplified Unicode Icons:</strong> Changed from emoji to standard Unicode - ▼ Install (down triangle), ⟲ Reinstall (circular arrow), ⨳ Uninstall (bold X), ✖ Cancel</li>
+<li><strong>Missing Locale Strings:</strong> Added confirm_install_title and confirm_install_msg to all language files (was causing blank confirmation dialogs for install action)</li>
+<li><strong>Button Width Adjustments:</strong> Main window buttons widened - Installed: 100→120px, Refresh: 180→220px to accommodate icons without text truncation</li>
+<li><strong>Complete Button Styling:</strong> All confirmation and app details dialog buttons now use RGB(10,57,129) base, RGB(25,95,210) hover, RGB(6,34,80) pressed colors with 19pt bold font</li>
+<li><strong>Code Consistency:</strong> WM_DRAWITEM handlers, button subclassing, and hover tracking now identical across main window, search dialog, confirmation dialog, and app details dialog</li>
+</ul>
 
 <h3 style="text-align: center;">&nbsp;</h3>
 <h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Version 2026.02.08.02 — Update 17</span></h3>

@@ -1,6 +1,6 @@
 # WinProgramSuite — Complete Windows Package Management System
 
-**Latest Update:** 8 February 2026 | **Design & Layout Complete**
+**Latest Update:** 9 February 2026 | **Search Dialog Complete & Installation Status Fixed**
 
 **WinProgramSuite** is a comprehensive package management system for Windows, combining database-driven package metadata management with a friendly GUI for updates. Built on Microsoft's `winget` package manager with advanced categorization, search, filtering, and analysis capabilities.
 
@@ -35,7 +35,20 @@ Published and stable GUI for automatic Windows package updates.
 
 **Current Status:** ✅ Published and production-ready
 
-## 🚨 Recent Updates (2026-02-08)
+## 🚨 Recent Updates (2026-02-09)
+
+### Update 18: Search Dialog Complete & Installation Status Fixed (v2026.02.09.01)
+- **SEARCH DIALOG i18n**: Added 15 locale keys (search_dialog_title, package_name_label, publisher_label, source_label, category_label, tag_label, status_label, status_all, status_installed, status_not_installed, search_button, reset_button, close_button, cancel_button) in 3 languages
+- **VISUAL OVERHAUL**: White background RGB(255,255,255), 11pt Segoe UI font, owner-drawn buttons with hover effects
+- **TWO-COLUMN LAYOUT**: Radio buttons organized 50/50 (left 20-220, right 235-430) for better space utilization
+- **DIALOG UNIT SIZING**: Standardized button sizes at 60x14 DLU (search) and 75x14 DLU (confirmation) ≈ 88-110px @ 11pt Segoe UI
+- **UNIVERSAL ICONS**: Added appropriate Unicode icons to 12+ buttons (▼ Install, ⟲ Reinstall, ⨳ Uninstall, ✖ Close, 🔍 Search, ⏹ Stop, 📦 Installed, 🔄 Refresh, ℹ About, ⏻ Quit, ✓ Yes/OK)
+- **CRITICAL FIX - Installation Status**: Fixed bug where installed apps showed "Install" button instead of "Reinstall"/"Uninstall". Root cause: LEFT JOIN returned empty string for installed_version, not NULL. Solution: Check i.package_id column (13) from JOIN using sqlite3_column_type != SQLITE_NULL
+- **CONFIRMATION DIALOG IMPROVEMENTS**: Added IDI_QUESTION icon, white background, wider buttons (75 DLU), all actions (install/reinstall/uninstall) now have confirmation dialogs
+- **SIMPLIFIED ICONS**: Replaced emojis (⬇ 🗑 🔄) with simpler Unicode characters (▼ ⨳ ⟲) for better rendering across systems
+- **MISSING LOCALE STRINGS**: Added confirm_install_title and confirm_install_msg that were missing when other confirm actions were added
+- **BUTTON WIDTH ADJUSTMENTS**: Expanded Installed button to 120px (was 100px), Refresh Installed to 220px (was 180px) to accommodate icons
+- **CODE CONSISTENCY**: Unified WM_DRAWITEM pattern across all dialogs, consistent use of GetStockObject(WHITE_BRUSH) for white backgrounds
 
 ### Update 17: Design/Layout/Look & Feel Complete (v2026.02.08.02)
 - **CUSTOM QUIT DIALOG**: Professional quit confirmation with custom-drawn question mark icon (IDI_QUESTION) replacing standard MessageBox

@@ -29,31 +29,32 @@ END
 IDD_SEARCH_DIALOG DIALOGEX 0, 0, 450, 280
 STYLE DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Search"
-FONT 9, "Segoe UI"
+FONT 11, "Segoe UI"
 BEGIN
-    LTEXT           "Search in Categories:", -1, 10, 10, 430, 10
+    LTEXT           "Search in Categories:", IDC_STATIC_SEARCH_CAT, 10, 10, 430, 10
     EDITTEXT        IDC_SEARCH_CATEGORY, 10, 22, 430, 14, ES_AUTOHSCROLL
     
-    LTEXT           "Search in Applications:", -1, 10, 45, 430, 10
+    LTEXT           "Search in Applications:", IDC_STATIC_SEARCH_APP, 10, 45, 430, 10
     EDITTEXT        IDC_SEARCH_APP, 10, 57, 430, 14, ES_AUTOHSCROLL
     
-    GROUPBOX        "Search Options", -1, 10, 80, 430, 75
+    GROUPBOX        "Search Options", IDC_STATIC_SEARCH_OPTIONS, 10, 80, 430, 75
     
-    AUTORADIOBUTTON "Case Insensitive", IDC_CASE_INSENSITIVE, 20, 95, 100, 10, WS_GROUP
-    AUTORADIOBUTTON "Case Sensitive", IDC_CASE_SENSITIVE, 130, 95, 100, 10
+    // Left column (50%)
+    AUTORADIOBUTTON "Case Insensitive", IDC_CASE_INSENSITIVE, 20, 95, 200, 10, WS_GROUP
+    AUTORADIOBUTTON "Contains", IDC_CONTAINS, 20, 110, 200, 10, WS_GROUP
+    AUTOCHECKBOX    "Use Regular Expression", IDC_USE_REGEX, 20, 125, 200, 10
+    AUTORADIOBUTTON "Search All", IDC_SEARCH_ALL, 20, 140, 200, 10, WS_GROUP
     
-    AUTORADIOBUTTON "Contains", IDC_CONTAINS, 20, 110, 100, 10, WS_GROUP
-    AUTORADIOBUTTON "Exact Match", IDC_EXACT_MATCH, 130, 110, 100, 10
+    // Right column (50%)
+    AUTORADIOBUTTON "Case Sensitive", IDC_CASE_SENSITIVE, 235, 95, 195, 10
+    AUTORADIOBUTTON "Exact Match", IDC_EXACT_MATCH, 235, 110, 195, 10
+    AUTORADIOBUTTON "Refine Previous Results", IDC_REFINE_RESULTS, 235, 140, 195, 10
     
-    AUTOCHECKBOX    "Use Regular Expression", IDC_USE_REGEX, 20, 125, 150, 10
+    LTEXT           "Leave category search empty to search all categories.", IDC_STATIC_HELP1, 10, 165, 430, 10
+    LTEXT           "Leave application search empty to show all applications in filtered categories.", IDC_STATIC_HELP2, 10, 175, 430, 10
     
-    AUTORADIOBUTTON "Search All", IDC_SEARCH_ALL, 20, 140, 100, 10, WS_GROUP
-    AUTORADIOBUTTON "Refine Previous Results", IDC_REFINE_RESULTS, 130, 140, 150, 10
-    
-    LTEXT           "Leave category search empty to search all categories.\nLeave application search empty to show all applications in filtered categories.", -1, 10, 165, 430, 20
-    
-    DEFPUSHBUTTON   "Search", IDOK, 285, 250, 70, 20
-    PUSHBUTTON      "Cancel", IDCANCEL, 365, 250, 70, 20
+    PUSHBUTTON      "", IDOK, 302, 250, 60, 14, BS_OWNERDRAW
+    PUSHBUTTON      "", IDCANCEL, 366, 250, 60, 14, BS_OWNERDRAW
 END
 
 // App details dialog
@@ -115,14 +116,15 @@ BEGIN
 END
 
 // Confirmation dialog for install/uninstall operations
-IDD_CONFIRM_ACTION DIALOG 0, 0, 300, 110
-STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+IDD_CONFIRM_ACTION DIALOGEX 0, 0, 340, 95
+STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Confirm Action"
-FONT 8, "MS Shell Dlg"
+FONT 11, "Segoe UI"
 BEGIN
-    LTEXT           "Confirmation message", IDC_CONFIRM_MESSAGE, 14, 14, 272, 40
-    DEFPUSHBUTTON   "OK", IDOK, 135, 80, 70, 14
-    PUSHBUTTON      "Cancel", IDCANCEL, 215, 80, 70, 14
+    CONTROL         "", IDC_CONFIRM_ICON, "Static", SS_ICON | SS_CENTERIMAGE, 14, 14, 21, 20
+    LTEXT           "Confirmation message", IDC_CONFIRM_MESSAGE, 45, 14, 280, 40
+    PUSHBUTTON      "", IDOK, 130, 68, 75, 14, BS_OWNERDRAW
+    PUSHBUTTON      "", IDCANCEL, 210, 68, 75, 14, BS_OWNERDRAW
 END
 
 // Quit confirmation dialog

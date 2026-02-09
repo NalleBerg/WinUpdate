@@ -95,6 +95,22 @@ struct Locale {
     std::wstring wait_for_update;
     std::wstring cancel_installation;
     std::wstring preparing_installation;
+    // Search Dialog
+    std::wstring search_dialog_title;
+    std::wstring search_in_categories;
+    std::wstring search_in_applications;
+    std::wstring search_options;
+    std::wstring case_insensitive;
+    std::wstring case_sensitive;
+    std::wstring contains;
+    std::wstring exact_match;
+    std::wstring use_regex;
+    std::wstring search_all;
+    std::wstring refine_previous;
+    std::wstring search_help_line1;
+    std::wstring search_help_line2;
+    std::wstring search_button;
+    std::wstring cancel_button;
 };
 
 // App details data structure

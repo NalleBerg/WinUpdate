@@ -237,6 +237,33 @@ std::map<std::wstring, std::vector<int>> g_categoryToAppIds;  // Map category na
 INT_PTR CALLBACK SearchDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 INT_PTR CALLBACK IconLoadingDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+
+// Button subclass procedure for search dialog
+static WNDPROC g_oldSearchButtonProc = NULL;
+LRESULT CALLBACK SearchButtonSubclassProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    if (uMsg == WM_MOUSEMOVE) {
+        BOOL currentHover = (BOOL)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
+        if (!currentHover) {
+            SetWindowLongPtrW(hwnd, GWLP_USERDATA, TRUE);
+            InvalidateRect(hwnd, NULL, FALSE);
+            
+            TRACKMOUSEEVENT tme = {};
+            tme.cbSize = sizeof(tme);
+            tme.dwFlags = TME_LEAVE;
+            tme.hwndTrack = hwnd;
+            tme.dwHoverTime = HOVER_DEFAULT;
+            TrackMouseEvent(&tme);
+        }
+        return 0;
+    }
+    else if (uMsg == WM_MOUSELEAVE) {
+        SetWindowLongPtrW(hwnd, GWLP_USERDATA, FALSE);
+        InvalidateRect(hwnd, NULL, FALSE);
+        return 0;
+    }
+    return CallWindowProcW(g_oldSearchButtonProc, hwnd, uMsg, wParam, lParam);
+}
+
 void CreateControls(HWND hwnd);
 void ResizeControls(HWND hwnd);
 bool OpenDatabase();
@@ -362,10 +389,42 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 
 // Search dialog procedure
 INT_PTR CALLBACK SearchDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    static HBRUSH hWhiteBrush = NULL;
     (void)lParam;
     
     switch (uMsg) {
         case WM_INITDIALOG: {
+            // Create white brush for background
+            hWhiteBrush = (HBRUSH)GetStockObject(WHITE_BRUSH);
+            
+            // Set dialog title and static texts
+            SetWindowTextW(hwndDlg, g_locale.search_dialog_title.c_str());
+            SetDlgItemTextW(hwndDlg, IDC_STATIC_SEARCH_CAT, g_locale.search_in_categories.c_str());
+            SetDlgItemTextW(hwndDlg, IDC_STATIC_SEARCH_APP, g_locale.search_in_applications.c_str());
+            SetDlgItemTextW(hwndDlg, IDC_STATIC_SEARCH_OPTIONS, g_locale.search_options.c_str());
+            SetDlgItemTextW(hwndDlg, IDC_CASE_INSENSITIVE, g_locale.case_insensitive.c_str());
+            SetDlgItemTextW(hwndDlg, IDC_CASE_SENSITIVE, g_locale.case_sensitive.c_str());
+            SetDlgItemTextW(hwndDlg, IDC_CONTAINS, g_locale.contains.c_str());
+            SetDlgItemTextW(hwndDlg, IDC_EXACT_MATCH, g_locale.exact_match.c_str());
+            SetDlgItemTextW(hwndDlg, IDC_USE_REGEX, g_locale.use_regex.c_str());
+            SetDlgItemTextW(hwndDlg, IDC_SEARCH_ALL, g_locale.search_all.c_str());
+            SetDlgItemTextW(hwndDlg, IDC_REFINE_RESULTS, g_locale.refine_previous.c_str());
+            SetDlgItemTextW(hwndDlg, IDC_STATIC_HELP1, g_locale.search_help_line1.c_str());
+            SetDlgItemTextW(hwndDlg, IDC_STATIC_HELP2, g_locale.search_help_line2.c_str());
+            
+            // Subclass buttons for hover effect
+            HWND hSearchBtn = GetDlgItem(hwndDlg, IDOK);
+            HWND hCancelBtn = GetDlgItem(hwndDlg, IDCANCEL);
+            
+            if (hSearchBtn) {
+                g_oldSearchButtonProc = (WNDPROC)SetWindowLongPtrW(hSearchBtn, GWLP_WNDPROC, (LONG_PTR)SearchButtonSubclassProc);
+                SetWindowLongPtrW(hSearchBtn, GWLP_USERDATA, FALSE);
+            }
+            if (hCancelBtn) {
+                SetWindowLongPtrW(hCancelBtn, GWLP_WNDPROC, (LONG_PTR)SearchButtonSubclassProc);
+                SetWindowLongPtrW(hCancelBtn, GWLP_USERDATA, FALSE);
+            }
+            
             // Center the dialog on parent window
             RECT rcParent, rcDlg;
             HWND hwndParent = GetParent(hwndDlg);
@@ -396,6 +455,65 @@ INT_PTR CALLBACK SearchDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM
                 EnableWindow(GetDlgItem(hwndDlg, IDC_CONTAINS), FALSE);
                 EnableWindow(GetDlgItem(hwndDlg, IDC_EXACT_MATCH), FALSE);
             }
+            
+            return TRUE;
+        }
+        
+        case WM_CTLCOLORDLG: {
+            return (LRESULT)hWhiteBrush;
+        }
+        
+        case WM_CTLCOLORSTATIC: {
+            HDC hdcStatic = (HDC)wParam;
+            SetBkMode(hdcStatic, OPAQUE);
+            SetBkColor(hdcStatic, RGB(255, 255, 255));
+            SetTextColor(hdcStatic, RGB(0, 0, 0));
+            return (LRESULT)hWhiteBrush;
+        }
+        
+        case WM_CTLCOLOREDIT: {
+            HDC hdcEdit = (HDC)wParam;
+            SetBkMode(hdcEdit, OPAQUE);
+            SetBkColor(hdcEdit, RGB(255, 255, 255));
+            SetTextColor(hdcEdit, RGB(0, 0, 0));
+            return (LRESULT)hWhiteBrush;
+        }
+        
+        case WM_DRAWITEM: {
+            DRAWITEMSTRUCT* dis = (DRAWITEMSTRUCT*)lParam;
+            if (dis->CtlType != ODT_BUTTON) return FALSE;
+            
+            HWND hBtn = dis->hwndItem;
+            BOOL hover = (BOOL)GetWindowLongPtrW(hBtn, GWLP_USERDATA);
+            bool pressed = (dis->itemState & ODS_SELECTED) != 0;
+            HDC hdc = dis->hDC;
+            RECT rc = dis->rcItem;
+            
+            // Blue color scheme matching Search button exactly
+            COLORREF base = RGB(10,57,129);
+            COLORREF hoverCol = RGB(25,95,210);
+            COLORREF pressCol = RGB(6,34,80);
+            
+            HBRUSH hBrush = CreateSolidBrush(pressed ? pressCol : (hover ? hoverCol : base));
+            FillRect(hdc, &rc, hBrush);
+            DeleteObject(hBrush);
+            
+            // Draw text
+            SetTextColor(hdc, RGB(255,255,255));
+            SetBkMode(hdc, TRANSPARENT);
+            HFONT hf = g_hBoldFont ? g_hBoldFont : (HFONT)GetStockObject(DEFAULT_GUI_FONT);
+            HGDIOBJ oldf = SelectObject(hdc, hf);
+            
+            std::wstring btnText;
+            if (dis->CtlID == IDOK) {
+                btnText = g_locale.search_button;
+            } else if (dis->CtlID == IDCANCEL) {
+                btnText = g_locale.cancel_button;
+            }
+            
+            DrawTextW(hdc, btnText.c_str(), -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+            SelectObject(hdc, oldf);
+            if (dis->itemState & ODS_FOCUS) DrawFocusRect(hdc, &rc);
             
             return TRUE;
         }
@@ -1721,8 +1839,8 @@ void ResizeControls(HWND hwnd) {
     const int aboutBtnWidth = 70;
     const int quitBtnWidth = 70;
     const int searchBtnWidth = 100;
-    const int installedBtnWidth = 100;
-    const int refreshInstalledBtnWidth = 180;
+    const int installedBtnWidth = 120;
+    const int refreshInstalledBtnWidth = 220;
     const int endSearchBtnWidth = 110;
     const int searchBtnSpacing = 9;  // Extra space between buttons and dropdown
     
@@ -2684,6 +2802,22 @@ bool LoadLocale(const std::wstring& lang) {
             else if (key == L"wait_for_update") g_locale.wait_for_update = value;
             else if (key == L"cancel_installation") g_locale.cancel_installation = value;
             else if (key == L"preparing_installation") g_locale.preparing_installation = value;
+            // Search Dialog
+            else if (key == L"search_dialog_title") g_locale.search_dialog_title = value;
+            else if (key == L"search_in_categories") g_locale.search_in_categories = value;
+            else if (key == L"search_in_applications") g_locale.search_in_applications = value;
+            else if (key == L"search_options") g_locale.search_options = value;
+            else if (key == L"case_insensitive") g_locale.case_insensitive = value;
+            else if (key == L"case_sensitive") g_locale.case_sensitive = value;
+            else if (key == L"contains") g_locale.contains = value;
+            else if (key == L"exact_match") g_locale.exact_match = value;
+            else if (key == L"use_regex") g_locale.use_regex = value;
+            else if (key == L"search_all") g_locale.search_all = value;
+            else if (key == L"refine_previous") g_locale.refine_previous = value;
+            else if (key == L"search_help_line1") g_locale.search_help_line1 = value;
+            else if (key == L"search_help_line2") g_locale.search_help_line2 = value;
+            else if (key == L"search_button") g_locale.search_button = value;
+            else if (key == L"cancel_button") g_locale.cancel_button = value;
         }
     }
 

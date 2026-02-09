@@ -26,6 +26,11 @@
 #define IDC_USE_REGEX 207
 #define IDC_SEARCH_ALL 208
 #define IDC_REFINE_RESULTS 209
+#define IDC_STATIC_SEARCH_CAT 213
+#define IDC_STATIC_SEARCH_APP 214
+#define IDC_STATIC_SEARCH_OPTIONS 215
+#define IDC_STATIC_HELP1 216
+#define IDC_STATIC_HELP2 217
 
 // App details dialog controls
 #define IDC_APP_ICON 301
@@ -61,6 +66,7 @@
 // Confirmation dialog
 #define IDD_CONFIRM_ACTION 107
 #define IDC_CONFIRM_MESSAGE 330
+#define IDC_CONFIRM_ICON 333
 
 // Quit dialog
 #define IDD_QUIT_DIALOG 109

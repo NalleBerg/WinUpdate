@@ -43,20 +43,20 @@ updater_restore_failed=ERROR: Failed to restore database backup!\n
 repopulating_table=Repopulating table...
 
 # Installed apps management
-refresh_installed_btn=Refresh Installed Apps
+refresh_installed_btn=🔄 Refresh Installed Apps
 refresh_installed_tooltip=Discover apps installed outside this manager.\nThis may take a while.
 search_btn=🔍 Search
-end_search_btn=End Search
-installed_btn=Installed
-about_btn=About
-quit_btn=Quit
+end_search_btn=⏹ End Search
+installed_btn=📦 Installed
+about_btn=ℹ About
+quit_btn=⏻ Quit
 quit_title=Quit WinProgramManager?
 quit_message=Are you sure you want to quit?
-yes_btn=Yes
-no_btn=No
-install_btn=Install
-uninstall_btn=Uninstall
-reinstall_btn=Reinstall
+yes_btn=✓ Yes
+no_btn=✖ No
+install_btn=▼ Install
+uninstall_btn=╳ Uninstall
+reinstall_btn=⟲ Reinstall
 about_title=About WinProgramSuite
 about_subtitle=Complete Windows Package Management System
 about_published=Published:
@@ -69,10 +69,10 @@ about_wpm_usage=Browse 10,800+ packages with advanced search, manage installed a
 about_license_info=This software is licensed under the GNU General Public License v2.
 about_github=GitHub Repository:
 about_view_license=View License
-about_close=Close
+about_close=✖ Close
 reinstall_btn=Re-install
-uninstall_btn=Uninstall
-confirm_reinstall_title=Confirm Re-install
+uninstall_btn=Uninstallconfirm_install_title=Confirm Installation
+confirm_install_msg=Are you sure you want to install this application?\n\n%sconfirm_reinstall_title=Confirm Re-install
 confirm_reinstall_msg=Are you sure you want to re-install this application?\n\n%s
 confirm_uninstall_title=Confirm Uninstall
 confirm_uninstall_msg=Are you sure you want to uninstall this application?\n\n%s\n\nThis will remove the application from your system.
@@ -111,3 +111,20 @@ no_description=No description available
 unknown=Unknown
 not_available=Not available
 no_tags=No tags
+
+# Search Dialog
+search_dialog_title=Search
+search_in_categories=Search in Categories:
+search_in_applications=Search in Applications:
+search_options=Search Options
+case_insensitive=Case Insensitive
+case_sensitive=Case Sensitive
+contains=Contains
+exact_match=Exact Match
+use_regex=Use Regular Expression
+search_all=Search All
+refine_previous=Search in Results
+search_help_line1=Leave category search empty to search all categories.
+search_help_line2=Leave application search empty to show all applications in filtered categories.
+search_button=🔍 Search
+cancel_button=✖ Cancel

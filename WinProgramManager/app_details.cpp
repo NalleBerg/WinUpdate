@@ -78,7 +78,7 @@ bool LoadAppDetails(sqlite3* db, const std::wstring& packageId, AppDetailsData& 
             a.description, a.homepage, a.license,
             a.icon_data, a.icon_type,
             a.source, a.installer_type, a.architecture,
-            i.installed_version
+            i.installed_version, i.package_id
         FROM apps a
         LEFT JOIN installed_apps i ON a.package_id = i.package_id
         WHERE a.package_id = ?
@@ -126,13 +126,13 @@ bool LoadAppDetails(sqlite3* db, const std::wstring& packageId, AppDetailsData& 
         const char* archStr = (const char*)sqlite3_column_text(stmt, 11);
         data.architecture = archStr ? Utf8ToWide(archStr) : L"";
         
-        // Check if installed (column 12)
-        const char* installedVer = (const char*)sqlite3_column_text(stmt, 12);
-        if (installedVer && *installedVer) {
-            data.is_installed = true;
-            data.installed_version = Utf8ToWide(installedVer);
+        // Check if installed (column 12 = installed_version, column 13 = i.package_id from JOIN)
+        // If i.package_id is not NULL, the app is in installed_apps table
+        data.is_installed = (sqlite3_column_type(stmt, 13) != SQLITE_NULL);
+        if (data.is_installed) {
+            const char* installedVer = (const char*)sqlite3_column_text(stmt, 12);
+            data.installed_version = installedVer ? Utf8ToWide(installedVer) : L"";
         } else {
-            data.is_installed = false;
             data.installed_version = L"";
         }
     }
@@ -186,6 +186,7 @@ struct ConfirmActionData {
 // Confirmation dialog procedure
 INT_PTR CALLBACK ConfirmActionDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
     static ConfirmActionData* pConfirmData = nullptr;
+    static HBRUSH hWhiteBrush = nullptr;
     
     switch (message) {
         case WM_INITDIALOG: {
@@ -193,6 +194,11 @@ INT_PTR CALLBACK ConfirmActionDialogProc(HWND hDlg, UINT message, WPARAM wParam,
             if (!pConfirmData) {
                 EndDialog(hDlg, IDCANCEL);
                 return TRUE;
+            }
+            
+            // Create white brush for background
+            if (!hWhiteBrush) {
+                hWhiteBrush = CreateSolidBrush(RGB(255, 255, 255));
             }
             
             // Set dialog title and message based on action type
@@ -224,7 +230,56 @@ INT_PTR CALLBACK ConfirmActionDialogProc(HWND hDlg, UINT message, WPARAM wParam,
             SetWindowTextW(hDlg, title.c_str());
             SetDlgItemTextW(hDlg, IDC_CONFIRM_MESSAGE, message.c_str());
             SetDlgItemTextW(hDlg, IDOK, buttonText.c_str());
-            SetDlgItemTextW(hDlg, IDCANCEL, g_locale.cancel_btn.c_str());
+            SetDlgItemTextW(hDlg, IDCANCEL, g_locale.cancel_button.c_str());
+            
+            // Set question mark icon (32514 = IDI_QUESTION)
+            HWND hIconCtrl = GetDlgItem(hDlg, IDC_CONFIRM_ICON);
+            if (hIconCtrl) {
+                HICON hIcon = LoadIcon(NULL, IDI_QUESTION);
+                SendMessage(hIconCtrl, STM_SETICON, (WPARAM)hIcon, 0);
+            }
+            
+            // Subclass buttons for hover effects
+            HWND hOkBtn = GetDlgItem(hDlg, IDOK);
+            HWND hCancelBtn = GetDlgItem(hDlg, IDCANCEL);
+            
+            if (hOkBtn) {
+                SetWindowSubclass(hOkBtn, [](HWND h, UINT msg, WPARAM wp, LPARAM lp, UINT_PTR, DWORD_PTR)->LRESULT {
+                    switch (msg) {
+                    case WM_MOUSEMOVE: {
+                        SetWindowLongPtrW(h, GWLP_USERDATA, 1);
+                        InvalidateRect(h, NULL, TRUE);
+                        TRACKMOUSEEVENT tme{}; tme.cbSize = sizeof(tme); tme.dwFlags = TME_LEAVE; tme.hwndTrack = h; TrackMouseEvent(&tme);
+                        break;
+                    }
+                    case WM_MOUSELEAVE: {
+                        SetWindowLongPtrW(h, GWLP_USERDATA, 0);
+                        InvalidateRect(h, NULL, TRUE);
+                        break;
+                    }
+                    }
+                    return DefSubclassProc(h, msg, wp, lp);
+                }, 0, 0);
+            }
+            
+            if (hCancelBtn) {
+                SetWindowSubclass(hCancelBtn, [](HWND h, UINT msg, WPARAM wp, LPARAM lp, UINT_PTR, DWORD_PTR)->LRESULT {
+                    switch (msg) {
+                    case WM_MOUSEMOVE: {
+                        SetWindowLongPtrW(h, GWLP_USERDATA, 1);
+                        InvalidateRect(h, NULL, TRUE);
+                        TRACKMOUSEEVENT tme{}; tme.cbSize = sizeof(tme); tme.dwFlags = TME_LEAVE; tme.hwndTrack = h; TrackMouseEvent(&tme);
+                        break;
+                    }
+                    case WM_MOUSELEAVE: {
+                        SetWindowLongPtrW(h, GWLP_USERDATA, 0);
+                        InvalidateRect(h, NULL, TRUE);
+                        break;
+                    }
+                    }
+                    return DefSubclassProc(h, msg, wp, lp);
+                }, 0, 0);
+            }
             
             // Center dialog
             RECT rc, rcParent;
@@ -237,12 +292,72 @@ INT_PTR CALLBACK ConfirmActionDialogProc(HWND hDlg, UINT message, WPARAM wParam,
             return TRUE;
         }
         
+        case WM_CTLCOLORDLG: {
+            return (LRESULT)hWhiteBrush;
+        }
+        
+        case WM_CTLCOLORSTATIC: {
+            HDC hdcStatic = (HDC)wParam;
+            SetBkMode(hdcStatic, TRANSPARENT);
+            SetBkColor(hdcStatic, RGB(255, 255, 255));
+            SetTextColor(hdcStatic, RGB(0, 0, 0));
+            return (LRESULT)hWhiteBrush;
+        }
+        
+        case WM_DRAWITEM: {
+            DRAWITEMSTRUCT* dis = (DRAWITEMSTRUCT*)lParam;
+            if (dis->CtlType == ODT_BUTTON) {
+                HWND hBtn = dis->hwndItem;
+                BOOL hover = (BOOL)GetWindowLongPtrW(hBtn, GWLP_USERDATA);
+                bool pressed = (dis->itemState & ODS_SELECTED) != 0;
+                HDC hdc = dis->hDC;
+                RECT rc = dis->rcItem;
+                
+                // Blue color scheme matching Search button
+                COLORREF base = RGB(10,57,129);
+                COLORREF hoverCol = RGB(25,95,210);
+                COLORREF pressCol = RGB(6,34,80);
+                
+                COLORREF bgColor = pressed ? pressCol : (hover ? hoverCol : base);
+                HBRUSH hBrush = CreateSolidBrush(bgColor);
+                FillRect(hdc, &rc, hBrush);
+                DeleteObject(hBrush);
+                
+                SetBkMode(hdc, TRANSPARENT);
+                SetTextColor(hdc, RGB(255,255,255));
+                
+                // Get button text
+                wchar_t text[256] = {0};
+                GetWindowTextW(hBtn, text, 255);
+                
+                // Use bold font from main window
+                extern HFONT g_hBoldFont;
+                HFONT hf = g_hBoldFont ? g_hBoldFont : (HFONT)GetStockObject(DEFAULT_GUI_FONT);
+                HGDIOBJ oldf = SelectObject(hdc, hf);
+                
+                DrawTextW(hdc, text, -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+                SelectObject(hdc, oldf);
+                if (dis->itemState & ODS_FOCUS) DrawFocusRect(hdc, &rc);
+                
+                return TRUE;
+            }
+            break;
+        }
+        
         case WM_COMMAND:
             if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL) {
                 EndDialog(hDlg, LOWORD(wParam));
                 return TRUE;
             }
             break;
+        
+        case WM_DESTROY: {
+            if (hWhiteBrush) {
+                DeleteObject(hWhiteBrush);
+                hWhiteBrush = nullptr;
+            }
+            break;
+        }
     }
     
     return FALSE;

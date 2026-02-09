@@ -2,10 +2,29 @@
 <span style="color: #0066cc;">📦 WinProgramSuite — Komplett Windows Pakethanteringssystem</span>
 </h2>
 <p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;">
-<strong>Senaste uppdateringen:</strong> 8 februari 2026 | <strong>Design och layout färdigställd</strong><br/>
+<strong>Senaste uppdateringen:</strong> 9 februari 2026 | <strong>Sökdialog färdigställd & installationsstatus fixad</strong><br/>
 Denna ändringslogg täcker <strong>WinProgramManager</strong>, databashanteringskomponenten i WinProgramSuite.<br/>
 För automatiska uppdateringsfunktioner, se <strong>WinUpdate</strong>-dokumentation.
 </p>
+
+<h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Version 2026.02.09.01 — Uppdatering 18</span></h3>
+<p><strong>Sökdialog internationalisering och installationsstatus-fix (9 februari 2026):</strong></p>
+<ul>
+<li><strong>Sökdialog internationalisering:</strong> Lade till 15 lokalnycklar (search_dialog_title, package_name_label, publisher_label, source_label, category_label, tag_label, status_label, status_all, status_installed, status_not_installed, search_button, reset_button, close_button, cancel_button) på 3 språk</li>
+<li><strong>Visuell översyn:</strong> Vit bakgrund RGB(255,255,255), 11pt Segoe UI-typsnitt, ägarritade knappar med hover-effekter</li>
+<li><strong>Tvåkolumns layout:</strong> Radioknappar organiserade i 50/50-layout (vänster 20-220, höger 235-430) för bättre utrymmesutnyttjande</li>
+<li><strong>Dialogenhetskonvertering:</strong> Standardiserade knappstorlekar på 60x14 DLU (sök) och 75x14 DLU (bekräftelse) ≈ 88-110px @ 11pt Segoe UI</li>
+<li><strong>Knapp hover-effekter:</strong> GWLP_USERDATA tillståndsspårning med TrackMouseEvent, RGB(25,95,210) hover-färg</li>
+<li><strong>Universellt ikonsystem:</strong> Lade till passande Unicode-ikoner till 12+ knappar (▼ Installera, ⟲ Ominstallera, ⨳ Avinstallera, ✖ Stäng, 🔍 Sök, ⏹ Stopp, 📦 Installerad, 🔄 Uppdatera, ℹ Om, ⏻ Avsluta, ✓ Ja/OK)</li>
+<li><strong>KRITISK FIX - Installationsstatus:</strong> Fixade bugg där installerade appar visade "Installera"-knapp istället för "Ominstallera"/"Avinstallera". Grundorsak: LEFT JOIN returnerade tom sträng för installed_version, inte NULL. Lösning: Kontrollera i.package_id-kolumn (13) från JOIN med sqlite3_column_type != SQLITE_NULL</li>
+<li><strong>Bekräftelsedialog förbättringar:</strong> Lade till IDI_QUESTION-ikon, vit bakgrund, bredare knappar (75 DLU), alla åtgärder (installera/ominstallera/avinstallera) har nu bekräftelsedialog</li>
+<li><strong>Förenklade Unicode-ikoner:</strong> Ersatte emojis (⬇ 🗑 🔄) med enklare Unicode-tecken (▼ ⨳ ⟲) för bättre rendering över system</li>
+<li><strong>Saknade lokalsträngar:</strong> Lade till confirm_install_title och confirm_install_msg som saknades när andra bekräftelseåtgärder lades till</li>
+<li><strong>Knappbreddsjusteringar:</strong> Utökade Installerad-knapp till 120px (var 100px), Uppdatera Installerad till 220px (var 180px) för att rymma ikonerna</li>
+<li><strong>Komplett knappstyling:</strong> Alla dialogknappar använder nu konsekventa färger (RGB 10,57,129 bas), 19pt fet stil, centrerad text med DT_CENTER|DT_VCENTER</li>
+<li><strong>Kodkonsistens:</strong> Enhetligt WM_DRAWITEM-mönster över alla dialoger, konsekvent användning av GetStockObject(WHITE_BRUSH) för vita bakgrunder</li>
+</ul>
 
 <h3 style="text-align: center;">&nbsp;</h3>
 <h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Version 2026.02.08.02 — Uppdatering 17</span></h3>
