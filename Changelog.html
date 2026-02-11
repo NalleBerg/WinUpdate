@@ -2,10 +2,21 @@
 <span style="color: #0066cc;">📦 WinProgramSuite — Complete Windows Package Management System</span>
 </h2>
 <p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;">
-<strong>Latest Update:</strong> 9 February 2026 | <strong>Search Dialog Complete & Installation Status Fixed</strong><br/>
+<strong>Latest Update:</strong> 11 February 2026 | <strong>Instant Installed Filter, Reinstall Fixes & DB Cleanup</strong><br/>
 This changelog covers <strong>WinProgramManager</strong>, the database management component of the WinProgramSuite.<br/>
 For automatic update features, see <strong>WinUpdate</strong> documentation.
 </p>
+
+<h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Version 2026.02.11.01 — Update 19</span></h3>
+<p><strong>Stability & installer fixes (11 February 2026):</strong></p>
+<ul>
+<li><strong>Installed filter:</strong> Made the Installed filter toggle instantaneous by loading package IDs from the local database (no blocking winget query)</li>
+<li><strong>Reinstall dialog:</strong> Fixed missing button text by restoring the `close` locale key and adjusting owner-drawn button rendering</li>
+<li><strong>Installer UI:</strong> Added an extra newline after the "querying winget" status message for improved readability</li>
+<li><strong>Focus handling:</strong> Main window is now brought to the front when the install/reinstall dialog closes</li>
+<li><strong>Database cleanup:</strong> Removed stale entries from `installed_apps` to correct incorrect installed counts</li>
+</ul>
 
 <h3 style="text-align: center;">&nbsp;</h3>
 <h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Version 2026.02.09.01 — Update 18</span></h3>

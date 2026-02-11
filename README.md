@@ -1,6 +1,6 @@
 # WinProgramSuite — Complete Windows Package Management System
 
-**Latest Update:** 9 February 2026 | **Search Dialog Complete & Installation Status Fixed**
+**Latest Update:** 11 February 2026 | **Instant Installed Filter, Reinstall Fixes & DB Cleanup**
 
 **WinProgramSuite** is a comprehensive package management system for Windows, combining database-driven package metadata management with a friendly GUI for updates. Built on Microsoft's `winget` package manager with advanced categorization, search, filtering, and analysis capabilities.
 
@@ -35,7 +35,14 @@ Published and stable GUI for automatic Windows package updates.
 
 **Current Status:** ✅ Published and production-ready
 
-## 🚨 Recent Updates (2026-02-09)
+## 🚨 Recent Updates (2026-02-11)
+
+### Update 19: Stability & Installer Fixes (v2026.02.11.01)
+- **INSTALLED FILTER (FAST):** Made the Installed filter toggle instantaneous by reading installed package IDs from the local database instead of running a blocking `winget list` call. This eliminates the long delay on slow regions.
+- **REINSTALL DIALOG FIX:** Fixed missing button text by adding the `close` locale key and rendering owner-drawn buttons from the supplied text variable.
+- **INSTALL UI:** Added an extra blank line after the "querying winget" status message for better readability in the installer log.
+- **FOCUS MANAGEMENT:** Main window now regains foreground focus when install/reinstall dialog closes.
+- **DATABASE CLEANUP:** Removed stale entries from the `installed_apps` table to correct inflated installed-app counts; the app will populate installed apps on next startup or manual refresh.
 
 ### Update 18: Search Dialog Complete & Installation Status Fixed (v2026.02.09.01)
 - **SEARCH DIALOG i18n**: Added 15 locale keys (search_dialog_title, package_name_label, publisher_label, source_label, category_label, tag_label, status_label, status_all, status_installed, status_not_installed, search_button, reset_button, close_button, cancel_button) in 3 languages

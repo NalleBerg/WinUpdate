@@ -2,10 +2,21 @@
 <span style="color: #0066cc;">📦 WinProgramSuite — Komplett Windows Pakethanteringssystem</span>
 </h2>
 <p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;">
-<strong>Senaste uppdateringen:</strong> 9 februari 2026 | <strong>Sökdialog färdigställd & installationsstatus fixad</strong><br/>
+<strong>Senaste uppdateringen:</strong> 11 februari 2026 | <strong>Installerat-filter ögonblickligt, Ominstallera-fixar & DB-rensning</strong><br/>
 Denna ändringslogg täcker <strong>WinProgramManager</strong>, databashanteringskomponenten i WinProgramSuite.<br/>
 För automatiska uppdateringsfunktioner, se <strong>WinUpdate</strong>-dokumentation.
 </p>
+
+<h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Version 2026.02.11.01 — Uppdatering 19</span></h3>
+<p><strong>Stabilitet & installationsfixar (11 februari 2026):</strong></p>
+<ul>
+<li><strong>Installerat-filter:</strong> Gjorde "Installerat"-filtret omedelbart genom att ladda paket-ID:n från lokal databas (ingen blockerande winget-körning)</li>
+<li><strong>Ominstallera-dialog:</strong> Fixade saknad knapptext genom att återställa `close` lokaltals-nyckeln och justera owner-drawn rendering</li>
+<li><strong>Installations-UI:</strong> Lagt till en extra ny rad efter "Frågar winget..."-meddelandet för bättre läsbarhet</li>
+<li><strong>Fokus-hantering:</strong> Huvudfönstret förs fram när installationsdialogen stängs</li>
+<li><strong>DB-rensning:</strong> Tog bort föråldrade poster från `installed_apps` för att rätta installationsräkningen</li>
+</ul>
 
 <h3 style="text-align: center;">&nbsp;</h3>
 <h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Version 2026.02.09.01 — Uppdatering 18</span></h3>
