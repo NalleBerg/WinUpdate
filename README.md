@@ -418,3 +418,9 @@ Developed by [NalleBerg](https://github.com/NalleBerg)
 ---
 
 **WinProgramSuite** transforms Windows package management from command-line utility to comprehensive database-driven system with rich metadata, intelligent categorization, and friendly interfaces.
+
+## Release readiness
+
+- **Release status:** Ready for publish — release will be performed tomorrow (11 February 2026).
+
+- Committed 11 February 2026 — codebase prepared for publishing.

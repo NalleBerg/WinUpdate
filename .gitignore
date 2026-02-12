@@ -1,0 +1,1 @@
+# Ignore generated database files\nDB/*.db\nTestDB/*.db\n*.db\n
