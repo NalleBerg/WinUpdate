@@ -61,6 +61,9 @@ static std::string g_logBuffer;
 static std::wstring g_dbPath;
 static std::wstring g_dbBackupPath;
 
+// Each executable keeps its own bold font instance
+HFONT g_hBoldFont = NULL;
+
 // Statistics
 static std::atomic<int> g_packagesFound = 0;
 static std::atomic<int> g_packagesAdded = 0;
@@ -323,10 +326,8 @@ static LRESULT CALLBACK LogViewerWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam,
                 WS_CHILD | WS_VISIBLE | BS_DEFPUSHBUTTON,
                 690, 540, 80, 30, hwndDlg, (HMENU)IDC_LOG_VIEWER_BTN_CLOSE, NULL, NULL);
             
-            HFONT hBtnFont = CreateFontW(-14, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
-                DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-                DEFAULT_QUALITY, FF_DONTCARE, L"Segoe UI");
-            SendMessage(hBtnClose, WM_SETFONT, (WPARAM)hBtnFont, TRUE);
+            // Use shared bold font for buttons
+            SendMessage(hBtnClose, WM_SETFONT, (WPARAM)g_hBoldFont, TRUE);
             
             return 0;
         }
@@ -416,25 +417,36 @@ static LRESULT CALLBACK LogViewerWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam,
     return DefWindowProcW(hwnd, uMsg, wParam, lParam);
 }
 
-// Blue button owner-draw helper
+// Blue (navy) button owner-draw helper — match main app color scheme
 static void DrawButton(LPDRAWITEMSTRUCT dis, const wchar_t* text, bool enabled) {
     HDC hdc = dis->hDC;
     RECT rc = dis->rcItem;
-    
-    // Colors
-    COLORREF bgColor = enabled ? RGB(0, 120, 215) : RGB(160, 160, 160);
-    COLORREF textColor = RGB(255, 255, 255);
-    
+
+    // Main app color scheme
+    COLORREF base = RGB(10,57,129);
+    COLORREF hoverCol = RGB(25,95,210);
+    COLORREF pressCol = RGB(6,34,80);
+    COLORREF disabledCol = RGB(160,160,160);
+    COLORREF textColor = RGB(255,255,255);
+
+    bool pressed = (dis->itemState & ODS_SELECTED) != 0;
+    bool hover = (dis->itemState & ODS_HOTLIGHT) != 0;
+
+    COLORREF bgColor = enabled ? (pressed ? pressCol : (hover ? hoverCol : base)) : disabledCol;
+
     // Draw background
     HBRUSH hBrush = CreateSolidBrush(bgColor);
     FillRect(hdc, &rc, hBrush);
     DeleteObject(hBrush);
-    
-    // Draw text
+
+    // Draw text (bold if available)
     SetBkMode(hdc, TRANSPARENT);
     SetTextColor(hdc, textColor);
+    HFONT hf = g_hBoldFont ? g_hBoldFont : (HFONT)GetStockObject(DEFAULT_GUI_FONT);
+    HGDIOBJ oldf = SelectObject(hdc, hf);
     DrawTextW(hdc, text, -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-    
+    SelectObject(hdc, oldf);
+
     // Draw focus rectangle if needed
     if (dis->itemState & ODS_FOCUS) {
         DrawFocusRect(hdc, &rc);
@@ -461,11 +473,16 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
                 WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY,
                 10, 60, 680, 290, hwnd, (HMENU)IDC_LOG_TEXT, NULL, NULL);
             
-            // Set font
+            // Set font for text controls
             HFONT hFont = CreateFontW(-14, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
                 DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
                 DEFAULT_QUALITY, FF_DONTCARE, L"Segoe UI");
             SendMessage(g_hLogText, WM_SETFONT, (WPARAM)hFont, TRUE);
+
+            // Create bold font for buttons (used by owner-draw and standard buttons)
+            g_hBoldFont = CreateFontW(-14, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
+                DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+                DEFAULT_QUALITY, FF_DONTCARE, L"Segoe UI");
             
             // Show initial explanation
             std::wstring explanation = t("updater_explanation_line1") + L"\r\n" +
@@ -828,6 +845,10 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
                 if (g_workerThread->joinable()) g_workerThread->join();
                 delete g_workerThread;
                 g_workerThread = nullptr;
+            }
+            if (g_hBoldFont) {
+                DeleteObject(g_hBoldFont);
+                g_hBoldFont = NULL;
             }
             PostQuitMessage(0);
             return 0;

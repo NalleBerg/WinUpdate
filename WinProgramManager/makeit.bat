@@ -47,6 +47,29 @@ echo ===========================================================================
 echo.
 
 REM ----------------------------------------------------------------------------
+REM SECTION 7.3.1: Generic copy of built executables and DLLs (catch-all)
+REM Purpose: Ensure any binaries produced by the build are copied even if not
+REM          explicitly named above (prevents missing files during packaging)
+REM ----------------------------------------------------------------------------
+
+echo Copying any additional executables from build directory...
+for %%F in (%BUILD_DIR%\*.exe) do (
+    if not exist "%PACKAGE_DIR%\%%~nxF" (
+        copy /Y "%%~fF" "%PACKAGE_DIR%\%%~nxF" >nul 2>&1
+        if not errorlevel 1 (echo - %%~nxF packaged (auto))
+    )
+)
+
+echo Copying any additional DLLs from build directory...
+for %%F in (%BUILD_DIR%\*.dll) do (
+    if not exist "%PACKAGE_DIR%\%%~nxF" (
+        copy /Y "%%~fF" "%PACKAGE_DIR%\%%~nxF" >nul 2>&1
+        if not errorlevel 1 (echo - %%~nxF packaged (auto))
+    )
+)
+
+
+REM ----------------------------------------------------------------------------
 REM SECTION 2: Backup Production Database from Package Directory
 REM ----------------------------------------------------------------------------
 REM Purpose: Preserve user data before rebuilding package directory
@@ -482,7 +505,8 @@ echo.
 echo ============================================================================
 echo.
 
-echo Starting WinProgramManager...
-start "" "%PACKAGE_DIR%\WinProgramManager.exe"
+echo Auto-start disabled: not launching WinProgramManager.exe from makeit.bat
+REM To auto-start the app, uncomment the following line:
+REM start "" "%PACKAGE_DIR%\WinProgramManager.exe"
 
 endlocal
