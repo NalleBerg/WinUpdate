@@ -8,6 +8,16 @@ För automatiska uppdateringsfunktioner, se <strong>WinUpdate</strong>-dokumenta
 </p>
 
 <h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Version 2026.02.13.01 — Uppdatering 20</span></h3>
+<p><strong>First-run scheduler & configuration marker (13 February 2026):</strong></p>
+<ul>
+<li><strong>First-run scheduler:</strong> On first run the app creates a weekly Task Scheduler job named <em>WinProgramUpdaterWeekly</em> that runs <code>WinProgramUpdaterGUI.exe --hidden</code> for automated weekly updates.</li>
+<li><strong>Configuration marker:</strong> A small INI is written to <code>%APPDATA%\WinProgramManager\WinProgramManager.ini</code> to mark first-run completion; it stores <code>Settings/Language</code> (default <code>en_GB</code>) and <code>Settings/UpdaterTaskCreated</code> (1 on success, 0 on failure).</li>
+<li><strong>One-time flow:</strong> Presence of the INI prevents re-running the first-run task creation. Delete the INI to force the flow again.</li>
+</ul>
+
+<h3 style="text-align: center;">&nbsp;</h3>
 <h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Version 2026.02.11.01 — Uppdatering 19</span></h3>
 <p><strong>Stabilitet & installationsfixar (11 februari 2026):</strong></p>
 <ul>

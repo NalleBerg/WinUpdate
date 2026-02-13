@@ -2,6 +2,8 @@
 
 **Latest Update:** 11 February 2026 | **Instant Installed Filter, Reinstall Fixes & DB Cleanup**
 
+**Note (13 February 2026):** A first-run scheduler is now created by `WinProgramManager` on initial startup. The app writes a small marker INI at `%APPDATA%\WinProgramManager\WinProgramManager.ini` and creates a Task Scheduler job `WinProgramUpdaterWeekly` to run `WinProgramUpdaterGUI.exe --hidden` weekly. The INI contains `Settings/Language` (default `en_GB`) and `Settings/UpdaterTaskCreated` (1 on success, 0 on failure). Delete the INI to force the first-run logic again.
+
 **WinProgramSuite** is a comprehensive package management system for Windows, combining database-driven package metadata management with a friendly GUI for updates. Built on Microsoft's `winget` package manager with advanced categorization, search, filtering, and analysis capabilities.
 
 ## 📥 Getting Started

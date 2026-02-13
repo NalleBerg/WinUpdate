@@ -8,6 +8,16 @@ For automatiske oppdateringsfunksjoner, se <strong>WinUpdate</strong>-dokumentas
 </p>
 
 <h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Versjon 2026.02.13.01 — Oppdatering 20</span></h3>
+<p><strong>Første-kjøring planlegger og konfigurasjonsmarkør (13. februar 2026):</strong></p>
+<ul>
+<li><strong>Første-kjøring planlegger:</strong> Ved første kjøring opprettes en ukentlig Oppgaveplanlegger-oppgave kalt <em>WinProgramUpdaterWeekly</em> som kjører <code>WinProgramUpdaterGUI.exe --hidden</code> for automatiske ukentlige oppdateringer.</li>
+<li><strong>Konfigurasjonsmarkør:</strong> En liten INI-fil skrives til <code>%APPDATA%\WinProgramManager\WinProgramManager.ini</code> for å markere at første-kjøring er fullført. INI'en inneholder <code>Settings/Language</code> (standard <code>en_GB</code>) og <code>Settings/UpdaterTaskCreated</code> (1 ved suksess, 0 ved feil).</li>
+<li><strong>Engangsflyt:</strong> Hvis INI finnes prøver appen ikke å opprette oppgaven på nytt. Slett INI for å tvinge første-kjøringslogikken på nytt.</li>
+</ul>
+
+<h3 style="text-align: center;">&nbsp;</h3>
 <h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Versjon 2026.02.11.01 — Oppdatering 19</span></h3>
 <p><strong>Stabilitet og installasjonsfikser (11. februar 2026):</strong></p>
 <ul>

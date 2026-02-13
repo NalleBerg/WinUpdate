@@ -26,8 +26,15 @@ For automatic update features, see <strong>WinUpdate</strong> documentation.
 <li><strong>Search Dialog Visual Overhaul:</strong> White background (RGB 255,255,255), 11pt Segoe UI font, owner-drawn buttons matching main window styling</li>
 <li><strong>Two-Column Layout:</strong> Reorganized radio buttons into efficient 50/50 split - left column (Case Insensitive, Contains, Use Regex, Search All), right column (Case Sensitive, Exact Match, Refine Previous Results)</li>
 <li><strong>Dialog Unit Conversion:</strong> Search dialog buttons properly sized at 60x14 DLU (≈88x30 pixels for 11pt font), matching main window button proportions</li>
-<li><strong>Button Hover Effects:</strong> Implemented GWLP_USERDATA hover tracking with TrackMouseEvent (TME_LEAVE), RGB(25,95,210) hover color matching Search button exactly</li>
-<li><strong>Universal Icon System:</strong> Added Unicode icons to all buttons throughout application - 🔍 Search, ⏹ End Search, 📦 Installed, 🔄 Refresh, ℹ About, ⏻ Quit, ⬇ Install, 🗑 Uninstall, ✓ Yes, ✖ No/Cancel</li>
+<h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Version 2026.02.13.01 — Update 20</span></h3>
+<p><strong>First-run scheduler & configuration marker (13 February 2026):</strong></p>
+<ul>
+<li><strong>First-run scheduler:</strong> On first run the app will create a weekly Task Scheduler job named <em>WinProgramUpdaterWeekly</em> that runs <code>WinProgramUpdaterGUI.exe --hidden</code> for automated weekly updates.</li>
+<li><strong>Configuration marker:</strong> A small INI is written to <code>%APPDATA%\WinProgramManager\WinProgramManager.ini</code> to mark first-run completion. The INI stores <code>Settings/Language</code> (default <code>en_GB</code>) and <code>Settings/UpdaterTaskCreated</code> (1 on success, 0 on failure).</li>
+<li><strong>One-time flow:</strong> If the INI is present the app will not try to re-create the scheduled task. Delete the INI to force the first-run logic again.</li>
+</ul>
+
 <li><strong>Installation Status Bug Fix:</strong> Fixed critical bug where installed apps showed "Install" instead of "Reinstall/Uninstall" in details dialog - now checks i.package_id column from LEFT JOIN instead of installed_version (which can be empty string)</li>
 <li><strong>Confirmation Dialog Improvements:</strong> Added white background, blue question mark icon (IDI_QUESTION), wider buttons (75 DLU ≈110px), proper button icons</li>
 <li><strong>Simplified Unicode Icons:</strong> Changed from emoji to standard Unicode - ▼ Install (down triangle), ⟲ Reinstall (circular arrow), ⨳ Uninstall (bold X), ✖ Cancel</li>
