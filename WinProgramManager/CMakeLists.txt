@@ -17,6 +17,9 @@ add_executable(WinProgramManager WIN32
     install_dialog.cpp
     about.cpp
     quit_handler.cpp
+    task_scheduler.cpp
+    ini_utils.cpp
+    settings_dialog.cpp
     winprogrammanager.rc
 )
 
@@ -41,7 +44,7 @@ target_link_libraries(WinProgramManager
 
 # Link options for MinGW to properly handle wWinMain
 if(MINGW)
-    target_link_options(WinProgramManager PRIVATE -municode)
+    target_link_options(WinProgramManager PRIVATE -municode -mwindows)
 endif()
 
 # Enable Unicode

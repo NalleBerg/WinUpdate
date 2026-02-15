@@ -4,6 +4,8 @@
 
 // Application icon
 IDI_APP_ICON ICON "wpm_logo.ico"
+IDI_SETTINGS_ICON ICON "wpm_logo.ico"
+IDI_RUN_UPDATER_ICON ICON "wpm_logo.ico"
 
 // Accelerator table
 IDR_ACCELERATOR1 ACCELERATORS

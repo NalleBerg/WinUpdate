@@ -19,10 +19,10 @@ using namespace Gdiplus;
 
 // ============================================================================
 // VERSION INFORMATION
-// Updated: 2026-02-07
+// Updated: 2026-02-15
 // ============================================================================
-const wchar_t ABOUT_PUBLISHED[] = L"07.02.2026";
-const wchar_t ABOUT_VERSION[] = L"2026.02.07.08";
+const wchar_t ABOUT_PUBLISHED[] = L"15.02.2026";
+const wchar_t ABOUT_VERSION[] = L"2026.02.15.13";
 
 // External locale
 extern Locale g_locale;

@@ -110,6 +110,23 @@ bool SystemTray::UpdateTooltip(const std::wstring& text) {
     log << "UpdateTooltip called with text: " << std::string(text.begin(), text.end()) << "\n";
     BOOL result = Shell_NotifyIconW(NIM_MODIFY, &m_nid);
     log << "Shell_NotifyIconW result: " << result << "\n";
+    
+    // If modify failed, the icon may have been lost (e.g., after Windows update/restart)
+    // Try to re-add it
+    if (!result) {
+        log << "UpdateTooltip failed, attempting to re-add icon\n";
+        m_active = false;  // Reset active flag so AddToTray will work
+        m_nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;  // Restore full flags for add
+        
+        if (Shell_NotifyIconW(NIM_ADD, &m_nid)) {
+            log << "Re-add succeeded\n";
+            m_active = true;
+            result = TRUE;
+        } else {
+            log << "Re-add failed! Error: " << GetLastError() << "\n";
+        }
+    }
+    
     log.close();
     
     return result != FALSE;
@@ -125,6 +142,23 @@ bool SystemTray::ShowBalloon(const std::wstring& title, const std::wstring& text
     m_nid.uTimeout = 10000; // 10 seconds
     
     bool result = Shell_NotifyIconW(NIM_MODIFY, &m_nid) != FALSE;
+    
+    // If modify failed, try to re-add the icon
+    if (!result) {
+        std::ofstream log("C:\\Users\\NalleBerg\\AppData\\Roaming\\WinUpdate\\tray_debug.txt", std::ios::app);
+        log << "ShowBalloon failed, attempting to re-add icon\n";
+        m_active = false;
+        m_nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP | NIF_INFO;
+        
+        if (Shell_NotifyIconW(NIM_ADD, &m_nid)) {
+            log << "Re-add succeeded\n";
+            m_active = true;
+            result = true;
+        } else {
+            log << "Re-add failed! Error: " << GetLastError() << "\n";
+        }
+        log.close();
+    }
     
     // Reset flags
     m_nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;

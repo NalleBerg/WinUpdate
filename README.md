@@ -1,6 +1,6 @@
 # WinProgramSuite — Complete Windows Package Management System
 
-**Latest Update:** 15 February 2026 | **Settings Scheduler Improvements & Universal Language Support**
+**Latest Update:** 15 February 2026 | **Complete i18n & Settings Scheduler**
 
 **Note (13 February 2026):** A first-run scheduler is now created by `WinProgramManager` on initial startup. The app writes a small marker INI at `%APPDATA%\WinProgramManager\WinProgramManager.ini` and creates a Task Scheduler job `WinProgramUpdaterWeekly` to run `WinProgramUpdaterGUI.exe --hidden` weekly. The INI contains `Settings/Language` (default `en_GB`) and `Settings/UpdaterTaskCreated` (1 on success, 0 on failure). Delete the INI to force the first-run logic again.
 
@@ -39,17 +39,19 @@ Published and stable GUI for automatic Windows package updates.
 
 ## 🚨 Recent Updates (2026-02-15)
 
-### Update 20: Settings Scheduler Improvements & Universal Language Support (v2026.02.15.01)
-- **UNIVERSAL TASK SCHEDULER PARSING:** Task scheduler output is now parsed language-independently, extracting day intervals (1-365) regardless of Windows display language (English, Norwegian, Chinese, Japanese, Russian, etc.)
-- **CHECKBOX FIX:** Settings dialog checkbox now correctly reflects scheduler state by checking `intervalDays > 0` instead of multiple fallback conditions
-- **INPUT VALIDATION:** Custom days field now validates integer input only, with range checking (1-365 days) and clear error messages
+### Update 21: Complete i18n & Settings Scheduler (v2026.02.15.01)
+- **COMPLETE SETTINGS i18n:** All 15 settings dialog strings now translated to English, Norwegian, and Swedish (settings_btn, settings_title, settings_run_updater_btn, settings_scheduler_enable, settings_scheduler_interval_days_label, settings_scheduler_custom_days_label, settings_scheduler_first_run_label, settings_scheduler_run_if_fail_label, settings_use_button, settings_ok_button, settings_cancel_button, settings_working_message, settings_days_out_of_range, settings_days_invalid_integer, settings_failed_launch_updater)
+- **UNIVERSAL TASK SCHEDULER PARSING:** Task scheduler output now parsed language-independently, extracting day intervals (1-365) regardless of Windows display language (English, Norwegian, Chinese, Japanese, Russian, etc.)
+- **PATTERN-BASED EXTRACTION:** Parser uses intelligent number extraction with date/time filtering - works with "Every 5 day(s)", "hver 5 dag", "每 5 天", etc.
+- **CHECKBOX FIX:** Settings dialog checkbox correctly reflects scheduler state by checking `intervalDays > 0` instead of multiple fallback conditions
+- **INPUT VALIDATION:** Custom days field validates integer-only input with range checking (1-365 days) and clear localized error messages
 - **TIMEOUT PROTECTION:** `restore_missing_packages.ps1` script now has 15-second timeout for winget queries to prevent indefinite hanging
-- **i18n PREPARATION:** Added `settings_days_invalid_integer` locale key (internationalization to be completed in next update)
+- **EXTENDED INTERVALS:** Custom intervals up to 365 days for annual/semi-annual update schedules
 
 **Technical Details:**
-- Task scheduler parser now uses pattern-based number extraction with date/time filtering
-- Supports custom intervals up to 365 days (annual updates)
-- Validates input is whole number before accepting
+- Settings dialog now displays fully in Norwegian ("Innstillinger", "Aktiver planlagte oppdateringer") or Swedish ("Inställningar", "Aktivera schemalagda uppdateringar")
+- Task scheduler parser uses pattern-based number extraction with date/time filtering
+- Validates input is whole number before accepting, trims whitespace
 - Works consistently across all Windows 10/11 language configurations
 
 ## 🚨 Recent Updates (2026-02-11)

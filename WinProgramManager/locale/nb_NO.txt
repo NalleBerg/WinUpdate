@@ -17,6 +17,7 @@ title=WinProgramManager
 processing_database=Behandler databasen, vennligst vent...
 querying_winget=Sjekker installerte apper med winget.\nDette kan ta litt tid...
 wait_moment=Vent et øyeblikk....
+close=Lukk
 
 # Updater GUI
 updater_title=WinProgram Databaseoppdaterer
@@ -48,6 +49,8 @@ refresh_installed_tooltip=Oppdag apper installert utenfor denne behandleren.\nDe
 search_btn=🔍 Søk
 end_search_btn=⏹ Avslutt søk
 installed_btn=📦 Installert
+settings_btn=⚙️ Innstillinger
+settings_run_updater_btn=▶️ Kjør oppdaterer
 about_btn=ℹ Om
 quit_btn=⏻ Avslutt
 quit_title=Avslutte WinProgramManager?
@@ -92,6 +95,13 @@ license_window_error=Kunne ikke opprette lisensvindu.
 wait_for_update=Vennligst vent til oppdateringen er fullført eller klikk Avbryt.
 cancel_installation=Avbryter installasjonen...\n\nVennligst vent mens prosessen avsluttes.
 preparing_installation=Forbereder installasjon...
+installing_title=Installerer...
+reinstalling_title=Installerer på nytt...
+uninstalling_title=Avinstallerer...
+installing_status=Installerer %d pakke(r)...
+reinstalling_status=Installerer %d pakke(r) på nytt...
+uninstalling_status=Avinstallerer %d pakke(r)...
+querying_winget_status=Spør winget...
 
 # App Details Dialog
 app_details_title=Applikasjonsdetaljer
@@ -130,3 +140,22 @@ search_help_line1=La kategorisøket være tomt for å søke i alle kategorier.
 search_help_line2=La programsøket være tomt for å vise alle programmer i filtrerte kategorier.
 search_button=🔍 Søk
 cancel_button=✖ Avbryt
+
+# Settings Dialog
+settings_btn=Innstillinger
+settings_title=Innstillinger
+settings_run_updater_btn=Kjør oppdaterer
+settings_scheduler_status=Oppgaveplanleggerstatus:
+settings_scheduler_enable=Aktiver planlagte oppdateringer
+settings_scheduler_interval_days_label=Intervall (dager):
+settings_scheduler_custom_days_label=Egendefinert...
+settings_scheduler_first_run_label=Tidspunkt på dagen:
+settings_scheduler_run_if_fail_label=Kjør første mulige tidspunkt hvis oppgaven ikke kan kjøres
+settings_use_button=Bruk
+settings_ok_button=OK
+settings_cancel_button=Avbryt
+settings_scheduler_help_requires_admin=Oppretting eller endring av en planlagt oppgave kan kreve administratorrettigheter.
+settings_working_message=Arbeider...
+settings_days_out_of_range=Antall dager må være mellom 1 og 365.
+settings_days_invalid_integer=Kun heltall i dette feltet mellom 1 og 365.
+settings_failed_launch_updater=Klarte ikke å starte oppdatereren.

@@ -2,22 +2,24 @@
 <span style="color: #0066cc;">📦 WinProgramSuite — Complete Windows Package Management System</span>
 </h2>
 <p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;">
-<strong>Latest Update:</strong> 15 February 2026 | <strong>Settings Scheduler Improvements & Universal Language Support</strong><br/>
+<strong>Latest Update:</strong> 15 February 2026 | <strong>Complete i18n & Settings Scheduler</strong><br/>
 This changelog covers <strong>WinProgramManager</strong>, the database management component of the WinProgramSuite.<br/>
 For automatic update features, see <strong>WinUpdate</strong> documentation.
 </p>
 
 <h3 style="text-align: center;">&nbsp;</h3>
-<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Version 2026.02.15.01 — Update 20</span></h3>
-<p><strong>Settings Scheduler Improvements & Universal Language Support (15 February 2026):</strong></p>
+<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Version 2026.02.15.01 — Update 21</span></h3>
+<p><strong>Complete i18n & Settings Scheduler (15 February 2026):</strong></p>
 <ul>
+<li><strong>Complete Settings Internationalization:</strong> All 15 settings dialog strings now fully translated to English, Norwegian, and Swedish - settings_btn, settings_title, settings_run_updater_btn, settings_scheduler_enable, settings_scheduler_interval_days_label, settings_scheduler_custom_days_label, settings_scheduler_first_run_label, settings_scheduler_run_if_fail_label, settings_use_button, settings_ok_button, settings_cancel_button, settings_working_message, settings_days_out_of_range, settings_days_invalid_integer, settings_failed_launch_updater</li>
+<li><strong>Norwegian Display:</strong> Settings dialog shows "Innstillinger", "Aktiver planlagte oppdateringer", "Intervall (dager):", "Tidspunkt på dagen:", "Bruk", "OK", "Avbryt"</li>
+<li><strong>Swedish Display:</strong> Settings dialog shows "Inställningar", "Aktivera schemalagda uppdateringar", "Intervall (dagar):", "Tidpunkt på dagen:", "Använd", "OK", "Avbryt"</li>
 <li><strong>Universal Task Scheduler Parsing:</strong> Task scheduler output now parsed language-independently, extracting day intervals (1-365) regardless of Windows display language (English, Norwegian, Chinese, Japanese, Russian, etc.)</li>
 <li><strong>Pattern-Based Extraction:</strong> Parser uses intelligent number extraction with date/time filtering - works with "Every 5 day(s)", "hver 5 dag", "每 5 天", etc.</li>
 <li><strong>Checkbox State Fix:</strong> Settings dialog checkbox correctly reflects scheduler state by checking <code>intervalDays > 0</code> instead of multiple fallback conditions</li>
-<li><strong>Custom Days Validation:</strong> Input field now validates integer-only input with range checking (1-365 days) and clear error messages</li>
+<li><strong>Custom Days Validation:</strong> Input field now validates integer-only input with range checking (1-365 days) and clear localized error messages</li>
 <li><strong>Extended Interval Support:</strong> Custom intervals up to 365 days for annual/semi-annual update schedules (previously limited to 30 days)</li>
 <li><strong>Script Timeout Protection:</strong> <code>restore_missing_packages.ps1</code> now has 15-second timeout for winget queries to prevent indefinite hanging on malformed package IDs</li>
-<li><strong>i18n Framework:</strong> Added <code>settings_days_invalid_integer</code> locale key (full translations pending next update)</li>
 <li><strong>Input Quality:</strong> Trims whitespace, validates whole numbers only, rejects decimals/text/special characters</li>
 </ul>
 

@@ -358,6 +358,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     g_locale.settings_working_message = L"Working...";
     g_locale.settings_days_out_of_range = L"Number of days must be between 1 and 365.";
     g_locale.settings_days_invalid_integer = L"Only whole numbers allowed in this field between 1 and 365.";
+    g_locale.settings_failed_launch_updater = L"Failed to launch updater.";
 
     // Attempt to load locale file and override defaults when keys exist
     LoadLocale(g_currentLang);
@@ -2882,6 +2883,7 @@ bool LoadLocale(const std::wstring& lang) {
             else if (key == L"settings_working_message") g_locale.settings_working_message = value;
             else if (key == L"settings_days_out_of_range") g_locale.settings_days_out_of_range = value;
             else if (key == L"settings_days_invalid_integer") g_locale.settings_days_invalid_integer = value;
+            else if (key == L"settings_failed_launch_updater") g_locale.settings_failed_launch_updater = value;
             else if (key == L"settings_btn") g_locale.settings_btn = value;
             else if (key == L"settings_title") g_locale.settings_title = value;
             else if (key == L"settings_run_updater_btn") g_locale.settings_run_updater_btn = value;

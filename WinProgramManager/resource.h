@@ -76,4 +76,7 @@
 // Accelerators
 #define IDR_ACCELERATOR1 108
 #define ID_ACCEL_QUIT 1011
+// Additional icons
+#define IDI_SETTINGS_ICON 150
+#define IDI_RUN_UPDATER_ICON 151
 

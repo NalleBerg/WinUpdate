@@ -312,33 +312,53 @@ INT_PTR CALLBACK ConfirmActionDialogProc(HWND hDlg, UINT message, WPARAM wParam,
                 bool pressed = (dis->itemState & ODS_SELECTED) != 0;
                 HDC hdc = dis->hDC;
                 RECT rc = dis->rcItem;
-                
-                // Blue color scheme matching Search button
+
+                // Default to blue color scheme
                 COLORREF base = RGB(10,57,129);
                 COLORREF hoverCol = RGB(25,95,210);
                 COLORREF pressCol = RGB(6,34,80);
-                
+
+                // If this is the OK button, choose color by action type
+                if (dis->CtlID == IDOK && pConfirmData) {
+                    if (pConfirmData->action == ACTION_UNINSTALL) {
+                        // Red for Uninstall
+                        base = RGB(180,40,40);
+                        hoverCol = RGB(220,60,60);
+                        pressCol = RGB(120,20,20);
+                    } else if (pConfirmData->action == ACTION_INSTALL) {
+                        // Green for Install
+                        base = RGB(40,180,40);
+                        hoverCol = RGB(60,200,60);
+                        pressCol = RGB(20,130,20);
+                    } else {
+                        // Reinstall or other - blue
+                        base = RGB(10,57,129);
+                        hoverCol = RGB(25,95,210);
+                        pressCol = RGB(6,34,80);
+                    }
+                }
+
                 COLORREF bgColor = pressed ? pressCol : (hover ? hoverCol : base);
                 HBRUSH hBrush = CreateSolidBrush(bgColor);
                 FillRect(hdc, &rc, hBrush);
                 DeleteObject(hBrush);
-                
+
                 SetBkMode(hdc, TRANSPARENT);
                 SetTextColor(hdc, RGB(255,255,255));
-                
+
                 // Get button text
                 wchar_t text[256] = {0};
                 GetWindowTextW(hBtn, text, 255);
-                
+
                 // Use bold font from main window
                 extern HFONT g_hBoldFont;
                 HFONT hf = g_hBoldFont ? g_hBoldFont : (HFONT)GetStockObject(DEFAULT_GUI_FONT);
                 HGDIOBJ oldf = SelectObject(hdc, hf);
-                
+
                 DrawTextW(hdc, text, -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
                 SelectObject(hdc, oldf);
                 if (dis->itemState & ODS_FOCUS) DrawFocusRect(hdc, &rc);
-                
+
                 return TRUE;
             }
             break;
@@ -625,7 +645,7 @@ INT_PTR CALLBACK AppDetailsDialogProc(HWND hDlg, UINT message, WPARAM wParam, LP
             break;
         }
         
-        case WM_COMMAND:
+        case WM_COMMAND: {
             if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL) {
                 // Clean up resources
                 if (hBoldFont) {
@@ -665,7 +685,8 @@ INT_PTR CALLBACK AppDetailsDialogProc(HWND hDlg, UINT message, WPARAM wParam, LP
                     std::wstring pkgId = pData->package_id;
                     HWND hDialog = hDlg;  // Capture dialog handle for UI update
                     
-                    ShowInstallDialog(hDlg, packageIds, g_locale.close, 
+                    // Call ShowInstallDialog with "install" operation
+                    ShowInstallDialog(hDlg, packageIds, L"install", g_locale.close, 
                                      [](const char* key) -> std::wstring {
                                          // Simple passthrough - we don't have translation keys from WinUpdate
                                          return std::wstring(key, key + strlen(key));
@@ -748,34 +769,208 @@ INT_PTR CALLBACK AppDetailsDialogProc(HWND hDlg, UINT message, WPARAM wParam, LP
                 
                 if (result == IDOK) {
                     // User confirmed - uninstall the application
-                    // TODO: Implement actual uninstallation logic
-                    // TODO: After uninstall completes, call: SyncInstalledAppsWithWinget(pData->db);
-                    MessageBoxW(hDlg, L"Uninstallation functionality will be implemented next.", 
-                               g_locale.uninstall_btn.c_str(), MB_OK | MB_ICONINFORMATION);
+                    std::vector<std::string> packageIds;
+
+                    // Convert package ID from wide string to UTF-8
+                    int size = WideCharToMultiByte(CP_UTF8, 0, pData->package_id.c_str(), -1, NULL, 0, NULL, NULL);
+                    if (size > 0) {
+                        std::string pkgIdUtf8(size - 1, 0);
+                        WideCharToMultiByte(CP_UTF8, 0, pData->package_id.c_str(), -1, &pkgIdUtf8[0], size, NULL, NULL);
+                        packageIds.push_back(pkgIdUtf8);
+                    }
+
+                    if (!packageIds.empty()) {
+                        // Capture values for callback
+                        sqlite3* db = pData->db;
+                        std::wstring pkgId = pData->package_id;
+                        HWND hDialog = hDlg;
+
+                        // Call ShowInstallDialog with "uninstall" operation
+                        ShowInstallDialog(hDlg, packageIds, L"uninstall", g_locale.close,
+                                         [](const char* key) -> std::wstring {
+                                             return std::wstring(key, key + strlen(key));
+                                         },
+                                         [db, pkgId, hDialog, pDataPtr = pData]() {
+                                             // Callback after uninstall completes
+                                             if (db) {
+                                                 // Ensure table exists
+                                                 const char* createTableSql = 
+                                                     "CREATE TABLE IF NOT EXISTS installed_apps ("
+                                                     "    package_id TEXT PRIMARY KEY,"
+                                                     "    installed_date TEXT,"
+                                                     "    last_seen TEXT,"
+                                                     "    installed_version TEXT,"
+                                                     "    source TEXT"
+                                                     ");";
+                                                 sqlite3_exec(db, createTableSql, nullptr, nullptr, nullptr);
+
+                                                 // Remove this package from installed_apps
+                                                 int sz = WideCharToMultiByte(CP_UTF8, 0, pkgId.c_str(), -1, NULL, 0, NULL, NULL);
+                                                 if (sz > 0) {
+                                                     std::string pkgIdUtf8(sz - 1, 0);
+                                                     WideCharToMultiByte(CP_UTF8, 0, pkgId.c_str(), -1, &pkgIdUtf8[0], sz, NULL, NULL);
+
+                                                     const char* deleteSql = "DELETE FROM installed_apps WHERE package_id = ?;";
+                                                     sqlite3_stmt* delStmt = nullptr;
+                                                     if (sqlite3_prepare_v2(db, deleteSql, -1, &delStmt, nullptr) == SQLITE_OK) {
+                                                         sqlite3_bind_text(delStmt, 1, pkgIdUtf8.c_str(), -1, SQLITE_TRANSIENT);
+                                                         sqlite3_step(delStmt);
+                                                         sqlite3_finalize(delStmt);
+                                                     }
+                                                 }
+
+                                                 // Run cleanup/sync to ensure DB state is correct
+                                                 CleanupInstalledApps(db);
+
+                                                 // Reload the in-memory installed package IDs so the Installed filter updates instantly
+                                                 LoadInstalledPackageIds(db);
+
+                                                 // Update in-memory and UI state to reflect uninstalled package
+                                                 AppDetailsData* pData = pDataPtr;
+                                                 pData->is_installed = false;
+                                                 pData->installed_version.clear();
+
+                                                 if (IsWindow(hDialog)) {
+                                                     HWND hStatusValue = GetDlgItem(hDialog, IDC_APP_STATUS);
+                                                     if (hStatusValue) {
+                                                         SetWindowTextW(hStatusValue, g_locale.not_installed.c_str());
+                                                     }
+
+                                                     HWND hInstallBtn = GetDlgItem(hDialog, IDC_BTN_INSTALL);
+                                                     HWND hUninstallBtn = GetDlgItem(hDialog, IDC_BTN_UNINSTALL);
+                                                     HWND hReinstallBtn = GetDlgItem(hDialog, IDC_BTN_REINSTALL);
+
+                                                     // Show Install button, hide Reinstall/Uninstall
+                                                     if (hInstallBtn) {
+                                                         ShowWindow(hInstallBtn, SW_SHOW);
+                                                         EnableWindow(hInstallBtn, TRUE);
+                                                     }
+                                                     if (hUninstallBtn) {
+                                                         ShowWindow(hUninstallBtn, SW_HIDE);
+                                                         EnableWindow(hUninstallBtn, FALSE);
+                                                     }
+                                                     if (hReinstallBtn) {
+                                                         ShowWindow(hReinstallBtn, SW_HIDE);
+                                                         EnableWindow(hReinstallBtn, FALSE);
+                                                     }
+                                                 }
+                                                
+                                                // Notify main window to refresh tags and app list immediately
+                                                HWND hParentWnd = GetParent(hDialog);
+                                                if (hParentWnd) {
+                                                    PostMessageW(hParentWnd, WM_USER + 2, 1, 0);
+                                                }
+                                             }
+                                         });
+                    }
                 }
                 return TRUE;
             }
+            // Start of reinstall button handler
             else if (LOWORD(wParam) == IDC_BTN_REINSTALL) {
                 // Show confirmation dialog for reinstall
                 ConfirmActionData confirmData;
                 confirmData.action = ACTION_REINSTALL;
                 confirmData.appName = pData->name;
                 
+                // Display confirmation dialog to user
                 INT_PTR result = DialogBoxParam(GetModuleHandle(nullptr), 
                                                MAKEINTRESOURCE(IDD_CONFIRM_ACTION),
                                                hDlg, ConfirmActionDialogProc, 
                                                reinterpret_cast<LPARAM>(&confirmData));
                 
+                // Check if user confirmed the action
                 if (result == IDOK) {
                     // User confirmed - reinstall the application
-                    // TODO: Implement actual reinstallation logic (uninstall + install)
-                    // TODO: After reinstall completes, call: SyncInstalledAppsWithWinget(pData->db);
-                    MessageBoxW(hDlg, L"Reinstallation functionality will be implemented next.", 
-                               g_locale.reinstall_btn.c_str(), MB_OK | MB_ICONINFORMATION);
+                    std::vector<std::string> packageIds;
+                    
+                    // Convert package ID from wide string to UTF-8
+                    int size = WideCharToMultiByte(CP_UTF8, 0, pData->package_id.c_str(), -1, NULL, 0, NULL, NULL);
+                    if (size > 0) {
+                        std::string pkgIdUtf8(size - 1, 0);
+                        WideCharToMultiByte(CP_UTF8, 0, pData->package_id.c_str(), -1, &pkgIdUtf8[0], size, NULL, NULL);
+                        packageIds.push_back(pkgIdUtf8);
+                    }
+                    
+                    // Check if package ID was successfully converted
+                    if (!packageIds.empty()) {
+                        // Show reinstall dialog with the WinUpdate UI
+                        // Capture values by copy to avoid warnings about static pointer capture
+                        sqlite3* db = pData->db;
+                        std::wstring pkgId = pData->package_id;
+                        HWND hDialog = hDlg;  // Capture dialog handle for UI update
+                        
+                        // Call ShowInstallDialog with "reinstall" operation
+                        ShowInstallDialog(hDlg, packageIds, L"reinstall", g_locale.close, 
+                                         [](const char* key) -> std::wstring {
+                                             // Simple passthrough - we don't have translation keys from WinUpdate
+                                             return std::wstring(key, key + strlen(key));
+                                         },
+                                         [db, pkgId, hDialog]() {
+                                             // Callback executed after reinstall completes
+                                             // Sync installed apps after reinstallation completes
+                                             if (db) {
+                                                 // Ensure table exists
+                                                 const char* createTableSql = 
+                                                     "CREATE TABLE IF NOT EXISTS installed_apps ("
+                                                     "    package_id TEXT PRIMARY KEY,"
+                                                     "    installed_date TEXT,"
+                                                     "    last_seen TEXT,"
+                                                     "    installed_version TEXT,"
+                                                     "    source TEXT"
+                                                     ");";
+                                                 sqlite3_exec(db, createTableSql, nullptr, nullptr, nullptr);
+                                                 
+                                                 // Update this package in installed_apps
+                                                 int size = WideCharToMultiByte(CP_UTF8, 0, pkgId.c_str(), -1, NULL, 0, NULL, NULL);
+                                                 if (size > 0) {
+                                                     std::string pkgIdUtf8(size - 1, 0);
+                                                     WideCharToMultiByte(CP_UTF8, 0, pkgId.c_str(), -1, &pkgIdUtf8[0], size, NULL, NULL);
+                                                     
+                                                     // Get current timestamp for last_seen
+                                                     char timestamp[32];
+                                                     time_t now = time(nullptr);
+                                                     struct tm tm_now;
+                                                     localtime_s(&tm_now, &now);
+                                                     strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &tm_now);
+                                                     
+                                                     // Update last_seen for reinstalled package
+                                                     const char* updateSql = "UPDATE installed_apps SET last_seen = ? WHERE package_id = ?";
+                                                     sqlite3_stmt* stmt = nullptr;
+                                                     if (sqlite3_prepare_v2(db, updateSql, -1, &stmt, nullptr) == SQLITE_OK) {
+                                                         sqlite3_bind_text(stmt, 1, timestamp, -1, SQLITE_TRANSIENT);
+                                                         sqlite3_bind_text(stmt, 2, pkgIdUtf8.c_str(), -1, SQLITE_TRANSIENT);
+                                                         sqlite3_step(stmt);
+                                                         sqlite3_finalize(stmt);
+                                                     }
+                                                 }
+                                                 
+                                                 // Refresh the installed apps list from winget
+                                                 SyncInstalledAppsWithWinget(db);
+                                                 
+                                                 // Update UI to reflect new state (still installed)
+                                                 if (IsWindow(hDialog)) {
+                                                     HWND hInstallBtn = GetDlgItem(hDialog, IDC_BTN_INSTALL);
+                                                     HWND hUninstallBtn = GetDlgItem(hDialog, IDC_BTN_UNINSTALL);
+                                                     HWND hReinstallBtn = GetDlgItem(hDialog, IDC_BTN_REINSTALL);
+                                                     
+                                                     // Re-enable buttons after operation completes
+                                                     if (hInstallBtn) EnableWindow(hInstallBtn, TRUE);
+                                                     if (hUninstallBtn) EnableWindow(hUninstallBtn, TRUE);
+                                                     if (hReinstallBtn) EnableWindow(hReinstallBtn, TRUE);
+                                                 }
+                                             }
+                                             // End of reinstall completion callback
+                                         });
+                    }
+                    // End of package ID check
                 }
+                // End of user confirmation check
                 return TRUE;
             }
+            // End of reinstall button handler
             break;
+        }
         
         case WM_CLOSE:
             // Clean up resources

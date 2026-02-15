@@ -80,6 +80,7 @@ struct Locale {
     std::wstring settings_working_message;
     std::wstring settings_days_out_of_range;
     std::wstring settings_days_invalid_integer;
+    std::wstring settings_failed_launch_updater;
     
         // About Dialog
     std::wstring about_btn;

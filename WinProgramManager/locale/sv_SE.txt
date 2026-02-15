@@ -17,6 +17,7 @@ title=WinProgramManager
 processing_database=Bearbetar databas, vänligen vänta...
 querying_winget=Kontrollerar installerade appar med winget.\nDetta kan ta en stund...
 wait_moment=Vänta ett ögonblick....
+close=Stäng
 
 # Updater GUI
 updater_title=WinProgram Databasuppdaterare
@@ -48,6 +49,8 @@ refresh_installed_tooltip=Upptäck appar som installerats utanför denna hantera
 search_btn=🔍 Sök
 end_search_btn=⏹ Avsluta sökning
 installed_btn=📦 Installerad
+settings_btn=⚙️ Inställningar
+settings_run_updater_btn=▶️ Kör uppdateraren
 about_btn=ℹ Om
 quit_btn=⏻ Avsluta
 quit_title=Avsluta WinProgramManager?
@@ -91,8 +94,13 @@ about_window_error=Kunde inte skapa Om-fönster.
 license_window_error=Kunde inte skapa licensfönster.
 wait_for_update=Vänligen vänta tills uppdateringen är klar eller klicka på Avbryt.
 cancel_installation=Avbryter installation...\n\nVänligen vänta medan processen avslutas.
-preparing_installation=Förbereder installation...
-
+preparing_installation=Förbereder installation...installing_title=Installerar...
+reinstalling_title=Ominstallerar...
+uninstalling_title=Avinstallerar...
+installing_status=Installerar %d paket...
+reinstalling_status=Ominstallerar %d paket...
+uninstalling_status=Avinstallerar %d paket...
+querying_winget_status=Frågar winget...
 # App Details Dialog
 app_details_title=Applikationsdetaljer
 publisher_label=Utgivare:
@@ -130,3 +138,22 @@ search_help_line1=Lämna kategorisökningen tom för att söka i alla kategorier
 search_help_line2=Lämna programsökningen tom för att visa alla program i filtrerade kategorier.
 search_button=🔍 Sök
 cancel_button=✖ Avbryt
+
+# Settings Dialog
+settings_btn=Inställningar
+settings_title=Inställningar
+settings_run_updater_btn=Kör uppdaterare
+settings_scheduler_status=Schemaläggare status:
+settings_scheduler_enable=Aktivera schemalagda uppdateringar
+settings_scheduler_interval_days_label=Intervall (dagar):
+settings_scheduler_custom_days_label=Anpassad...
+settings_scheduler_first_run_label=Tidpunkt på dagen:
+settings_scheduler_run_if_fail_label=Kör vid första möjliga tillfälle om uppgiften inte kan köras
+settings_use_button=Använd
+settings_ok_button=OK
+settings_cancel_button=Avbryt
+settings_scheduler_help_requires_admin=Att skapa eller ändra en schemalagd uppgift kan kräva administratörsbehörighet.
+settings_working_message=Arbetar...
+settings_days_out_of_range=Antalet dagar måste vara mellan 1 och 365.
+settings_days_invalid_integer=Endast heltal tillåtna i detta fält mellan 1 och 365.
+settings_failed_launch_updater=Misslyckades att starta uppdateraren.

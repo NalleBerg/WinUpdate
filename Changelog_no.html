@@ -2,22 +2,24 @@
 <span style="color: #0066cc;">📦 WinProgramSuite — Komplett Windows Pakkehåndteringssystem</span>
 </h2>
 <p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;">
-<strong>Siste oppdatering:</strong> 15. februar 2026 | <strong>Forbedringer i Innstillinger-planleggeren & Universell Språkstøtte</strong><br/>
+<strong>Siste oppdatering:</strong> 15. februar 2026 | <strong>Komplett i18n & Innstillinger-planlegger</strong><br/>
 Denne endringsloggen dekker <strong>WinProgramManager</strong>, databasehåndteringskomponenten i WinProgramSuite.<br/>
 For automatiske oppdateringsfunksjoner, se <strong>WinUpdate</strong>-dokumentasjon.
 </p>
 
 <h3 style="text-align: center;">&nbsp;</h3>
 <h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Versjon 2026.02.15.01 — Oppdatering 21</span></h3>
-<p><strong>Forbedringer i Innstillinger-planleggeren & Universell Språkstøtte (15. februar 2026):</strong></p>
+<p><strong>Komplett i18n & Innstillinger-planlegger (15. februar 2026):</strong></p>
 <ul>
+<li><strong>Komplett Innstillinger-internasjonalisering:</strong> Alle 15 innstillingsdialog-strenger nå fullstendig oversatt til engelsk, norsk og svensk - settings_btn, settings_title, settings_run_updater_btn, settings_scheduler_enable, settings_scheduler_interval_days_label, settings_scheduler_custom_days_label, settings_scheduler_first_run_label, settings_scheduler_run_if_fail_label, settings_use_button, settings_ok_button, settings_cancel_button, settings_working_message, settings_days_out_of_range, settings_days_invalid_integer, settings_failed_launch_updater</li>
+<li><strong>Norsk visning:</strong> Innstillingsdialogen viser "Innstillinger", "Aktiver planlagte oppdateringer", "Intervall (dager):", "Tidspunkt på dagen:", "Bruk", "OK", "Avbryt"</li>
+<li><strong>Svensk visning:</strong> Innstillingsdialogen viser "Inställningar", "Aktivera schemalagda uppdateringar", "Intervall (dagar):", "Tidpunkt på dagen:", "Använd", "OK", "Avbryt"</li>
 <li><strong>Universell Oppgaveplanlegger-tolking:</strong> Systemets oppgaveplanlegger-output tolkes nå språk-uavhengig, og trekker ut dagintervaller (1-365) uansett Windows visningsspråk (engelsk, norsk, kinesisk, japansk, russisk, osv.)</li>
 <li><strong>Mønster-basert uttrekk:</strong> Parseren bruker intelligent talluttrekk med dato/tid-filtrering - fungerer med "Every 5 day(s)", "hver 5 dag", "每 5 天", etc.</li>
 <li><strong>Avmerkingsboks-fiks:</strong> Innstillingsdialogboksens avkryssingsboks reflekterer nå korrekt planleggerstatus ved å sjekke <code>intervalDays > 0</code> i stedet for flere fallback-betingelser</li>
-<li><strong>Egendefinert dag-validering:</strong> Inntastingsfeltet validerer nå kun heltall med områdesjekk (1-365 dager) og tydelige feilmeldinger</li>
+<li><strong>Egendefinert dag-validering:</strong> Inntastingsfeltet validerer nå kun heltall med områdesjekk (1-365 dager) og tydelige lokaliserte feilmeldinger</li>
 <li><strong>Utvidet intervall-støtte:</strong> Egendefinerte intervaller opp til 365 dager for årlige/halvårlige oppdateringsplaner (tidligere begrenset til 30 dager)</li>
 <li><strong>Skript timeout-beskyttelse:</strong> <code>restore_missing_packages.ps1</code> har nå 15-sekunders timeout for winget-spørringer for å forhindre uendelig heng på feilformede pakke-IDer</li>
-<li><strong>i18n-rammeverk:</strong> La til <code>settings_days_invalid_integer</code> lokalspråk-nøkkel (fulle oversettelser venter neste oppdatering)</li>
 <li><strong>Inndata-kvalitet:</strong> Trimmer mellomrom, validerer kun heltall, avviser desimaler/tekst/spesialtegn</li>
 </ul>
 

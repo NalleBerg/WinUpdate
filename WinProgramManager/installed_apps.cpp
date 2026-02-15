@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <ctime>
 #include <sstream>
+#include <regex>
 
 // Static module-level state
 static bool g_installedFilterActive = false;
@@ -380,23 +381,70 @@ bool DiscoverInstalledApps(sqlite3* db) {
         return false;
     }
     
-    // Parse winget list output to extract package IDs
+    // ==================================================================================
+    // PARSE WINGET LIST OUTPUT - CRITICAL FIX FOR PACKAGE ID DETECTION
+    // ==================================================================================
+    // Problem: winget list output has variable columns depending on update status:
+    //   - Without updates: Name | Id | Version | Source
+    //   - With updates:    Name | Id | Version | Available | Source
+    //
+    // The parser MUST correctly identify package IDs vs version numbers or other data.
+    // Package IDs follow the pattern: Vendor.Product (e.g., "7zip.7zip", "Mozilla.Firefox")
+    //
+    // CRITICAL: Version numbers can also contain dots (e.g., "1.2.3", "10.0.19045")
+    // To distinguish package IDs from versions, we require:
+    //   1. At least one LETTER before the first dot
+    //   2. At least one LETTER after the first dot
+    //   3. Valid characters: letters, numbers, dots, hyphens, underscores, plus signs
+    //
+    // Example package IDs that match:  7zip.7zip, Mozilla.Firefox, Microsoft.Edge
+    // Example versions that DON'T match:  1.2.3, 10.0.19045, 2024.1.1
+    //
+    // If this breaks again in the future:
+    //   1. Check winget list output format (run: winget list > output.txt)
+    //   2. Verify the regex pattern still matches valid package IDs
+    //   3. Test with version numbers to ensure they're excluded
+    //   4. Consider if winget changed their output format
+    // ==================================================================================
+    
     std::set<std::string> wingetInstalledIds;
     std::istringstream stream(output);
     std::string line;
     bool pastHeader = false;
     
+    // Regex pattern for package ID (vendor.product format)
+    // ^                           - Start of string
+    // [A-Za-z0-9+_-]*             - Optional prefix (can include numbers, but...)
+    // [A-Za-z]                    - MUST have at least one letter before dot
+    // [A-Za-z0-9+._-]*            - Rest before dot (letters, numbers, special chars)
+    // \\.                         - The dot separator (escaped)
+    // [A-Za-z0-9+_-]*             - Optional prefix after dot
+    // [A-Za-z]                    - MUST have at least one letter after dot
+    // [A-Za-z0-9+._-]*            - Rest after dot
+    // $                           - End of string
+    std::regex idRegex("^[A-Za-z0-9+_-]*[A-Za-z][A-Za-z0-9+._-]*\\.[A-Za-z0-9+_-]*[A-Za-z][A-Za-z0-9+._-]*$");
+    
     while (std::getline(stream, line)) {
         // Skip empty lines
         if (line.length() < 10) continue;
         
-        // Skip header
+        // Skip spinner animation lines (-, \, |, /)
+        bool isSpinnerLine = true;
+        for (char c : line) {
+            if (c != ' ' && c != '-' && c != '\\' && c != '|' && c != '/' && c != '\t' && c != '\r' && c != '\n') {
+                isSpinnerLine = false;
+                break;
+            }
+        }
+        if (isSpinnerLine) continue;
+        
+        // Skip header line (contains "Name" and "Id")
         if (line.find("Name") != std::string::npos && line.find("Id") != std::string::npos) {
             pastHeader = true;
             continue;
         }
         
-        // Skip separator
+        // Skip separator line (dashes: ----)
         if (line.find("---") != std::string::npos) {
             pastHeader = true;
             continue;
@@ -404,27 +452,25 @@ bool DiscoverInstalledApps(sqlite3* db) {
         
         if (!pastHeader) continue;
         
-        // Extract package ID (format: vendor.product)
-        // Look for pattern with dot and letters on both sides
-        std::istringstream lineStream(line);
+        // Split line into tokens by whitespace
+        std::vector<std::string> tokens;
+        std::istringstream tokenStream(line);
         std::string token;
-        std::string foundId;
+        while (tokenStream >> token) {
+            tokens.push_back(token);
+        }
         
-        while (lineStream >> token) {
-            // Check if token matches package ID pattern (has dot, letters before and after)
-            size_t dotPos = token.find('.');
-            if (dotPos != std::string::npos && dotPos > 0 && dotPos < token.length() - 1) {
-                bool hasLetterBefore = false, hasLetterAfter = false;
-                for (size_t i = 0; i < dotPos; i++) {
-                    if (isalpha(token[i])) { hasLetterBefore = true; break; }
-                }
-                for (size_t i = dotPos + 1; i < token.length(); i++) {
-                    if (isalpha(token[i])) { hasLetterAfter = true; break; }
-                }
-                if (hasLetterBefore && hasLetterAfter) {
-                    foundId = token;
-                    break;
-                }
+        // Need at least 2 tokens
+        if (tokens.size() < 2) continue;
+        
+        // Find package ID by scanning tokens using regex
+        // Note: We scan all tokens because package ID position can vary
+        // The regex ensures we only match valid package IDs (with letters before/after dot)
+        std::string foundId;
+        for (size_t i = 0; i < tokens.size(); i++) {
+            if (std::regex_match(tokens[i], idRegex)) {
+                foundId = tokens[i];
+                break;  // Take first match (should be the package ID column)
             }
         }
         
@@ -432,6 +478,9 @@ bool DiscoverInstalledApps(sqlite3* db) {
             wingetInstalledIds.insert(foundId);
         }
     }
+    // ==================================================================================
+    // END CRITICAL WINGET PARSING SECTION
+    // ==================================================================================
     
     if (wingetInstalledIds.empty()) {
         return false; // No valid package IDs found

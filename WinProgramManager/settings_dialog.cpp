@@ -492,7 +492,7 @@ static void RunUpdaterGUI(HWND parent)
     // Launch GUI mode (no --hidden) so it opens visible; do not close manager
     HINSTANCE h = ShellExecuteW(parent, L"open", updater.c_str(), NULL, NULL, SW_SHOWNORMAL);
     if ((INT_PTR)h <= 32) {
-        MessageBoxW(parent, L"Failed to launch updater.", g_locale.error_title.c_str(), MB_ICONERROR | MB_OK);
+        MessageBoxW(parent, g_locale.settings_failed_launch_updater.c_str(), g_locale.error_title.c_str(), MB_ICONERROR | MB_OK);
     }
 }
 

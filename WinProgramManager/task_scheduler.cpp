@@ -319,17 +319,45 @@ TaskInfo QueryUpdaterTaskInfo() {
         // Modifier / interval value (English or localized)
         if (lkey.find(L"modifier") != std::wstring::npos || lkey.find(L"modifier:") != std::wstring::npos || lkey.find(L"modifier") != std::wstring::npos) {
             Trim(val);
-            try { info.intervalDays = std::stoi(val); } catch(...) { /* ignore */ }
+            try { 
+                info.intervalDays = std::stoi(val); 
+                AppendFirstRunLogInternal(L"Set intervalDays=" + std::to_wstring(info.intervalDays) + L" from modifier key=" + key + L" val=" + val);
+            } catch(...) { /* ignore */ }
         }
         // Some locales print "weeks" or "weeksinterval" etc.
         if (lkey.find(L"weeks") != std::wstring::npos) {
             Trim(val);
-            try { int weeks = std::stoi(val); if (weeks>0) info.intervalDays = weeks * 7; } catch(...) { /* ignore */ }
+            try { 
+                int weeks = std::stoi(val); 
+                if (weeks>0) info.intervalDays = weeks * 7; 
+                AppendFirstRunLogInternal(L"Set intervalDays=" + std::to_wstring(info.intervalDays) + L" from weeks key=" + key + L" val=" + val);
+            } catch(...) { /* ignore */ }
         }
-        // Some locales print "daysinterval" or "days".
-        if (lkey.find(L"daysinterval") != std::wstring::npos || lkey.find(L"daysinterval") != std::wstring::npos) {
+        // Some locales print "daysinterval" or "days" (e.g., "Days: Every 5 day(s)").
+        if (lkey.find(L"days") != std::wstring::npos) {
             Trim(val);
-            try { info.intervalDays = std::stoi(val); } catch(...) { /* ignore */ }
+            // Try direct parse first (for "DaysInterval: 5" format)
+            try { 
+                info.intervalDays = std::stoi(val); 
+                AppendFirstRunLogInternal(L"Set intervalDays=" + std::to_wstring(info.intervalDays) + L" from days key=" + key + L" val=" + val);
+            } catch(...) { 
+                // If direct parse fails, extract first number from value (for "Days: Every 5 day(s)" format)
+                for (size_t i = 0; i < val.size(); ++i) {
+                    if (iswdigit(val[i])) {
+                        size_t end = i;
+                        while (end < val.size() && iswdigit(val[end])) ++end;
+                        try { 
+                            int num = std::stoi(val.substr(i, end - i));
+                            if (num >= 1 && num <= 365) {
+                                info.intervalDays = num;
+                                AppendFirstRunLogInternal(L"Set intervalDays=" + std::to_wstring(info.intervalDays) + L" from days (extracted) key=" + key + L" val=" + val);
+                                break;
+                            }
+                        } catch(...) { /* ignore */ }
+                        i = end;
+                    }
+                }
+            }
         }
         
         // Universal fallback: if value contains pattern with reasonable number (1-365)
