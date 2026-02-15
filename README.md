@@ -1,6 +1,6 @@
 # WinProgramSuite — Complete Windows Package Management System
 
-**Latest Update:** 11 February 2026 | **Instant Installed Filter, Reinstall Fixes & DB Cleanup**
+**Latest Update:** 15 February 2026 | **Settings Scheduler Improvements & Universal Language Support**
 
 **Note (13 February 2026):** A first-run scheduler is now created by `WinProgramManager` on initial startup. The app writes a small marker INI at `%APPDATA%\WinProgramManager\WinProgramManager.ini` and creates a Task Scheduler job `WinProgramUpdaterWeekly` to run `WinProgramUpdaterGUI.exe --hidden` weekly. The INI contains `Settings/Language` (default `en_GB`) and `Settings/UpdaterTaskCreated` (1 on success, 0 on failure). Delete the INI to force the first-run logic again.
 
@@ -36,6 +36,21 @@ Browse, search, and manage 10,800+ Windows packages with complete metadata.
 Published and stable GUI for automatic Windows package updates.
 
 **Current Status:** ✅ Published and production-ready
+
+## 🚨 Recent Updates (2026-02-15)
+
+### Update 20: Settings Scheduler Improvements & Universal Language Support (v2026.02.15.01)
+- **UNIVERSAL TASK SCHEDULER PARSING:** Task scheduler output is now parsed language-independently, extracting day intervals (1-365) regardless of Windows display language (English, Norwegian, Chinese, Japanese, Russian, etc.)
+- **CHECKBOX FIX:** Settings dialog checkbox now correctly reflects scheduler state by checking `intervalDays > 0` instead of multiple fallback conditions
+- **INPUT VALIDATION:** Custom days field now validates integer input only, with range checking (1-365 days) and clear error messages
+- **TIMEOUT PROTECTION:** `restore_missing_packages.ps1` script now has 15-second timeout for winget queries to prevent indefinite hanging
+- **i18n PREPARATION:** Added `settings_days_invalid_integer` locale key (internationalization to be completed in next update)
+
+**Technical Details:**
+- Task scheduler parser now uses pattern-based number extraction with date/time filtering
+- Supports custom intervals up to 365 days (annual updates)
+- Validates input is whole number before accepting
+- Works consistently across all Windows 10/11 language configurations
 
 ## 🚨 Recent Updates (2026-02-11)
 

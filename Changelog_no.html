@@ -2,12 +2,25 @@
 <span style="color: #0066cc;">📦 WinProgramSuite — Komplett Windows Pakkehåndteringssystem</span>
 </h2>
 <p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;">
-<strong>Siste oppdatering:</strong> 11. februar 2026 | <strong>Installert-filteret øyeblikkelig, Reinstaller-fikser & DB-opprydding</strong><br/>
+<strong>Siste oppdatering:</strong> 15. februar 2026 | <strong>Forbedringer i Innstillinger-planleggeren & Universell Språkstøtte</strong><br/>
 Denne endringsloggen dekker <strong>WinProgramManager</strong>, databasehåndteringskomponenten i WinProgramSuite.<br/>
 For automatiske oppdateringsfunksjoner, se <strong>WinUpdate</strong>-dokumentasjon.
 </p>
 
 <h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Versjon 2026.02.15.01 — Oppdatering 21</span></h3>
+<p><strong>Forbedringer i Innstillinger-planleggeren & Universell Språkstøtte (15. februar 2026):</strong></p>
+<ul>
+<li><strong>Universell Oppgaveplanlegger-tolking:</strong> Systemets oppgaveplanlegger-output tolkes nå språk-uavhengig, og trekker ut dagintervaller (1-365) uansett Windows visningsspråk (engelsk, norsk, kinesisk, japansk, russisk, osv.)</li>
+<li><strong>Mønster-basert uttrekk:</strong> Parseren bruker intelligent talluttrekk med dato/tid-filtrering - fungerer med "Every 5 day(s)", "hver 5 dag", "每 5 天", etc.</li>
+<li><strong>Avmerkingsboks-fiks:</strong> Innstillingsdialogboksens avkryssingsboks reflekterer nå korrekt planleggerstatus ved å sjekke <code>intervalDays > 0</code> i stedet for flere fallback-betingelser</li>
+<li><strong>Egendefinert dag-validering:</strong> Inntastingsfeltet validerer nå kun heltall med områdesjekk (1-365 dager) og tydelige feilmeldinger</li>
+<li><strong>Utvidet intervall-støtte:</strong> Egendefinerte intervaller opp til 365 dager for årlige/halvårlige oppdateringsplaner (tidligere begrenset til 30 dager)</li>
+<li><strong>Skript timeout-beskyttelse:</strong> <code>restore_missing_packages.ps1</code> har nå 15-sekunders timeout for winget-spørringer for å forhindre uendelig heng på feilformede pakke-IDer</li>
+<li><strong>i18n-rammeverk:</strong> La til <code>settings_days_invalid_integer</code> lokalspråk-nøkkel (fulle oversettelser venter neste oppdatering)</li>
+<li><strong>Inndata-kvalitet:</strong> Trimmer mellomrom, validerer kun heltall, avviser desimaler/tekst/spesialtegn</li>
+</ul>
+
 <h3 style="text-align: center;">&nbsp;</h3>
 <h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Versjon 2026.02.13.01 — Oppdatering 20</span></h3>
 <p><strong>Første-kjøring planlegger og konfigurasjonsmarkør (13. februar 2026):</strong></p>

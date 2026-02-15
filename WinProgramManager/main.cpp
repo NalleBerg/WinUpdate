@@ -21,6 +21,30 @@
 #include "app_details.h"
 #include "about.h"
 #include "quit_handler.h"
+#include "task_scheduler.h"
+#include "settings_dialog.h"
+#include "ini_utils.h"
+
+// Bring the given window to the user's foreground reliably (temporary attach input)
+static void BringWindowToFront(HWND hwnd) {
+    if (!IsWindow(hwnd)) return;
+    HWND fg = GetForegroundWindow();
+    DWORD fgThread = 0;
+    if (fg) fgThread = GetWindowThreadProcessId(fg, NULL);
+    DWORD thisThread = GetCurrentThreadId();
+    if (fgThread != 0 && fgThread != thisThread) {
+        AttachThreadInput(fgThread, thisThread, TRUE);
+        SetForegroundWindow(hwnd);
+        BringWindowToTop(hwnd);
+        SetFocus(hwnd);
+        AttachThreadInput(fgThread, thisThread, FALSE);
+    } else {
+        SetForegroundWindow(hwnd);
+        BringWindowToTop(hwnd);
+        SetFocus(hwnd);
+    }
+}
+
 
 // Control IDs
 #define ID_SEARCH_BTN 1001
@@ -29,6 +53,7 @@
 #define ID_REFRESH_INSTALLED_BTN 1008
 #define ID_ABOUT_BTN 1009
 #define ID_QUIT_BTN 1010
+#define ID_SETTINGS_BTN 1011
 #define ID_TAG_TREE 1002
 #define ID_APP_LIST 1004
 #define ID_LANG_COMBO 1005
@@ -43,6 +68,7 @@ HWND g_hInstalledBtn = NULL;
 HWND g_hRefreshInstalledBtn = NULL;
 HWND g_hRefreshTooltip = NULL;
 HWND g_hAboutBtn = NULL;
+HWND g_hSettingsBtn = NULL;
 HWND g_hQuitBtn = NULL;
 HWND g_hTagTree = NULL;
 HWND g_hTagCountLabel = NULL;
@@ -119,6 +145,8 @@ LRESULT CALLBACK LoadingDialogProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 // Loading dialog thread function - runs completely independently
 DWORD WINAPI LoadingDialogThread(LPVOID lpParam) {
     HINSTANCE hInstance = (HINSTANCE)lpParam;
+
+    // (first-run task creation moved to task_scheduler.cpp)
     
     // Register window class
     WNDCLASSW loadWc = {};
@@ -147,8 +175,9 @@ DWORD WINAPI LoadingDialogThread(LPVOID lpParam) {
     SetWindowPos(g_loadingDlg, HWND_TOP, x, y, 0, 0, SWP_NOSIZE | SWP_SHOWWINDOW);
     
     // Bring to foreground initially but not topmost (allows switching away)
-    SetForegroundWindow(g_loadingDlg);
-    BringWindowToTop(g_loadingDlg);
+    // Do not change. The app is to be brought to the front!
+    // This ensures the loading dialog is visible when the spinner finishes
+    BringWindowToFront(g_loadingDlg);
     
     // Add logo
     HICON hIcon = (HICON)LoadImageW(hInstance, MAKEINTRESOURCEW(IDI_APP_ICON), IMAGE_ICON, 128, 128, LR_DEFAULTCOLOR);
@@ -188,7 +217,9 @@ DWORD WINAPI LoadingDialogThread(LPVOID lpParam) {
     // Make spinner blue - we'll handle this in WM_CTLCOLORSTATIC
     
     UpdateWindow(g_loadingDlg);
-    
+    // Attempt to create scheduled task on first run (if needed)
+    TryCreateUpdaterTaskIfFirstRun(g_currentLang);
+
     // Start timer
     SetTimer(g_loadingDlg, 1, 60, NULL);
     
@@ -293,26 +324,43 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 
     // Load saved preferences (language)
     LoadConfig();
+    // Set English fallback defaults first so LoadLocale() only overrides specified keys
+    g_locale.lang_name = L"English (UK)";
+    g_locale.thousands_sep = L",";
+    g_locale.decimal_sep = L".";
+    g_locale.categories = L"categories";
+    g_locale.apps = L"apps";
+    g_locale.search_tags = L"Search tags...";
+    g_locale.search_apps = L"Search applications...";
+    g_locale.all = L"All";
+    g_locale.title = L"WinProgramManager";
+    g_locale.processing_database = L"Processing database...";
+    g_locale.wait_moment = L"Wait a moment....";
+    g_locale.repopulating_table = L"Repopulating table...";
+    g_locale.querying_winget = L"Checking installed apps with winget.\nThis can take some time...";
+    g_locale.refresh_installed_btn = L"Refresh Installed Apps";
+    g_locale.refresh_installed_tooltip = L"Discover apps installed outside this manager.\nThis may take a while.";
+    g_locale.settings_btn = L"Settings";
+    g_locale.settings_title = L"Settings";
+    g_locale.settings_run_updater_btn = L"Run Updater GUI";
+    g_locale.settings_scheduler_status = L"Task Scheduler status:";
+    g_locale.present = L"Present";
+    g_locale.not_present = L"Not present";
+    g_locale.settings_scheduler_enable = L"Enable scheduled updates";
+    g_locale.settings_scheduler_interval_days_label = L"Interval (days):";
+    g_locale.settings_scheduler_custom_days_label = L"Custom...";
+    g_locale.settings_scheduler_first_run_label = L"Time of day to run:";
+    g_locale.settings_scheduler_run_if_fail_label = L"Run first time possible if unable to run a task";
+    g_locale.settings_use_button = L"Use";
+    g_locale.settings_ok_button = L"OK";
+    g_locale.settings_cancel_button = L"Cancel";
+    g_locale.settings_scheduler_help_requires_admin = L"Creating or changing a scheduled task may require administrator privileges.";
+    g_locale.settings_working_message = L"Working...";
+    g_locale.settings_days_out_of_range = L"Number of days must be between 1 and 365.";
+    g_locale.settings_days_invalid_integer = L"Only whole numbers allowed in this field between 1 and 365.";
 
-    // Load default locale - if fails, use fallback defaults
-    if (!LoadLocale(g_currentLang)) {
-        // Use English fallback defaults
-        g_locale.lang_name = L"English (UK)";
-        g_locale.thousands_sep = L",";
-        g_locale.decimal_sep = L".";
-        g_locale.categories = L"categories";
-        g_locale.apps = L"apps";
-        g_locale.search_tags = L"Search tags...";
-        g_locale.search_apps = L"Search applications...";
-        g_locale.all = L"All";
-        g_locale.title = L"WinProgramManager";
-        g_locale.processing_database = L"Processing database...";
-        g_locale.wait_moment = L"Wait a moment....";
-        g_locale.repopulating_table = L"Repopulating table...";
-        g_locale.querying_winget = L"Checking installed apps with winget.\nThis can take some time...";
-        g_locale.refresh_installed_btn = L"Refresh Installed Apps";
-        g_locale.refresh_installed_tooltip = L"Discover apps installed outside this manager.\nThis may take a while.";
-    }
+    // Attempt to load locale file and override defaults when keys exist
+    LoadLocale(g_currentLang);
 
     // Initialize common controls
     INITCOMMONCONTROLSEX icex;
@@ -852,9 +900,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                 UpdateWindow(g_hAboutBtn);
             }
             
-            // Bring window to foreground
-            SetForegroundWindow(hwnd);
-            BringWindowToTop(hwnd);
+            // Do not change. The app is going to be brought to the front, but not always on top
+            BringWindowToFront(hwnd);
             
             // Set focus to category list for blue selection
             SetFocus(g_hTagTree);
@@ -884,6 +931,10 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                     // User clicked Search - execute the search
                     ExecuteSearch();
                 }
+            }
+            else if (LOWORD(wParam) == ID_SETTINGS_BTN) {
+                // Open Settings dialog
+                ShowSettingsDialog(hwnd);
             }
             else if (LOWORD(wParam) == ID_END_SEARCH_BTN) {
                 // End search and restore all data
@@ -1121,6 +1172,28 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                 HFONT hf = g_hBoldFont ? g_hBoldFont : (HFONT)GetStockObject(DEFAULT_GUI_FONT);
                 HGDIOBJ oldf = SelectObject(hdc, hf);
                 DrawTextW(hdc, g_locale.search_btn.c_str(), -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+                SelectObject(hdc, oldf);
+                if (dis->itemState & ODS_FOCUS) DrawFocusRect(hdc, &rc);
+                return TRUE;
+            } else if (dis->CtlID == ID_SETTINGS_BTN) {
+                HWND hBtn = dis->hwndItem;
+                BOOL hover = (BOOL)GetWindowLongPtrW(hBtn, GWLP_USERDATA);
+                bool pressed = (dis->itemState & ODS_SELECTED) != 0;
+                HDC hdc = dis->hDC;
+                RECT rc = dis->rcItem;
+                // Blue color scheme like Search button
+                COLORREF base = RGB(10,57,129);
+                COLORREF hoverCol = RGB(40,90,170);
+                COLORREF pressCol = RGB(5,40,90);
+                HBRUSH hBrush = CreateSolidBrush(pressed ? pressCol : (hover ? hoverCol : base));
+                FillRect(hdc, &rc, hBrush);
+                DeleteObject(hBrush);
+                // Draw bold white text centered (no icon)
+                SetTextColor(hdc, RGB(255,255,255));
+                SetBkMode(hdc, TRANSPARENT);
+                HFONT hf = g_hBoldFont ? g_hBoldFont : (HFONT)GetStockObject(DEFAULT_GUI_FONT);
+                HGDIOBJ oldf = SelectObject(hdc, hf);
+                DrawTextW(hdc, g_locale.settings_btn.c_str(), -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
                 SelectObject(hdc, oldf);
                 if (dis->itemState & ODS_FOCUS) DrawFocusRect(hdc, &rc);
                 return TRUE;
@@ -1382,6 +1455,40 @@ void CreateControls(HWND hwnd) {
     // Subclass installed button for hover effects
     if (g_hInstalledBtn) {
         SetWindowSubclass(g_hInstalledBtn, [](HWND h, UINT msg, WPARAM wp, LPARAM lp, UINT_PTR, DWORD_PTR)->LRESULT {
+            switch (msg) {
+            case WM_MOUSEMOVE: {
+                SetWindowLongPtrW(h, GWLP_USERDATA, 1);
+                InvalidateRect(h, NULL, TRUE);
+                TRACKMOUSEEVENT tme{}; tme.cbSize = sizeof(tme); tme.dwFlags = TME_LEAVE; tme.hwndTrack = h; TrackMouseEvent(&tme);
+                break;
+            }
+            case WM_MOUSELEAVE: {
+                SetWindowLongPtrW(h, GWLP_USERDATA, 0);
+                InvalidateRect(h, NULL, TRUE);
+                break;
+            }
+            }
+            return DefSubclassProc(h, msg, wp, lp);
+        }, 0, 0);
+    }
+
+    // Settings button
+    g_hSettingsBtn = CreateWindowExW(
+        0,
+        L"BUTTON",
+        L"",
+        WS_CHILD | WS_VISIBLE | BS_OWNERDRAW | WS_TABSTOP,
+        0, 0, 0, 0,
+        hwnd,
+        (HMENU)ID_SETTINGS_BTN,
+        hInst,
+        NULL
+    );
+    SetWindowTextW(g_hSettingsBtn, g_locale.settings_btn.c_str());
+    SendMessageW(g_hSettingsBtn, WM_SETFONT, (WPARAM)g_hFont, TRUE);
+
+    if (g_hSettingsBtn) {
+        SetWindowSubclass(g_hSettingsBtn, [](HWND h, UINT msg, WPARAM wp, LPARAM lp, UINT_PTR, DWORD_PTR)->LRESULT {
             switch (msg) {
             case WM_MOUSEMOVE: {
                 SetWindowLongPtrW(h, GWLP_USERDATA, 1);
@@ -1841,6 +1948,7 @@ void ResizeControls(HWND hwnd) {
     const int searchBtnWidth = 100;
     const int installedBtnWidth = 120;
     const int refreshInstalledBtnWidth = 220;
+    const int settingsBtnWidth = 160;
     const int endSearchBtnWidth = 110;
     const int searchBtnSpacing = 9;  // Extra space between buttons and dropdown
     
@@ -1863,22 +1971,26 @@ void ResizeControls(HWND hwnd) {
     if (g_searchActive && IsWindowVisible(g_hEndSearchBtn)) {
         // All buttons visible: [Refresh Installed?] [Installed] [Search] [End Search] ... [Language] [About]
         if (showRefreshInstalled) {
-            int totalBtnWidth = refreshInstalledBtnWidth + spacing + installedBtnWidth + spacing + searchBtnWidth + spacing + endSearchBtnWidth;
+            int totalBtnWidth = refreshInstalledBtnWidth + spacing + settingsBtnWidth + spacing + installedBtnWidth + spacing + searchBtnWidth + spacing + endSearchBtnWidth;
             int refreshInstalledX = rc.right - margin - aboutBtnWidth - spacing - langComboWidth - searchBtnSpacing - totalBtnWidth;
-            int installedX = refreshInstalledX + refreshInstalledBtnWidth + spacing;
+            int settingsX = refreshInstalledX + refreshInstalledBtnWidth + spacing;
+            int installedX = settingsX + settingsBtnWidth + spacing;
             int searchX = installedX + installedBtnWidth + spacing;
             int endSearchX = searchX + searchBtnWidth + spacing;
-            
+
             MoveWindow(g_hRefreshInstalledBtn, refreshInstalledX, margin, refreshInstalledBtnWidth, btnHeight, TRUE);
+            MoveWindow(g_hSettingsBtn, settingsX, margin, settingsBtnWidth, btnHeight, TRUE);
             MoveWindow(g_hInstalledBtn, installedX, margin, installedBtnWidth, btnHeight, TRUE);
             MoveWindow(g_hSearchBtn, searchX, margin, searchBtnWidth, btnHeight, TRUE);
             MoveWindow(g_hEndSearchBtn, endSearchX, margin, endSearchBtnWidth, btnHeight, TRUE);
         } else {
-            int totalBtnWidth = installedBtnWidth + spacing + searchBtnWidth + spacing + endSearchBtnWidth;
-            int installedX = rc.right - margin - aboutBtnWidth - spacing - langComboWidth - searchBtnSpacing - totalBtnWidth;
+            int totalBtnWidth = settingsBtnWidth + spacing + installedBtnWidth + spacing + searchBtnWidth + spacing + endSearchBtnWidth;
+            int settingsX = rc.right - margin - aboutBtnWidth - spacing - langComboWidth - searchBtnSpacing - totalBtnWidth;
+            int installedX = settingsX + settingsBtnWidth + spacing;
             int searchX = installedX + installedBtnWidth + spacing;
             int endSearchX = searchX + searchBtnWidth + spacing;
-            
+
+            MoveWindow(g_hSettingsBtn, settingsX, margin, settingsBtnWidth, btnHeight, TRUE);
             MoveWindow(g_hInstalledBtn, installedX, margin, installedBtnWidth, btnHeight, TRUE);
             MoveWindow(g_hSearchBtn, searchX, margin, searchBtnWidth, btnHeight, TRUE);
             MoveWindow(g_hEndSearchBtn, endSearchX, margin, endSearchBtnWidth, btnHeight, TRUE);
@@ -1886,19 +1998,23 @@ void ResizeControls(HWND hwnd) {
     } else {
         // Search, Installed, and maybe Refresh Installed buttons visible
         if (showRefreshInstalled) {
-            int totalBtnWidth = refreshInstalledBtnWidth + spacing + installedBtnWidth + spacing + searchBtnWidth;
+            int totalBtnWidth = refreshInstalledBtnWidth + spacing + settingsBtnWidth + spacing + installedBtnWidth + spacing + searchBtnWidth;
             int refreshInstalledX = rc.right - margin - aboutBtnWidth - spacing - langComboWidth - searchBtnSpacing - totalBtnWidth;
-            int installedX = refreshInstalledX + refreshInstalledBtnWidth + spacing;
+            int settingsX = refreshInstalledX + refreshInstalledBtnWidth + spacing;
+            int installedX = settingsX + settingsBtnWidth + spacing;
             int searchX = installedX + installedBtnWidth + spacing;
-            
+
             MoveWindow(g_hRefreshInstalledBtn, refreshInstalledX, margin, refreshInstalledBtnWidth, btnHeight, TRUE);
+            MoveWindow(g_hSettingsBtn, settingsX, margin, settingsBtnWidth, btnHeight, TRUE);
             MoveWindow(g_hInstalledBtn, installedX, margin, installedBtnWidth, btnHeight, TRUE);
             MoveWindow(g_hSearchBtn, searchX, margin, searchBtnWidth, btnHeight, TRUE);
         } else {
-            int totalBtnWidth = installedBtnWidth + spacing + searchBtnWidth;
-            int installedX = rc.right - margin - aboutBtnWidth - spacing - langComboWidth - searchBtnSpacing - totalBtnWidth;
+            int totalBtnWidth = settingsBtnWidth + spacing + installedBtnWidth + spacing + searchBtnWidth;
+            int settingsX = rc.right - margin - aboutBtnWidth - spacing - langComboWidth - searchBtnSpacing - totalBtnWidth;
+            int installedX = settingsX + settingsBtnWidth + spacing;
             int searchX = installedX + installedBtnWidth + spacing;
-            
+
+            MoveWindow(g_hSettingsBtn, settingsX, margin, settingsBtnWidth, btnHeight, TRUE);
             MoveWindow(g_hInstalledBtn, installedX, margin, installedBtnWidth, btnHeight, TRUE);
             MoveWindow(g_hSearchBtn, searchX, margin, searchBtnWidth, btnHeight, TRUE);
         }
@@ -2614,7 +2730,10 @@ void SaveConfig() {
     CreateDirectoryW(baseDir.c_str(), nullptr);
     
     std::wstring configFile = baseDir + L"\\WinProgramManager.ini";
-    WritePrivateProfileStringW(L"Settings", L"Language", g_currentLang.c_str(), configFile.c_str());
+    // Preserve existing UpdaterTaskCreated if present, write readable UTF-8 INI
+    std::wstring existing = ReadIniValue(configFile, L"Settings", L"UpdaterTaskCreated");
+    if (existing.empty()) existing = L"0";
+    WriteSettingsIniUtf8(configFile, g_currentLang, existing);
 }
 
 // Load configuration from INI file
@@ -2630,10 +2749,9 @@ void LoadConfig() {
     CoTaskMemFree(appDataPath);
     
     std::wstring configFile = wAppDataPath + L"\\WinProgramManager\\WinProgramManager.ini";
-    
-    wchar_t langBuf[50] = {0};
-    GetPrivateProfileStringW(L"Settings", L"Language", L"en_GB", langBuf, 50, configFile.c_str());
-    g_currentLang = langBuf;
+    std::wstring lang = ReadIniValue(configFile, L"Settings", L"Language");
+    if (lang.empty()) lang = L"en_GB";
+    g_currentLang = lang;
 }
 
 // Load locale from file
@@ -2746,6 +2864,28 @@ bool LoadLocale(const std::wstring& lang) {
             else if (key == L"search_btn") g_locale.search_btn = value;
             else if (key == L"end_search_btn") g_locale.end_search_btn = value;
             else if (key == L"installed_btn") g_locale.installed_btn = value;
+            else if (key == L"settings_btn") g_locale.settings_btn = value;
+            else if (key == L"settings_title") g_locale.settings_title = value;
+            else if (key == L"settings_run_updater_btn") g_locale.settings_run_updater_btn = value;
+            else if (key == L"settings_scheduler_status") g_locale.settings_scheduler_status = value;
+            else if (key == L"present") g_locale.present = value;
+            else if (key == L"not_present") g_locale.not_present = value;
+            else if (key == L"settings_scheduler_enable") g_locale.settings_scheduler_enable = value;
+            else if (key == L"settings_scheduler_interval_days_label") g_locale.settings_scheduler_interval_days_label = value;
+            else if (key == L"settings_scheduler_custom_days_label") g_locale.settings_scheduler_custom_days_label = value;
+            else if (key == L"settings_scheduler_first_run_label") g_locale.settings_scheduler_first_run_label = value;
+            else if (key == L"settings_scheduler_run_if_fail_label") g_locale.settings_scheduler_run_if_fail_label = value;
+            else if (key == L"settings_use_button") g_locale.settings_use_button = value;
+            else if (key == L"settings_ok_button") g_locale.settings_ok_button = value;
+            else if (key == L"settings_cancel_button") g_locale.settings_cancel_button = value;
+            else if (key == L"settings_scheduler_help_requires_admin") g_locale.settings_scheduler_help_requires_admin = value;
+            else if (key == L"settings_working_message") g_locale.settings_working_message = value;
+            else if (key == L"settings_days_out_of_range") g_locale.settings_days_out_of_range = value;
+            else if (key == L"settings_days_invalid_integer") g_locale.settings_days_invalid_integer = value;
+            else if (key == L"settings_btn") g_locale.settings_btn = value;
+            else if (key == L"settings_title") g_locale.settings_title = value;
+            else if (key == L"settings_run_updater_btn") g_locale.settings_run_updater_btn = value;
+            else if (key == L"settings_scheduler_status") g_locale.settings_scheduler_status = value;
             // About Dialog
             else if (key == L"about_btn") g_locale.about_btn = value;
             else if (key == L"quit_btn") g_locale.quit_btn = value;
@@ -2869,6 +3009,7 @@ void OnLanguageChanged() {
         if (g_hSearchBtn) SetWindowTextW(g_hSearchBtn, g_locale.search_btn.c_str());
         if (g_hEndSearchBtn) SetWindowTextW(g_hEndSearchBtn, g_locale.end_search_btn.c_str());
         if (g_hInstalledBtn) SetWindowTextW(g_hInstalledBtn, g_locale.installed_btn.c_str());
+        if (g_hSettingsBtn) SetWindowTextW(g_hSettingsBtn, g_locale.settings_btn.c_str());
         if (g_hQuitBtn) SetWindowTextW(g_hQuitBtn, g_locale.quit_btn.c_str());
 
         // Redraw buttons to update text

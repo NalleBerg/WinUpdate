@@ -62,7 +62,26 @@ struct Locale {
     std::wstring search_btn;
     std::wstring end_search_btn;
     std::wstring installed_btn;
-    // About Dialog
+    std::wstring settings_btn;
+    std::wstring settings_title;
+    std::wstring settings_run_updater_btn;
+    std::wstring settings_scheduler_status;
+        std::wstring present;
+        std::wstring not_present;
+    std::wstring settings_scheduler_enable;
+    std::wstring settings_scheduler_interval_days_label;
+    std::wstring settings_scheduler_custom_days_label;
+    std::wstring settings_scheduler_first_run_label;
+    std::wstring settings_scheduler_run_if_fail_label;
+    std::wstring settings_use_button;
+    std::wstring settings_ok_button;
+    std::wstring settings_cancel_button;
+    std::wstring settings_scheduler_help_requires_admin;
+    std::wstring settings_working_message;
+    std::wstring settings_days_out_of_range;
+    std::wstring settings_days_invalid_integer;
+    
+        // About Dialog
     std::wstring about_btn;
     std::wstring quit_btn;
     std::wstring quit_title;
@@ -95,6 +114,13 @@ struct Locale {
     std::wstring wait_for_update;
     std::wstring cancel_installation;
     std::wstring preparing_installation;
+    std::wstring installing_title;
+    std::wstring reinstalling_title;
+    std::wstring uninstalling_title;
+    std::wstring installing_status;
+    std::wstring reinstalling_status;
+    std::wstring uninstalling_status;
+    std::wstring querying_winget_status;
     // Search Dialog
     std::wstring search_dialog_title;
     std::wstring search_in_categories;
