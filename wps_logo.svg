@@ -1,0 +1,41 @@
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="blueSphere" cx="50%" cy="35%" r="70%">
+      <stop offset="0%" stop-color="#e3f2fd" stop-opacity="0.9"/>
+      <stop offset="60%" stop-color="#1976d2"/>
+      <stop offset="100%" stop-color="#0d1a2f"/>
+    </radialGradient>
+    <!-- Darker window pane gradient -->
+    <linearGradient id="windowBlue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1976d2"/>
+      <stop offset="100%" stop-color="#0d47a1"/>
+    </linearGradient>
+    <filter id="emboss" x="-20%" y="-20%" width="140%" height="140%">
+      <feOffset result="offOut" in="SourceAlpha" dx="2" dy="2" />
+      <feGaussianBlur result="blurOut" in="offOut" stdDeviation="2" />
+      <feBlend in="SourceGraphic" in2="blurOut" mode="normal" />
+    </filter>
+    <path id="arc" d="M60,132 A68,68 0 0,1 196,132" />
+  </defs>
+  <circle cx="128" cy="128" r="120" fill="url(#blueSphere)" stroke="#2d3a4a" stroke-width="8"/>
+  <text x="70" y="88" font-size="60" font-family="'Comic Sans MS', 'Comic Sans', cursive, sans-serif"
+        fill="white" stroke="#FFD700" stroke-width="2" filter="url(#emboss)" font-weight="bold"
+        transform="rotate(-25 70 88)">W</text>
+  <text x="122" y="65" font-size="60" font-family="'Comic Sans MS', 'Comic Sans', cursive, sans-serif"
+        fill="white" stroke="#FFD700" stroke-width="2" filter="url(#emboss)" font-weight="bold"
+        transform="rotate(0 122 65)">P</text>
+      <text x="144" y="65" font-size="60" font-family="'Comic Sans MS', 'Comic Sans', cursive, sans-serif"
+        fill="white" stroke="#FFD700" stroke-width="2" filter="url(#emboss)" font-weight="bold"
+        transform="rotate(25 144 65)">S</text>
+  <!-- Windows logo as a slightly curved four-square unit, moved 12px left and 10px up -->
+  <g>
+    <!-- Top left square -->
+    <rect x="78" y="100" width="47.5" height="47.5" fill="url(#windowBlue)" transform="rotate(-8 101 123)" />
+    <!-- Top right square -->
+    <rect x="125" y="96" width="47.5" height="47.5" fill="url(#windowBlue)" transform="rotate(-4 148 120)" />
+    <!-- Bottom left square -->
+    <rect x="80" y="147" width="47.5" height="47.5" fill="url(#windowBlue)" transform="rotate(8 103 170)" />
+    <!-- Bottom right square -->
+    <rect x="127" y="143" width="47.5" height="47.5" fill="url(#windowBlue)" transform="rotate(4 150 166)" />
+  </g>
+</svg>
