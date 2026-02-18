@@ -39,7 +39,8 @@ Published and stable GUI for automatic Windows package updates.
 
 ## 🚨 Recent Updates (2026-02-18)
 
-### Update 21: Complete i18n & Settings Scheduler (v2026.02.18.13)
+### Update 1: Complete i18n & Settings Scheduler (v2026.02.18.13) — patch, not a new version
+- **COMPLETE SETTINGS i18n:** All 15 settings dialog strings now translated to English, Norwegian, and Swedish (settings_btn, settings_title, settings_run_updater_btn, settings_scheduler_enable, settings_scheduler_interval_days_label, settings_scheduler_custom_days_label, settings_scheduler_first_run_label, settings_scheduler_run_if_fail_label, settings_use_button, settings_ok_button, settings_cancel_button, settings_working_message, settings_days_out_of_range, settings_days_invalid_integer, settings_failed_launch_updater)
 - **COMPLETE SETTINGS i18n:** All 15 settings dialog strings now translated to English, Norwegian, and Swedish (settings_btn, settings_title, settings_run_updater_btn, settings_scheduler_enable, settings_scheduler_interval_days_label, settings_scheduler_custom_days_label, settings_scheduler_first_run_label, settings_scheduler_run_if_fail_label, settings_use_button, settings_ok_button, settings_cancel_button, settings_working_message, settings_days_out_of_range, settings_days_invalid_integer, settings_failed_launch_updater)
 - **UNIVERSAL TASK SCHEDULER PARSING:** Task scheduler output now parsed language-independently, extracting day intervals (1-365) regardless of Windows display language (English, Norwegian, Chinese, Japanese, Russian, etc.)
 - **PATTERN-BASED EXTRACTION:** Parser uses intelligent number extraction with date/time filtering - works with "Every 5 day(s)", "hver 5 dag", "每 5 天", etc.
