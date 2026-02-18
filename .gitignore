@@ -1,1 +1,11 @@
-# Ignore generated database files\nDB/*.db\nTestDB/*.db\n*.db\n
+# Ignore generated database files
+DB/
+DB/*.db
+TestDB/
+TestDB/*.db
+
+
+# Ignore web page files
+Web_pageUK.html
+Web_pageNO.html
+Web_pageSE.html

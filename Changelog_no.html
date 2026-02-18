@@ -1,267 +1,241 @@
-<h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
-<span style="color: #0066cc;">📦 WinProgramSuite — Komplett Windows Pakkehåndteringssystem</span>
-</h2>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;">
-<strong>Siste oppdatering:</strong> 15. februar 2026 | <strong>Komplett i18n & Innstillinger-planlegger</strong><br/>
-Denne endringsloggen dekker <strong>WinProgramManager</strong>, databasehåndteringskomponenten i WinProgramSuite.<br/>
-For automatiske oppdateringsfunksjoner, se <strong>WinUpdate</strong>-dokumentasjon.
-</p>
-
+<h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">📦 WinProgramSuite &mdash; Komplett Windows Pakkeh&aring;ndteringssystem</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Versjon 2026.02.15.01 — Oppdatering 21</span></h3>
-<p><strong>Komplett i18n & Innstillinger-planlegger (15. februar 2026):</strong></p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Siste oppdatering:</strong> 18. februar 2026 | <strong>Komplett i18n &amp; Innstillinger-planlegger</strong><br />Denne endringsloggen dekker <strong>WinProgramManager</strong>, databaseh&aring;ndteringskomponenten i WinProgramSuite.<br />For automatiske oppdateringsfunksjoner, se <strong>WinUpdate</strong>-dokumentasjon.</p>
+<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Versjon 2026.02.18.13</span></h3>
+<p><strong>Komplett i18n &amp; Innstillinger-planlegger (18. februar 2026):</strong></p>
 <ul>
-<li><strong>Komplett Innstillinger-internasjonalisering:</strong> Alle 15 innstillingsdialog-strenger nå fullstendig oversatt til engelsk, norsk og svensk - settings_btn, settings_title, settings_run_updater_btn, settings_scheduler_enable, settings_scheduler_interval_days_label, settings_scheduler_custom_days_label, settings_scheduler_first_run_label, settings_scheduler_run_if_fail_label, settings_use_button, settings_ok_button, settings_cancel_button, settings_working_message, settings_days_out_of_range, settings_days_invalid_integer, settings_failed_launch_updater</li>
-<li><strong>Norsk visning:</strong> Innstillingsdialogen viser "Innstillinger", "Aktiver planlagte oppdateringer", "Intervall (dager):", "Tidspunkt på dagen:", "Bruk", "OK", "Avbryt"</li>
-<li><strong>Svensk visning:</strong> Innstillingsdialogen viser "Inställningar", "Aktivera schemalagda uppdateringar", "Intervall (dagar):", "Tidpunkt på dagen:", "Använd", "OK", "Avbryt"</li>
-<li><strong>Universell Oppgaveplanlegger-tolking:</strong> Systemets oppgaveplanlegger-output tolkes nå språk-uavhengig, og trekker ut dagintervaller (1-365) uansett Windows visningsspråk (engelsk, norsk, kinesisk, japansk, russisk, osv.)</li>
-<li><strong>Mønster-basert uttrekk:</strong> Parseren bruker intelligent talluttrekk med dato/tid-filtrering - fungerer med "Every 5 day(s)", "hver 5 dag", "每 5 天", etc.</li>
-<li><strong>Avmerkingsboks-fiks:</strong> Innstillingsdialogboksens avkryssingsboks reflekterer nå korrekt planleggerstatus ved å sjekke <code>intervalDays > 0</code> i stedet for flere fallback-betingelser</li>
-<li><strong>Egendefinert dag-validering:</strong> Inntastingsfeltet validerer nå kun heltall med områdesjekk (1-365 dager) og tydelige lokaliserte feilmeldinger</li>
-<li><strong>Utvidet intervall-støtte:</strong> Egendefinerte intervaller opp til 365 dager for årlige/halvårlige oppdateringsplaner (tidligere begrenset til 30 dager)</li>
-<li><strong>Skript timeout-beskyttelse:</strong> <code>restore_missing_packages.ps1</code> har nå 15-sekunders timeout for winget-spørringer for å forhindre uendelig heng på feilformede pakke-IDer</li>
+<li><strong>Komplett Innstillinger-internasjonalisering:</strong> Alle 15 innstillingsdialog-strenger n&aring; fullstendig oversatt til engelsk, norsk og svensk - settings_btn, settings_title, settings_run_updater_btn, settings_scheduler_enable, settings_scheduler_interval_days_label, settings_scheduler_custom_days_label, settings_scheduler_first_run_label, settings_scheduler_run_if_fail_label, settings_use_button, settings_ok_button, settings_cancel_button, settings_working_message, settings_days_out_of_range, settings_days_invalid_integer, settings_failed_launch_updater</li>
+<li><strong>Norsk visning:</strong> Innstillingsdialogen viser "Innstillinger", "Aktiver planlagte oppdateringer", "Intervall (dager):", "Tidspunkt p&aring; dagen:", "Bruk", "OK", "Avbryt"</li>
+<li><strong>Svensk visning:</strong> Innstillingsdialogen viser "Inst&auml;llningar", "Aktivera schemalagda uppdateringar", "Intervall (dagar):", "Tidpunkt p&aring; dagen:", "Anv&auml;nd", "OK", "Avbryt"</li>
+<li><strong>Universell Oppgaveplanlegger-tolking:</strong> Systemets oppgaveplanlegger-output tolkes n&aring; spr&aring;k-uavhengig, og trekker ut dagintervaller (1-365) uansett Windows visningsspr&aring;k (engelsk, norsk, kinesisk, japansk, russisk, osv.)</li>
+<li><strong>M&oslash;nster-basert uttrekk:</strong> Parseren bruker intelligent talluttrekk med dato/tid-filtrering - fungerer med "Every 5 day(s)", "hver 5 dag", "每 5 天", etc.</li>
+<li><strong>Avmerkingsboks-fiks:</strong> Innstillingsdialogboksens avkryssingsboks reflekterer n&aring; korrekt planleggerstatus ved &aring; sjekke <code>intervalDays &gt; 0</code> i stedet for flere fallback-betingelser</li>
+<li><strong>Egendefinert dag-validering:</strong> Inntastingsfeltet validerer n&aring; kun heltall med omr&aring;desjekk (1-365 dager) og tydelige lokaliserte feilmeldinger</li>
+<li><strong>Utvidet intervall-st&oslash;tte:</strong> Egendefinerte intervaller opp til 365 dager for &aring;rlige/halv&aring;rlige oppdateringsplaner (tidligere begrenset til 30 dager)</li>
+<li><strong>Skript timeout-beskyttelse:</strong> <code>restore_missing_packages.ps1</code> har n&aring; 15-sekunders timeout for winget-sp&oslash;rringer for &aring; forhindre uendelig heng p&aring; feilformede pakke-IDer</li>
 <li><strong>Inndata-kvalitet:</strong> Trimmer mellomrom, validerer kun heltall, avviser desimaler/tekst/spesialtegn</li>
 </ul>
-
 <h3 style="text-align: center;">&nbsp;</h3>
-<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Versjon 2026.02.13.01 — Oppdatering 20</span></h3>
-<p><strong>Første-kjøring planlegger og konfigurasjonsmarkør (13. februar 2026):</strong></p>
+<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Versjon 2026.02.13.01 &mdash; Oppdatering 20</span></h3>
+<p><strong>F&oslash;rste-kj&oslash;ring planlegger og konfigurasjonsmark&oslash;r (13. februar 2026):</strong></p>
 <ul>
-<li><strong>Første-kjøring planlegger:</strong> Ved første kjøring opprettes en ukentlig Oppgaveplanlegger-oppgave kalt <em>WinProgramUpdaterWeekly</em> som kjører <code>WinProgramUpdaterGUI.exe --hidden</code> for automatiske ukentlige oppdateringer.</li>
-<li><strong>Konfigurasjonsmarkør:</strong> En liten INI-fil skrives til <code>%APPDATA%\WinProgramManager\WinProgramManager.ini</code> for å markere at første-kjøring er fullført. INI'en inneholder <code>Settings/Language</code> (standard <code>en_GB</code>) og <code>Settings/UpdaterTaskCreated</code> (1 ved suksess, 0 ved feil).</li>
-<li><strong>Engangsflyt:</strong> Hvis INI finnes prøver appen ikke å opprette oppgaven på nytt. Slett INI for å tvinge første-kjøringslogikken på nytt.</li>
+<li><strong>F&oslash;rste-kj&oslash;ring planlegger:</strong> Ved f&oslash;rste kj&oslash;ring opprettes en ukentlig Oppgaveplanlegger-oppgave kalt <em>WinProgramUpdaterWeekly</em> som kj&oslash;rer <code>WinProgramUpdaterGUI.exe --hidden</code> for automatiske ukentlige oppdateringer.</li>
+<li><strong>Konfigurasjonsmark&oslash;r:</strong> En liten INI-fil skrives til <code>%APPDATA%\WinProgramManager\WinProgramManager.ini</code> for &aring; markere at f&oslash;rste-kj&oslash;ring er fullf&oslash;rt. INI'en inneholder <code>Settings/Language</code> (standard <code>en_GB</code>) og <code>Settings/UpdaterTaskCreated</code> (1 ved suksess, 0 ved feil).</li>
+<li><strong>Engangsflyt:</strong> Hvis INI finnes pr&oslash;ver appen ikke &aring; opprette oppgaven p&aring; nytt. Slett INI for &aring; tvinge f&oslash;rste-kj&oslash;ringslogikken p&aring; nytt.</li>
 </ul>
-
 <h3 style="text-align: center;">&nbsp;</h3>
-<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Versjon 2026.02.11.01 — Oppdatering 19</span></h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Versjon 2026.02.11.01 &mdash; Oppdatering 19</span></h3>
 <p><strong>Stabilitet og installasjonsfikser (11. februar 2026):</strong></p>
 <ul>
-<li><strong>Installert-filter:</strong> Gjorde "Installert"-filteret umiddelbart ved å laste pakke-IDer fra lokal database (ingen blokkering med winget)</li>
-<li><strong>Reinstaller-dialog:</strong> Fikset manglende knapptekst ved å gjenopprette `close` lokalspråk-nøkkelen og justere owner-drawn rendering</li>
-<li><strong>Installatør-UI:</strong> La til ekstra ny linje etter "Spør winget..."-melding for bedre lesbarhet</li>
-<li><strong>Fokus-håndtering:</strong> Hovedvinduet bringes nå frem når installeringsdialogen lukkes</li>
-<li><strong>DB-opprydding:</strong> Fjernet utdaterte oppføringer fra `installed_apps` for å korrigere antall installerte apper</li>
+<li><strong>Installert-filter:</strong> Gjorde "Installert"-filteret umiddelbart ved &aring; laste pakke-IDer fra lokal database (ingen blokkering med winget)</li>
+<li><strong>Reinstaller-dialog:</strong> Fikset manglende knapptekst ved &aring; gjenopprette `close` lokalspr&aring;k-n&oslash;kkelen og justere owner-drawn rendering</li>
+<li><strong>Installat&oslash;r-UI:</strong> La til ekstra ny linje etter "Sp&oslash;r winget..."-melding for bedre lesbarhet</li>
+<li><strong>Fokus-h&aring;ndtering:</strong> Hovedvinduet bringes n&aring; frem n&aring;r installeringsdialogen lukkes</li>
+<li><strong>DB-opprydding:</strong> Fjernet utdaterte oppf&oslash;ringer fra `installed_apps` for &aring; korrigere antall installerte apper</li>
 </ul>
-
 <h3 style="text-align: center;">&nbsp;</h3>
-<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Versjon 2026.02.09.01 — Oppdatering 18</span></h3>
-<p><strong>Søkedialog internasjonalisering og installasjonsstatus-fiks (9. februar 2026):</strong></p>
+<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Versjon 2026.02.09.01 &mdash; Oppdatering 18</span></h3>
+<p><strong>S&oslash;kedialog internasjonalisering og installasjonsstatus-fiks (9. februar 2026):</strong></p>
 <ul>
-<li><strong>Søkedialog internasjonalisering:</strong> Lagt til 15 lokalnøkler (search_dialog_title, package_name_label, publisher_label, source_label, category_label, tag_label, status_label, status_all, status_installed, status_not_installed, search_button, reset_button, close_button, cancel_button) på 3 språk</li>
+<li><strong>S&oslash;kedialog internasjonalisering:</strong> Lagt til 15 lokaln&oslash;kler (search_dialog_title, package_name_label, publisher_label, source_label, category_label, tag_label, status_label, status_all, status_installed, status_not_installed, search_button, reset_button, close_button, cancel_button) p&aring; 3 spr&aring;k</li>
 <li><strong>Visuell overhaling:</strong> Hvit bakgrunn RGB(255,255,255), 11pt Segoe UI-skrift, egentegnede knapper med hover-effekter</li>
-<li><strong>To-kolonners layout:</strong> Radioknapper organisert i 50/50-oppsett (venstre 20-220, høyre 235-430) for bedre plassbruk</li>
-<li><strong>Dialogenhet-konvertering:</strong> Standardiserte knappestørrelser på 60x14 DLU (søk) og 75x14 DLU (bekreftelse) ≈ 88-110px @ 11pt Segoe UI</li>
+<li><strong>To-kolonners layout:</strong> Radioknapper organisert i 50/50-oppsett (venstre 20-220, h&oslash;yre 235-430) for bedre plassbruk</li>
+<li><strong>Dialogenhet-konvertering:</strong> Standardiserte knappest&oslash;rrelser p&aring; 60x14 DLU (s&oslash;k) og 75x14 DLU (bekreftelse) &asymp; 88-110px @ 11pt Segoe UI</li>
 <li><strong>Knapp hover-effekter:</strong> GWLP_USERDATA tilstandssporing med TrackMouseEvent, RGB(25,95,210) hover-farge</li>
-<li><strong>Universelt ikonsystem:</strong> Lagt til passende Unicode-ikoner til 12+ knapper (▼ Installer, ⟲ Installer på nytt, ⨳ Avinstaller, ✖ Lukk, 🔍 Søk, ⏹ Stopp, 📦 Installert, 🔄 Oppdater, ℹ Om, ⏻ Avslutt, ✓ Ja/OK)</li>
-<li><strong>KRITISK FIKS - Installasjonsstatus:</strong> Fikset bug hvor installerte apper viste "Installer"-knapp i stedet for "Installer på nytt"/"Avinstaller". Rotårsak: LEFT JOIN returnerte tom streng for installed_version, ikke NULL. Løsning: Sjekk i.package_id-kolonne (13) fra JOIN med sqlite3_column_type != SQLITE_NULL</li>
-<li><strong>Bekreftelsesdialog forbedringer:</strong> Lagt til IDI_QUESTION-ikon, hvit bakgrunn, bredere knapper (75 DLU), alle handlinger (installer/installer på nytt/avinstaller) har nå bekreftelsesdialog</li>
-<li><strong>Forenklede Unicode-ikoner:</strong> Erstattet emojis (⬇ 🗑 🔄) med enklere Unicode-tegn (▼ ⨳ ⟲) for bedre gjengivelse på tvers av systemer</li>
-<li><strong>Manglende lokalstrenger:</strong> Lagt til confirm_install_title og confirm_install_msg som manglet når andre bekreftelseshandlinger ble lagt til</li>
-<li><strong>Knappbredde-justeringer:</strong> Utvidet Installert-knapp til 120px (var 100px), Oppdater Installert til 220px (var 180px) for å romme ikonene</li>
-<li><strong>Komplett knappstyling:</strong> Alle dialogknapper bruker nå konsistente farger (RGB 10,57,129 base), 19pt fet skrift, sentrert tekst med DT_CENTER|DT_VCENTER</li>
-<li><strong>Kodekonsistens:</strong> Enhetlig WM_DRAWITEM-mønster på tvers av alle dialoger, konsistent bruk av GetStockObject(WHITE_BRUSH) for hvite bakgrunner</li>
+<li><strong>Universelt ikonsystem:</strong> Lagt til passende Unicode-ikoner til 12+ knapper (▼ Installer, ⟲ Installer p&aring; nytt, ⨳ Avinstaller, ✖ Lukk, 🔍 S&oslash;k, ⏹ Stopp, 📦 Installert, 🔄 Oppdater, ℹ Om, ⏻ Avslutt, ✓ Ja/OK)</li>
+<li><strong>KRITISK FIKS - Installasjonsstatus:</strong> Fikset bug hvor installerte apper viste "Installer"-knapp i stedet for "Installer p&aring; nytt"/"Avinstaller". Rot&aring;rsak: LEFT JOIN returnerte tom streng for installed_version, ikke NULL. L&oslash;sning: Sjekk i.package_id-kolonne (13) fra JOIN med sqlite3_column_type != SQLITE_NULL</li>
+<li><strong>Bekreftelsesdialog forbedringer:</strong> Lagt til IDI_QUESTION-ikon, hvit bakgrunn, bredere knapper (75 DLU), alle handlinger (installer/installer p&aring; nytt/avinstaller) har n&aring; bekreftelsesdialog</li>
+<li><strong>Forenklede Unicode-ikoner:</strong> Erstattet emojis (⬇ 🗑 🔄) med enklere Unicode-tegn (▼ ⨳ ⟲) for bedre gjengivelse p&aring; tvers av systemer</li>
+<li><strong>Manglende lokalstrenger:</strong> Lagt til confirm_install_title og confirm_install_msg som manglet n&aring;r andre bekreftelseshandlinger ble lagt til</li>
+<li><strong>Knappbredde-justeringer:</strong> Utvidet Installert-knapp til 120px (var 100px), Oppdater Installert til 220px (var 180px) for &aring; romme ikonene</li>
+<li><strong>Komplett knappstyling:</strong> Alle dialogknapper bruker n&aring; konsistente farger (RGB 10,57,129 base), 19pt fet skrift, sentrert tekst med DT_CENTER|DT_VCENTER</li>
+<li><strong>Kodekonsistens:</strong> Enhetlig WM_DRAWITEM-m&oslash;nster p&aring; tvers av alle dialoger, konsistent bruk av GetStockObject(WHITE_BRUSH) for hvite bakgrunner</li>
 </ul>
-
 <h3 style="text-align: center;">&nbsp;</h3>
-<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Versjon 2026.02.08.02 — Oppdatering 17</span></h3>
-<p><strong>Design/layout/utseende og følelse fullført (8. februar 2026):</strong></p>
+<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Versjon 2026.02.08.02 &mdash; Oppdatering 17</span></h3>
+<p><strong>Design/layout/utseende og f&oslash;lelse fullf&oslash;rt (8. februar 2026):</strong></p>
 <ul>
-<li><strong>Tilpasset avslutt-dialog:</strong> Profesjonell avsluttbekreftelse med egentegnet spørsmålstegn-ikon (IDI_QUESTION) som erstatter standard MessageBox</li>
-<li><strong>Blått knapptema:</strong> Avslutt-dialogens Ja/Nei-knapper matcher Om-knappens farge (RGB 10,57,129) for konsistent visuell identitet</li>
-<li><strong>Optimal størrelse:</strong> Kompakt 260x75-dialog med 50x18-knapper og 15pt fet skrift for perfekt lesbarhet</li>
-<li><strong>Enhetlig knappimplementering:</strong> Appdetaljer-knapper (Installer/Installer på nytt/Avinstaller/Lukk) bruker nå identisk GWLP_USERDATA hover-sporing som Om-knappen</li>
-<li><strong>Konsistent fargepalett:</strong> Installer (grønn RGB 40,180,40), Avinstaller (rød RGB 180,40,40), Installer på nytt/Lukk (blå RGB 10,57,129) med korrekte hover-tilstander</li>
-<li><strong>Fokushåndtering:</strong> Beskrivelsesfeltet velges ikke lenger automatisk når dialogen åpnes - fokus settes til Lukk-knappen for bedre brukeropplevelse</li>
-<li><strong>Kodekonsistens:</strong> Alle dialoger bruker nå samme knapp-subklassingsmønster med per-knapp tilstandssporing via GWLP_USERDATA</li>
+<li><strong>Tilpasset avslutt-dialog:</strong> Profesjonell avsluttbekreftelse med egentegnet sp&oslash;rsm&aring;lstegn-ikon (IDI_QUESTION) som erstatter standard MessageBox</li>
+<li><strong>Bl&aring;tt knapptema:</strong> Avslutt-dialogens Ja/Nei-knapper matcher Om-knappens farge (RGB 10,57,129) for konsistent visuell identitet</li>
+<li><strong>Optimal st&oslash;rrelse:</strong> Kompakt 260x75-dialog med 50x18-knapper og 15pt fet skrift for perfekt lesbarhet</li>
+<li><strong>Enhetlig knappimplementering:</strong> Appdetaljer-knapper (Installer/Installer p&aring; nytt/Avinstaller/Lukk) bruker n&aring; identisk GWLP_USERDATA hover-sporing som Om-knappen</li>
+<li><strong>Konsistent fargepalett:</strong> Installer (gr&oslash;nn RGB 40,180,40), Avinstaller (r&oslash;d RGB 180,40,40), Installer p&aring; nytt/Lukk (bl&aring; RGB 10,57,129) med korrekte hover-tilstander</li>
+<li><strong>Fokush&aring;ndtering:</strong> Beskrivelsesfeltet velges ikke lenger automatisk n&aring;r dialogen &aring;pnes - fokus settes til Lukk-knappen for bedre brukeropplevelse</li>
+<li><strong>Kodekonsistens:</strong> Alle dialoger bruker n&aring; samme knapp-subklassingsm&oslash;nster med per-knapp tilstandssporing via GWLP_USERDATA</li>
 <li><strong>Profesjonell finish:</strong> Systemikon-integrasjon, korrekt musesporing (TME_LEAVE), og fet skrift i alle dialoger</li>
-<li><strong>Designmilepæl:</strong> Komplett visuell identitet etablert - alle dialoger deler konsistente hvite bakgrunner, owner-drawn-knapper og profesjonell styling</li>
+<li><strong>Designmilep&aelig;l:</strong> Komplett visuell identitet etablert - alle dialoger deler konsistente hvite bakgrunner, owner-drawn-knapper og profesjonell styling</li>
 </ul>
-
 <h3 style="text-align: center;">&nbsp;</h3>
-<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Versjon 2026.02.08.01 — Oppdatering 16</span></h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Versjon 2026.02.08.01 &mdash; Oppdatering 16</span></h3>
 <p><strong>Profesjonell applikasjonsdetaljer dialog (8. februar 2026):</strong></p>
 <ul>
-<li><strong>Moderne egentegnede knapper:</strong> Tilpassede knapper med fargetemaer - Installer (grønn), Avinstaller (rød), Reinstaller/Lukk (blå)</li>
+<li><strong>Moderne egentegnede knapper:</strong> Tilpassede knapper med fargetemaer - Installer (gr&oslash;nn), Avinstaller (r&oslash;d), Reinstaller/Lukk (bl&aring;)</li>
 <li><strong>Interaktive hover-effekter:</strong> Knapp-subklassing med TrackMouseEvent for lysere farger ved hover, gir visuell tilbakemelding</li>
 <li><strong>Ren hvit bakgrunn:</strong> Konsistent RGB(255,255,255) bakgrunn som matcher spinner og hovedvindu-styling</li>
-<li><strong>Komplett internasjonalisering:</strong> Alle etiketter fullstendig lokalisert - Utgiver, Versjon, Pakke-ID, Kilde, Status, Beskrivelse, Teknisk informasjon, Hjemmeside, Lisens, Installerertype, Arkitektur, Tagger på 3 språk</li>
+<li><strong>Komplett internasjonalisering:</strong> Alle etiketter fullstendig lokalisert - Utgiver, Versjon, Pakke-ID, Kilde, Status, Beskrivelse, Teknisk informasjon, Hjemmeside, Lisens, Installerertype, Arkitektur, Tagger p&aring; 3 spr&aring;k</li>
 <li><strong>Verdistreng-lokalisering:</strong> Statusverdier (Installert/Ikke installert), plassholdertekster (Ukjent, Ikke tilgjengelig, Ingen tagger, Ingen beskrivelse) oversatt</li>
-<li><strong>Fikset Lukk-knapp:</strong> Blå-temaet Lukk-knapp med korrekt lokalisert tekst ("Close"/"Lukk"/"Stäng")</li>
-<li><strong>Forbedret brukeropplevelse:</strong> Beskrivelsesfelt ikke lenger auto-valgt ved dialogåpning</li>
-<li><strong>Konsistent tekststyling:</strong> Svart tekst (RGB 0,0,0) på hvite bakgrunner på tvers av alle kontroller via WM_CTLCOLORSTATIC, WM_CTLCOLOREDIT, WM_CTLCOLORDLG</li>
-<li><strong>Utvidelse av lokalsystem:</strong> Lagt til 19 nye lokalnøkler (app_details_title, publisher_label, version_label, osv.) med LoadLocale-parsing</li>
+<li><strong>Fikset Lukk-knapp:</strong> Bl&aring;-temaet Lukk-knapp med korrekt lokalisert tekst ("Close"/"Lukk"/"St&auml;ng")</li>
+<li><strong>Forbedret brukeropplevelse:</strong> Beskrivelsesfelt ikke lenger auto-valgt ved dialog&aring;pning</li>
+<li><strong>Konsistent tekststyling:</strong> Svart tekst (RGB 0,0,0) p&aring; hvite bakgrunner p&aring; tvers av alle kontroller via WM_CTLCOLORSTATIC, WM_CTLCOLOREDIT, WM_CTLCOLORDLG</li>
+<li><strong>Utvidelse av lokalsystem:</strong> Lagt til 19 nye lokaln&oslash;kler (app_details_title, publisher_label, version_label, osv.) med LoadLocale-parsing</li>
 </ul>
-
 <h3 style="text-align: center;">&nbsp;</h3>
-<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Versjon 2026.02.07.08 — Oppdatering 15</span></h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Versjon 2026.02.07.08 &mdash; Oppdatering 15</span></h3>
 <p><strong>Komplett internasjonalisering og avslutningssystem (7. februar 2026):</strong></p>
 <ul>
-<li><strong>Komplett i18n-implementering:</strong> 90+ lokalstrenger som dekker alle UI-elementer, feilmeldinger og dialoger på 3 språk</li>
+<li><strong>Komplett i18n-implementering:</strong> 90+ lokalstrenger som dekker alle UI-elementer, feilmeldinger og dialoger p&aring; 3 spr&aring;k</li>
 <li><strong>Profesjonelt avslutningssystem:</strong> Avslutningsbekreftelse med "Ja/Nei"-knapper for alle avslutningsmetoder (X-knapp, avslutningsknapp, Ctrl+W)</li>
-<li><strong>Avslutningsknapp:</strong> Rød-temaet knapp til venstre med oversettelser: "Quit" (engelsk), "Avslutt" (norsk), "Avsluta" (svensk)</li>
+<li><strong>Avslutningsknapp:</strong> R&oslash;d-temaet knapp til venstre med oversettelser: "Quit" (engelsk), "Avslutt" (norsk), "Avsluta" (svensk)</li>
 <li><strong>Ctrl+W tastatursnarvei:</strong> Windows akseleratortabell sikrer at Ctrl+W fungerer globalt uavhengig av fokus</li>
-<li><strong>Smart håndtering av underdialogbokser:</strong> Underdialogbokser (appdetaljer) lukkes uten bekreftelse, hovedvindu krever bekreftelse</li>
-<li><strong>Konfigurasjonsfil-persistering:</strong> Språkpreferanse lagret i %APPDATA%\WinProgramManager\WinProgramManager.ini</li>
+<li><strong>Smart h&aring;ndtering av underdialogbokser:</strong> Underdialogbokser (appdetaljer) lukkes uten bekreftelse, hovedvindu krever bekreftelse</li>
+<li><strong>Konfigurasjonsfil-persistering:</strong> Spr&aring;kpreferanse lagret i %APPDATA%\WinProgramManager\WinProgramManager.ini</li>
 <li><strong>UTF-8-kodingsfikse:</strong> Fikset lesing av lokalfiler med MultiByteToWideChar (CP_UTF8) for korrekte norske/svenske tegn</li>
-<li><strong>Knappeinternasjonalisering:</strong> Søk, Avslutt søk og Installerte-knappene er nå fullstendig oversatt (fjernet hardkodede strenger)</li>
-<li><strong>Lokaliserte feilmeldinger:</strong> 15+ feil-/advarselmeldinger nå tilgjengelig på alle 3 språk</li>
+<li><strong>Knappeinternasjonalisering:</strong> S&oslash;k, Avslutt s&oslash;k og Installerte-knappene er n&aring; fullstendig oversatt (fjernet hardkodede strenger)</li>
+<li><strong>Lokaliserte feilmeldinger:</strong> 15+ feil-/advarselmeldinger n&aring; tilgjengelig p&aring; alle 3 spr&aring;k</li>
 <li><strong>quit_handler modul:</strong> Sentralisert avslutningslogikk i quit_handler.cpp/.h for bedre kodeorganisering</li>
-<li><strong>Tittelfikse:</strong> Fjernet mellomrom fra "WinProgram Manager" → "WinProgramManager" i spinner og dialoger</li>
-<li><strong>Norsk språkfikse:</strong> Korrigert "Behandler database" → "Behandler databasen" (bestemt form)</li>
+<li><strong>Tittelfikse:</strong> Fjernet mellomrom fra "WinProgram Manager" &rarr; "WinProgramManager" i spinner og dialoger</li>
+<li><strong>Norsk spr&aring;kfikse:</strong> Korrigert "Behandler database" &rarr; "Behandler databasen" (bestemt form)</li>
 </ul>
-
 <h3 style="text-align: center;">&nbsp;</h3>
-<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Versjon 2026.02.07.08 — Oppdatering 14</span></h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Versjon 2026.02.07.08 &mdash; Oppdatering 14</span></h3>
 <p><strong>Suite versjonsjustering (7. februar 2026):</strong></p>
 <ul>
-<li><strong>Enhetlig versjonering:</strong> WinProgramManager og WinUpdate deler nå versjon 2026.02.07.08 for suite-konsistens</li>
-<li><strong>WinUpdate skanner-synlighet:</strong> Skanner-popup følger nå hovedvinduet når det får fokus (WM_ACTIVATE handler)</li>
-<li><strong>Forbedret brukeropplevelse:</strong> Ingen behov for å minimere andre apper for å se skanningsfremdrift - popup vises automatisk på toppen</li>
+<li><strong>Enhetlig versjonering:</strong> WinProgramManager og WinUpdate deler n&aring; versjon 2026.02.07.08 for suite-konsistens</li>
+<li><strong>WinUpdate skanner-synlighet:</strong> Skanner-popup f&oslash;lger n&aring; hovedvinduet n&aring;r det f&aring;r fokus (WM_ACTIVATE handler)</li>
+<li><strong>Forbedret brukeropplevelse:</strong> Ingen behov for &aring; minimere andre apper for &aring; se skanningsfremdrift - popup vises automatisk p&aring; toppen</li>
 <li><strong>Suite-identitet:</strong> Alle komponenter viser samme versjonsnummer og publiseringsdato (07.02.2026)</li>
 </ul>
-
 <h3 style="text-align: center;">&nbsp;</h3>
 <h3 style="text-align: center;"><span style="color: #ff0000;">Versjon 2026.01.19.10</span></h3>
 <p><strong>Nytt i denne versjonen (19. januar 2026, 10:00 GMT+1):</strong></p>
 <ul>
-<li><strong>Microsoft Store kildeavtale:</strong> Lagt til --accept-source-agreements flagg til alle winget upgrade-kommandoer for automatisk å akseptere geografiske regiondatakrav for msstore-kilde</li>
-<li><strong>Ikke-interaktiv winget-kjøring:</strong> Eliminerte interaktive meldinger under automatiske oppdateringssjekker ved å akseptere kildeavtaler på forhånd</li>
-<li><strong>Forbedret pålitelighet:</strong> Alle winget-kommandoer kjører nå uten å kreve brukerinteraksjon for kildeavtaler</li>
+<li><strong>Microsoft Store kildeavtale:</strong> Lagt til --accept-source-agreements flagg til alle winget upgrade-kommandoer for automatisk &aring; akseptere geografiske regiondatakrav for msstore-kilde</li>
+<li><strong>Ikke-interaktiv winget-kj&oslash;ring:</strong> Eliminerte interaktive meldinger under automatiske oppdateringssjekker ved &aring; akseptere kildeavtaler p&aring; forh&aring;nd</li>
+<li><strong>Forbedret p&aring;litelighet:</strong> Alle winget-kommandoer kj&oslash;rer n&aring; uten &aring; kreve brukerinteraksjon for kildeavtaler</li>
 </ul>
-
 <h3 style="text-align: center;">&nbsp;</h3>
 <h3 style="text-align: center;"><span style="color: #ff0000;">WinUpdate Versjon 2026.01.11.18</span></h3>
 <p><strong>Nytt i denne versjonen (11. januar 2026, 18:00 GMT+1):</strong></p>
 <ul>
-<li><strong>Dialogikon-konsistens:</strong> Alle applikasjonsdialogbokser viser nå WinUpdate-ikonet i tittellinjen for konsistent merkevarebygging</li>
-<li><strong>Fargeendrende nedlastingsindikator:</strong> Hoppende ball-animasjon endrer farge fra blå (forbereder/installerer) til grønn (laster ned) for tydelig visuell tilbakemelding under pakkenedlastinger</li>
-<li><strong>Feilmeldingsformatering:</strong> Fikset tekstformatering i feilsammendrag for å sikre at norsk og engelsk tekst vises på separate linjer</li>
-<li><strong>Hovedvindu-gjenoppretting:</strong> Forbedret hovedvinduets bring-til-front-oppførsel etter at installasjonsdialogen lukkes</li>
+<li><strong>Dialogikon-konsistens:</strong> Alle applikasjonsdialogbokser viser n&aring; WinUpdate-ikonet i tittellinjen for konsistent merkevarebygging</li>
+<li><strong>Fargeendrende nedlastingsindikator:</strong> Hoppende ball-animasjon endrer farge fra bl&aring; (forbereder/installerer) til gr&oslash;nn (laster ned) for tydelig visuell tilbakemelding under pakkenedlastinger</li>
+<li><strong>Feilmeldingsformatering:</strong> Fikset tekstformatering i feilsammendrag for &aring; sikre at norsk og engelsk tekst vises p&aring; separate linjer</li>
+<li><strong>Hovedvindu-gjenoppretting:</strong> Forbedret hovedvinduets bring-til-front-oppf&oslash;rsel etter at installasjonsdialogen lukkes</li>
 </ul>
-
 <h3 style="text-align: center;">&nbsp;</h3>
 <h3 style="text-align: center;"><span style="color: #ff0000;">Versjon 2026.01.09</span></h3>
 <p><strong>Nytt i denne versjonen (09. januar 2026, 18:00 GMT+1):</strong></p>
 <ul>
 <li><strong>UI-justeringsforfining:</strong> Justerte Logg-knappens vertikale posisjonering for forbedret visuell justering med andre knapper</li>
 </ul>
-
 <h3 style="text-align: center;">&nbsp;</h3>
 <h3 style="text-align: center;"><span style="color: #ff0000;">Versjon 2026.01.08</span></h3>
 <p><strong>Nytt i denne versjonen (08. januar 2026, 20:00 GMT+1):</strong></p>
 <ul>
-<li><strong>Windows Defender falsk positiv-reduksjon:</strong> Lagt til sikkerhetskompileringsflagg (ASLR, DEP, høy-entropi ASLR) for å redusere falske positive deteksjoner</li>
-<li><strong>Forbedret kjørbar metadata:</strong> Omfattende versjonsinformasjon med firmanavn, opphavsrett og produktdetaljer innebygd i kjørbar fil</li>
+<li><strong>Windows Defender falsk positiv-reduksjon:</strong> Lagt til sikkerhetskompileringsflagg (ASLR, DEP, h&oslash;y-entropi ASLR) for &aring; redusere falske positive deteksjoner</li>
+<li><strong>Forbedret kj&oslash;rbar metadata:</strong> Omfattende versjonsinformasjon med firmanavn, opphavsrett og produktdetaljer innebygd i kj&oslash;rbar fil</li>
 <li><strong>Fikset engelsk Uskippe-knapp:</strong> Korrigert variabelnavnvisningsproblem i engelsk lokalitet (en_GB.txt)</li>
-<li><strong>Beskrivende pollingintervalltekst:</strong> Engelsk og norsk nedtrekksmeny matcher nå svensk klarhet: "Skann etter oppdateringer hver X time"</li>
-<li><strong>Skript for falsk positiv-innsending:</strong> Lagt til hjelpeskript for å legge til Windows Defender-unntak og sende inn falske positive rapporter til Microsoft</li>
-<li><strong>Omfattende sikkerhetsdokumentasjon:</strong> Opprettet DEFENDER_SOLUTIONS.md med detaljerte instruksjoner for håndtering av antivirusfalske positiver</li>
+<li><strong>Beskrivende pollingintervalltekst:</strong> Engelsk og norsk nedtrekksmeny matcher n&aring; svensk klarhet: "Skann etter oppdateringer hver X time"</li>
+<li><strong>Skript for falsk positiv-innsending:</strong> Lagt til hjelpeskript for &aring; legge til Windows Defender-unntak og sende inn falske positive rapporter til Microsoft</li>
+<li><strong>Omfattende sikkerhetsdokumentasjon:</strong> Opprettet DEFENDER_SOLUTIONS.md med detaljerte instruksjoner for h&aring;ndtering av antivirusfalske positiver</li>
 <li><strong>Installasjonsdialog-reparasjon:</strong> Opprettet winget_helper.exe som fanger opp all winget-utdata inkludert fremdriftslinjer, nedlastingsprosenter og statusinformasjon i sanntid</li>
-<li><strong>Enkel UAC-opphøyelse:</strong> Én enkelt UAC-melding installerer alle valgte pakker via hjelperarkitekturen (gjenopprettet fra tidligere fungerende implementering)</li>
-<li><strong>Installasjonsfremdriftssporing:</strong> Fremdriftslinje oppdateres fra 0% til 100% når pakker behandles, statustekst viser gjeldende pakkenavn</li>
-<li><strong>Installasjonsstatusarbeidsflyt:</strong> Tydelige statusoverganger: "Forbereder..." → pakkenavn → "Installasjon fullført!" med fremdriftsprosent</li>
-<li><strong>"System oppdatert" dialogfikse:</strong> Vises nå korrekt når alle tilgjengelige oppdateringer er skippet (teller ikke-skippede pakker i stedet for totalt)</li>
-<li><strong>Systembrettsynlighetsfikse:</strong> "Systemet ditt er oppdatert" dialog vises nå når vinduet er synlig, uavhengig av systembrettmodus</li>
+<li><strong>Enkel UAC-opph&oslash;yelse:</strong> &Eacute;n enkelt UAC-melding installerer alle valgte pakker via hjelperarkitekturen (gjenopprettet fra tidligere fungerende implementering)</li>
+<li><strong>Installasjonsfremdriftssporing:</strong> Fremdriftslinje oppdateres fra 0% til 100% n&aring;r pakker behandles, statustekst viser gjeldende pakkenavn</li>
+<li><strong>Installasjonsstatusarbeidsflyt:</strong> Tydelige statusoverganger: "Forbereder..." &rarr; pakkenavn &rarr; "Installasjon fullf&oslash;rt!" med fremdriftsprosent</li>
+<li><strong>"System oppdatert" dialogfikse:</strong> Vises n&aring; korrekt n&aring;r alle tilgjengelige oppdateringer er skippet (teller ikke-skippede pakker i stedet for totalt)</li>
+<li><strong>Systembrettsynlighetsfikse:</strong> "Systemet ditt er oppdatert" dialog vises n&aring; n&aring;r vinduet er synlig, uavhengig av systembrettmodus</li>
 <li><strong>Versjonsoppdatering:</strong> Applikasjonsversjon oppdatert til 2026.01.08.08</li>
 </ul>
-
 <h3 style="text-align: center;">&nbsp;</h3>
 <h3 style="text-align: center;"><span style="color: #ff0000;">Versjon 2026.01.07</span></h3>
 <p><strong>Nytt i denne versjonen (07. januar 2026, 12:00 GMT+1):</strong></p>
 <ul>
-<li><strong>Svensk språkstøtte:</strong> Komplett svensk (sv_SE) lokalisering med 106 oversettelsesnøkler lagt til i locale/sv_SE.txt</li>
-<li><strong>Tre-språksstøtte:</strong> Applikasjonen støtter nå engelsk (GB), norsk (bokmål) og svensk med riktig språkvalg i konfigurasjonsdialogen</li>
+<li><strong>Svensk spr&aring;kst&oslash;tte:</strong> Komplett svensk (sv_SE) lokalisering med 106 oversettelsesn&oslash;kler lagt til i locale/sv_SE.txt</li>
+<li><strong>Tre-spr&aring;ksst&oslash;tte:</strong> Applikasjonen st&oslash;tter n&aring; engelsk (GB), norsk (bokm&aring;l) og svensk med riktig spr&aring;kvalg i konfigurasjonsdialogen</li>
 <li><strong>Naturlig svensk terminologi:</strong> Brukerprefererte svenske termer: "Skippa/Oskippa" for Skip/Unskip, "Ladda om" for Refresh, "Avboka" for Cancel</li>
-<li><strong>UI-klarhetsforbedringer:</strong> Endret Refresh-knappen fra "Uppdatera" til "Ladda om" på svensk for å skille fra "Uppdatera nu"-knappen (Update Now)</li>
-<li><strong>Beskrivende konfigurasjonstekst:</strong> Utvidet svensk pollingintervalltekst fra "Var 2e timme" til "Sök efter uppdateringar varje 2e timme" for bedre klarhet</li>
-<li><strong>Enhetlig innstillingsarkitektur:</strong> Konsolidert til én innstillingsfil (%APPDATA%\WinUpdate\wup_settings.ini) med riktig håndtering av [language]-seksjon</li>
-<li><strong>Fullstendig lokalekodestøtte:</strong> Alle komponenter håndterer nå fullstendige ISO-lokalekoder (sv_SE, nb_NO, en_GB) i stedet for korte koder</li>
+<li><strong>UI-klarhetsforbedringer:</strong> Endret Refresh-knappen fra "Uppdatera" til "Ladda om" p&aring; svensk for &aring; skille fra "Uppdatera nu"-knappen (Update Now)</li>
+<li><strong>Beskrivende konfigurasjonstekst:</strong> Utvidet svensk pollingintervalltekst fra "Var 2e timme" til "S&ouml;k efter uppdateringar varje 2e timme" for bedre klarhet</li>
+<li><strong>Enhetlig innstillingsarkitektur:</strong> Konsolidert til &eacute;n innstillingsfil (%APPDATA%\WinUpdate\wup_settings.ini) med riktig h&aring;ndtering av [language]-seksjon</li>
+<li><strong>Fullstendig lokalekodest&oslash;tte:</strong> Alle komponenter h&aring;ndterer n&aring; fullstendige ISO-lokalekoder (sv_SE, nb_NO, en_GB) i stedet for korte koder</li>
 <li><strong>Sentralisert oversettelseslasting:</strong> Enhetliggjorde all oversettelseslasting til locale/-mappen (var tidligere delt mellom i18n/ og locale/)</li>
-<li><strong>Komplett oversettelsesdekning:</strong> Alle dialoger, verktøytips, knapper og statusmeldinger er nå riktig oversatt på alle tre språkene</li>
-<li><strong>Opprydding av innstillingsfil:</strong> Fjernet foreldet wup_settings.txt fra prosjektroten, alle innstillinger er nå i APPDATA-plasseringen</li>
+<li><strong>Komplett oversettelsesdekning:</strong> Alle dialoger, verkt&oslash;ytips, knapper og statusmeldinger er n&aring; riktig oversatt p&aring; alle tre spr&aring;kene</li>
+<li><strong>Opprydding av innstillingsfil:</strong> Fjernet foreldet wup_settings.txt fra prosjektroten, alle innstillinger er n&aring; i APPDATA-plasseringen</li>
 </ul>
-
 <h3 style="text-align: center;">&nbsp;</h3>
 <h3 style="text-align: center;"><span style="color: #ff0000;">Versjon 2026.01.04.A</span></h3>
 <p><strong>Nytt i denne versjonen (04. januar 2026, 22:00 GMT+1):</strong></p>
 <ul>
 <li><strong>Installasjonsdialog med animasjon:</strong> Ny modal dialog for pakkeinstallasjon med animert fremdriftsindikator (1px bevegelig punkt, 1ms timer)</li>
-<li><strong>Merk alle-knapp:</strong> Fikset knappfunksjonalitet - endret fra avkrysningsboks (ID 2001) til trykkknapp (ID 2099) for å unngå kontrollkonflikter</li>
-<li><strong>UAC-forhøyelse med PowerShell:</strong> Pakkeinstallasjon bruker nå PowerShell i stedet for batch-filer for enkelt UAC-spørsmål og renere utdata</li>
-<li><strong>Håndtering av oppstartssnarveier:</strong> Automatisk verifisering og korrigering av Windows-oppstartssnarveier basert på konfigurasjonsmodus</li>
+<li><strong>Merk alle-knapp:</strong> Fikset knappfunksjonalitet - endret fra avkrysningsboks (ID 2001) til trykkknapp (ID 2099) for &aring; unng&aring; kontrollkonflikter</li>
+<li><strong>UAC-forh&oslash;yelse med PowerShell:</strong> Pakkeinstallasjon bruker n&aring; PowerShell i stedet for batch-filer for enkelt UAC-sp&oslash;rsm&aring;l og renere utdata</li>
+<li><strong>H&aring;ndtering av oppstartssnarveier:</strong> Automatisk verifisering og korrigering av Windows-oppstartssnarveier basert p&aring; konfigurasjonsmodus</li>
 <li><strong>Oppstartsverifisering ved start:</strong> Applikasjonen sjekker at oppstartssnarveien matcher konfigurasjonsmodus og fikser avvik automatisk</li>
 <li><strong>Forbedringer av konfigurasjonsdialog-layout:</strong> Utvidet dialog til 600px med konsekvent 10px knappavstand for bedre visuell layout</li>
-<li><strong>"Legg til i systemstatusfeltet nå"-knappplassering:</strong> Flyttet knapp til nederste rad sammen med andre knapper for renere UI</li>
+<li><strong>"Legg til i systemstatusfeltet n&aring;"-knappplassering:</strong> Flyttet knapp til nederste rad sammen med andre knapper for renere UI</li>
 <li><strong>Modusspesifikk snarveibehandling:</strong> Modus 0 (Manuell) fjerner snarvei, Modus 1 (Oppstart) oppretter med --hidden, Modus 2 (Systemstatusfelt) oppretter med --systray</li>
-<li><strong>Installasjonsdialog i18n:</strong> Lagt til oversettelser for "no_packages_selected" og "install_done"-meldinger på engelsk og norsk</li>
-<li><strong>Opprydding av midlertidige filer:</strong> Garantert opprydding av installasjonsutdatafiler i alle kjøringsveier</li>
-<li><strong>Ferdig-knappstørrelse:</strong> Installasjonsdialogs Ferdig-knapp er nå 150px bred plassert ved H-70 for riktig synlighet</li>
-<li><strong>Konsistens for Bruk/OK-knapper:</strong> Begge knappene bruker nå VerifyStartupShortcut()-funksjonen for pålitelig snarveibehandling</li>
+<li><strong>Installasjonsdialog i18n:</strong> Lagt til oversettelser for "no_packages_selected" og "install_done"-meldinger p&aring; engelsk og norsk</li>
+<li><strong>Opprydding av midlertidige filer:</strong> Garantert opprydding av installasjonsutdatafiler i alle kj&oslash;ringsveier</li>
+<li><strong>Ferdig-knappst&oslash;rrelse:</strong> Installasjonsdialogs Ferdig-knapp er n&aring; 150px bred plassert ved H-70 for riktig synlighet</li>
+<li><strong>Konsistens for Bruk/OK-knapper:</strong> Begge knappene bruker n&aring; VerifyStartupShortcut()-funksjonen for p&aring;litelig snarveibehandling</li>
 </ul>
-
 <h3 style="text-align: center;">&nbsp;</h3>
 <h3 style="text-align: center;"><span style="color: #ff0000;">Versjon 2026.01.04</span></h3>
 <p><strong>Nytt i denne versjonen (04. januar 2026, 18:30 GMT+1):</strong></p>
 <ul>
 <li><strong>Systemstatusfelt Modus 2-implementering:</strong> Komplett systemstatusfelt-funksjonalitet med konfigurerbar automatisk skanning</li>
 <li><strong>Tre konfigurasjonsmodi:</strong> Manuell modus (standard), Skjult skanning ved oppstart, eller Systemstatusfelt med periodisk polling</li>
-<li><strong>Høyreklikk-kontekstmeny:</strong> ⚡ Skann nå!, 🪟 Åpne hovedvindu, ❌ Avslutt-alternativer med emoji-ikoner</li>
-<li><strong>Dynamisk verktøytips:</strong> Viser "WinUpdate - Neste skanning: HH:MM" som viser faktisk klokkeslett for neste planlagte skanning</li>
-<li><strong>Smarte ballongvarsler:</strong> Viser oppdateringsantall når oppdateringer blir funnet, "Du er oppdatert!" kun for manuelle skanninger (automatiske skanninger er stille når ingen oppdateringer)</li>
-<li><strong>"Legg til i systemstatusfeltet nå"-knapp:</strong> Legger umiddelbart til app i systemstatusfeltet fra konfigurasjonsdialogen (kun synlig når Modus 2 er valgt)</li>
+<li><strong>H&oslash;yreklikk-kontekstmeny:</strong> ⚡ Skann n&aring;!, 🪟 &Aring;pne hovedvindu, ❌ Avslutt-alternativer med emoji-ikoner</li>
+<li><strong>Dynamisk verkt&oslash;ytips:</strong> Viser "WinUpdate - Neste skanning: HH:MM" som viser faktisk klokkeslett for neste planlagte skanning</li>
+<li><strong>Smarte ballongvarsler:</strong> Viser oppdateringsantall n&aring;r oppdateringer blir funnet, "Du er oppdatert!" kun for manuelle skanninger (automatiske skanninger er stille n&aring;r ingen oppdateringer)</li>
+<li><strong>"Legg til i systemstatusfeltet n&aring;"-knapp:</strong> Legger umiddelbart til app i systemstatusfeltet fra konfigurasjonsdialogen (kun synlig n&aring;r Modus 2 er valgt)</li>
 <li><strong>Automatiske oppstartssnarveier:</strong> Modus 1 oppretter snarvei med --hidden-parameter, Modus 2 med --systray-parameter</li>
-<li><strong>Håndtering av enkeltinstans:</strong> Å starte appen igjen aktiverer eksisterende vindu i stedet for å opprette duplikatinstans</li>
-<li><strong>Skjul vindu til systemstatusfelt:</strong> Å klikke X i systemstatusfelt-modus skjuler vinduet i stedet for å lukke applikasjonen</li>
-<li><strong>Verktøytipsoppdateringer:</strong> Nedtelling oppdateres hvert 60. sekund for å holde tiden nøyaktig</li>
-<li><strong>NIF_SHOWTIP-flagg:</strong> Påkrevd for NOTIFYICON_VERSION_4 for å vise verktøytips korrekt i Windows</li>
-<li><strong>closetray.exe-verktøy:</strong> Frittstående CLI-verktøy for å lukke systemstatusfelt-instansen rent</li>
+<li><strong>H&aring;ndtering av enkeltinstans:</strong> &Aring; starte appen igjen aktiverer eksisterende vindu i stedet for &aring; opprette duplikatinstans</li>
+<li><strong>Skjul vindu til systemstatusfelt:</strong> &Aring; klikke X i systemstatusfelt-modus skjuler vinduet i stedet for &aring; lukke applikasjonen</li>
+<li><strong>Verkt&oslash;ytipsoppdateringer:</strong> Nedtelling oppdateres hvert 60. sekund for &aring; holde tiden n&oslash;yaktig</li>
+<li><strong>NIF_SHOWTIP-flagg:</strong> P&aring;krevd for NOTIFYICON_VERSION_4 for &aring; vise verkt&oslash;ytips korrekt i Windows</li>
+<li><strong>closetray.exe-verkt&oslash;y:</strong> Frittst&aring;ende CLI-verkt&oslash;y for &aring; lukke systemstatusfelt-instansen rent</li>
 </ul>
-
 <h3 style="text-align: center;">&nbsp;</h3>
 <h3 style="text-align: center;"><span style="color: #ff0000;">Versjon 2026.01.03</span></h3>
 <p><strong>Nytt i denne versjonen (03. januar 2026, 12:00 GMT+1):</strong></p>
 <ul>
 <li><strong>Konfigurasjonsdialog:</strong> Lagt til konfigurasjonsdialog for systemstatusfelt-innstillinger (forberedelse til fremtidig systemstatusfelt-integrasjon)</li>
-<li><strong>Tilpassede verktøytips:</strong> Implementerte tilpasset verktøytipssystem for Om-knapp med samme arkitektur som Hopp over-kolonnens verktøytips</li>
+<li><strong>Tilpassede verkt&oslash;ytips:</strong> Implementerte tilpasset verkt&oslash;ytipssystem for Om-knapp med samme arkitektur som Hopp over-kolonnens verkt&oslash;ytips</li>
 <li><strong>Komplett i18n-system:</strong> Migrert fra en_US/no til ISO-standard en_GB/nb_NO lokalekoder gjennom hele applikasjonen</li>
-<li><strong>Fullstendig oversettelsesdekning:</strong> Lagt til oversettelser for alle UI-elementer inkludert konfigurasjonsdialog, verktøytips og statusmeldinger</li>
+<li><strong>Fullstendig oversettelsesdekning:</strong> Lagt til oversettelser for alle UI-elementer inkludert konfigurasjonsdialog, verkt&oslash;ytips og statusmeldinger</li>
 <li><strong>Norske lokaliseringsfikser:</strong> Fikset "Uskippe"-prefiks-problem, korrigert Om-knapp-oversettelse til "Om"</li>
 <li><strong>Knappavstand:</strong> Eksakt 2-pikslers gap mellom Konfig- og Om-knapper (Konfig ved x=468, Om ved x=590)</li>
 <li><strong>Konfigurasjonsdialog UX:</strong> Avkrysningsboks aktiverer/deaktiverer dropdown; status oppdateres kun etter Bruk/OK; Avbryt forkaster endringer korrekt</li>
 </ul>
-
 <h3 style="text-align: center;">&nbsp;</h3>
 <h3 style="text-align: center;"><span style="color: #ff0000;">Versjon 2026.01.02</span></h3>
 <p><strong>Nytt i denne versjonen (02. januar 2026, 10:30 GMT+1):</strong></p>
 <ul>
-<li><strong>Fikset applikasjonsfrysing etter hopp over-bekreftelse:</strong> Endret synkrone SendMessageW-kall til asynkrone PostMessageW for å forhindre deadlock</li>
+<li><strong>Fikset applikasjonsfrysing etter hopp over-bekreftelse:</strong> Endret synkrone SendMessageW-kall til asynkrone PostMessageW for &aring; forhindre deadlock</li>
 <li><strong>Fikset Angre hopp over-dialogfrysing:</strong> Fjernet tregt winget list-kall (30-sekunders timeout) og erstattet med in-memory-parsing av cachet winget-utdata</li>
-<li><strong>Fikset trunkering av visningsnavn:</strong> Løste problem der hopp over-dialog og angre hopp over-liste viste forkortede navn som "VLC" i stedet for fullstendige navn som "VLC media player"</li>
-<li><strong>Fikset INI-nøkkelmatching:</strong> Lagt til whitespace-trimming for INI-nøkler for å korrekt matche parsede pakke-ID-er som hadde etterfølgende mellomrom</li>
-<li><strong>Visningsnavn-cache i minnet:</strong> Introduserte g_id_to_displayname-mapping med mutex-beskyttelse for å lagre fullstendige pakkenavn i minnet</li>
-<li><strong>Optimalisert Angre hopp over-dialogytelse:</strong> Åpnes nå umiddelbart ved å parse data i minnet i stedet for å starte eksterne prosesser</li>
-<li><strong>Forbedret visningsnavn-oppløsning:</strong> Kaskadeoppslag-strategi: minnecache → winget-utdata i minnet → g_packages → forskjønnet fallback</li>
+<li><strong>Fikset trunkering av visningsnavn:</strong> L&oslash;ste problem der hopp over-dialog og angre hopp over-liste viste forkortede navn som "VLC" i stedet for fullstendige navn som "VLC media player"</li>
+<li><strong>Fikset INI-n&oslash;kkelmatching:</strong> Lagt til whitespace-trimming for INI-n&oslash;kler for &aring; korrekt matche parsede pakke-ID-er som hadde etterf&oslash;lgende mellomrom</li>
+<li><strong>Visningsnavn-cache i minnet:</strong> Introduserte g_id_to_displayname-mapping med mutex-beskyttelse for &aring; lagre fullstendige pakkenavn i minnet</li>
+<li><strong>Optimalisert Angre hopp over-dialogytelse:</strong> &Aring;pnes n&aring; umiddelbart ved &aring; parse data i minnet i stedet for &aring; starte eksterne prosesser</li>
+<li><strong>Forbedret visningsnavn-oppl&oslash;sning:</strong> Kaskadeoppslag-strategi: minnecache &rarr; winget-utdata i minnet &rarr; g_packages &rarr; forskj&oslash;nnet fallback</li>
 </ul>
-
 <h3 style="text-align: center;">&nbsp;</h3>
 <h3 style="text-align: center;"><span style="color: #ff0000;">Versjon 2025.12.20</span></h3>
 <p><strong>Nytt i denne versjonen (20. desember 2025, 15:00 GMT+1):</strong></p>
 <ul>
 <li><strong>Kjernefunksjonalitet:</strong> Initial release med grunnleggende winget wrapper-kapasitet</li>
-<li><strong>Hopp over pakkeoppdateringer:</strong> Mulighet til å hoppe over spesifikke pakkeversjoner</li>
+<li><strong>Hopp over pakkeoppdateringer:</strong> Mulighet til &aring; hoppe over spesifikke pakkeversjoner</li>
 <li><strong>ListView-visning:</strong> Viser tilgjengelige oppdateringer i en sorterbar liste</li>
 <li><strong>Innstillingspersistens:</strong> Lagrer hoppet over pakker til INI-fil i %APPDATA%\WinUpdate</li>
-<li><strong>Flerspråksstøtte:</strong> Engelske og norske oversettelser via INI-filer</li>
+<li><strong>Flerspr&aring;ksst&oslash;tte:</strong> Engelske og norske oversettelser via INI-filer</li>
 <li><strong>Om-dialog:</strong> Viser versjonsinformasjon og lisensdetaljer</li>
 <li><strong>Hyperlenkekontroller:</strong> Tilpasset ListView-subklassing for klikkbare hopp over-lenker</li>
 <li><strong>Ressursstyring:</strong> Ikon- og ressursfil-integrasjon</li>
 <li><strong>Arkitektur:</strong> Bygget med C++ og Win32 API (nativ Windows-applikasjon), CMake-byggsystem med MinGW GCC 15.2.0</li>
-<li><strong>Modulær kodestruktur:</strong> Separate filer for parsing, logging, hyperlenker, dialoger</li>
-<li><strong>Trådsikkerhet:</strong> Mutex-beskyttet global tilstand for trådsikre operasjoner</li>
+<li><strong>Modul&aelig;r kodestruktur:</strong> Separate filer for parsing, logging, hyperlenker, dialoger</li>
+<li><strong>Tr&aring;dsikkerhet:</strong> Mutex-beskyttet global tilstand for tr&aring;dsikre operasjoner</li>
 </ul>
-
-<hr>
-<p style="text-align:center; color:#007a00;"><strong>Release status:</strong> Ready for publish — release will be performed tomorrow.</p>
-<p style="text-align:center; font-size:12px; color:#666;">Committed 11 February 2026 — codebase prepared for publishing.</p>
-<br>
-<br>
+<hr />
+<p style="text-align: center; color: #007a00;"><strong>Release status:</strong> Ready for publish &mdash; release will be performed tomorrow.</p>
+<p style="text-align: center; font-size: 12px; color: #666;">Committed 11 February 2026 &mdash; codebase prepared for publishing.</p>
+<p><br /><br /></p>

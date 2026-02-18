@@ -1,31 +1,23 @@
-<h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
-<span style="color: #0066cc;">📦 WinProgramSuite — Complete Windows Package Management System</span>
-</h2>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;">
-<strong>Latest Update:</strong> 15 February 2026 | <strong>Complete i18n & Settings Scheduler</strong><br/>
-This changelog covers <strong>WinProgramManager</strong>, the database management component of the WinProgramSuite.<br/>
-For automatic update features, see <strong>WinUpdate</strong> documentation.
-</p>
-
+<h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">📦 WinProgramSuite &mdash; Complete Windows Package Management System</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Version 2026.02.15.01 — Update 21</span></h3>
-<p><strong>Complete i18n & Settings Scheduler (15 February 2026):</strong></p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 18 February 2026 | <strong>Complete i18n &amp; Settings Scheduler</strong><br />This changelog covers <strong>WinProgramManager</strong>, the database management component of the WinProgramSuite.<br />For automatic update features, see <strong>WinUpdate</strong> documentation.</p>
+<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Version 2026.02.18.13 — Update 1</span></h3>
+<p><strong>Complete i18n &amp; Settings Scheduler (18 February 2026):</strong></p>
 <ul>
 <li><strong>Complete Settings Internationalization:</strong> All 15 settings dialog strings now fully translated to English, Norwegian, and Swedish - settings_btn, settings_title, settings_run_updater_btn, settings_scheduler_enable, settings_scheduler_interval_days_label, settings_scheduler_custom_days_label, settings_scheduler_first_run_label, settings_scheduler_run_if_fail_label, settings_use_button, settings_ok_button, settings_cancel_button, settings_working_message, settings_days_out_of_range, settings_days_invalid_integer, settings_failed_launch_updater</li>
-<li><strong>Norwegian Display:</strong> Settings dialog shows "Innstillinger", "Aktiver planlagte oppdateringer", "Intervall (dager):", "Tidspunkt på dagen:", "Bruk", "OK", "Avbryt"</li>
-<li><strong>Swedish Display:</strong> Settings dialog shows "Inställningar", "Aktivera schemalagda uppdateringar", "Intervall (dagar):", "Tidpunkt på dagen:", "Använd", "OK", "Avbryt"</li>
+<li><strong>Norwegian Display:</strong> Settings dialog shows "Innstillinger", "Aktiver planlagte oppdateringer", "Intervall (dager):", "Tidspunkt p&aring; dagen:", "Bruk", "OK", "Avbryt"</li>
+<li><strong>Swedish Display:</strong> Settings dialog shows "Inst&auml;llningar", "Aktivera schemalagda uppdateringar", "Intervall (dagar):", "Tidpunkt p&aring; dagen:", "Anv&auml;nd", "OK", "Avbryt"</li>
 <li><strong>Universal Task Scheduler Parsing:</strong> Task scheduler output now parsed language-independently, extracting day intervals (1-365) regardless of Windows display language (English, Norwegian, Chinese, Japanese, Russian, etc.)</li>
 <li><strong>Pattern-Based Extraction:</strong> Parser uses intelligent number extraction with date/time filtering - works with "Every 5 day(s)", "hver 5 dag", "每 5 天", etc.</li>
-<li><strong>Checkbox State Fix:</strong> Settings dialog checkbox correctly reflects scheduler state by checking <code>intervalDays > 0</code> instead of multiple fallback conditions</li>
+<li><strong>Checkbox State Fix:</strong> Settings dialog checkbox correctly reflects scheduler state by checking <code>intervalDays &gt; 0</code> instead of multiple fallback conditions</li>
 <li><strong>Custom Days Validation:</strong> Input field now validates integer-only input with range checking (1-365 days) and clear localized error messages</li>
 <li><strong>Extended Interval Support:</strong> Custom intervals up to 365 days for annual/semi-annual update schedules (previously limited to 30 days)</li>
 <li><strong>Script Timeout Protection:</strong> <code>restore_missing_packages.ps1</code> now has 15-second timeout for winget queries to prevent indefinite hanging on malformed package IDs</li>
 <li><strong>Input Quality:</strong> Trims whitespace, validates whole numbers only, rejects decimals/text/special characters</li>
 </ul>
-
 <h3 style="text-align: center;">&nbsp;</h3>
-<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Version 2026.02.11.01 — Update 19</span></h3>
-<p><strong>Stability & installer fixes (11 February 2026):</strong></p>
+<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Version 2026.02.11.01 &mdash; Update 19</span></h3>
+<p><strong>Stability &amp; installer fixes (11 February 2026):</strong></p>
 <ul>
 <li><strong>Installed filter:</strong> Made the Installed filter toggle instantaneous by loading package IDs from the local database (no blocking winget query)</li>
 <li><strong>Reinstall dialog:</strong> Fixed missing button text by restoring the `close` locale key and adjusting owner-drawn button rendering</li>
@@ -33,36 +25,37 @@ For automatic update features, see <strong>WinUpdate</strong> documentation.
 <li><strong>Focus handling:</strong> Main window is now brought to the front when the install/reinstall dialog closes</li>
 <li><strong>Database cleanup:</strong> Removed stale entries from `installed_apps` to correct incorrect installed counts</li>
 </ul>
-
 <h3 style="text-align: center;">&nbsp;</h3>
-<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Version 2026.02.09.01 — Update 18</span></h3>
-<p><strong>Search Dialog Polish & Critical Fixes (9 February 2026):</strong></p>
+<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Version 2026.02.09.01 &mdash; Update 18</span></h3>
+<p><strong>Search Dialog Polish &amp; Critical Fixes (9 February 2026):</strong></p>
+<ul>
 <ul>
 <li><strong>Search Dialog Internationalization:</strong> Added 15 locale keys (search_dialog_title, search_in_categories, search_options, etc.) translated to English, Norwegian, and Swedish</li>
 <li><strong>Search Dialog Visual Overhaul:</strong> White background (RGB 255,255,255), 11pt Segoe UI font, owner-drawn buttons matching main window styling</li>
 <li><strong>Two-Column Layout:</strong> Reorganized radio buttons into efficient 50/50 split - left column (Case Insensitive, Contains, Use Regex, Search All), right column (Case Sensitive, Exact Match, Refine Previous Results)</li>
-<li><strong>Dialog Unit Conversion:</strong> Search dialog buttons properly sized at 60x14 DLU (≈88x30 pixels for 11pt font), matching main window button proportions</li>
+<li><strong>Dialog Unit Conversion:</strong> Search dialog buttons properly sized at 60x14 DLU (&asymp;88x30 pixels for 11pt font), matching main window button proportions</li>
+</ul>
+</ul>
 <h3 style="text-align: center;">&nbsp;</h3>
-<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Version 2026.02.13.01 — Update 20</span></h3>
-<p><strong>First-run scheduler & configuration marker (13 February 2026):</strong></p>
+<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Version 2026.02.13.01 &mdash; Update 20</span></h3>
+<p><strong>First-run scheduler &amp; configuration marker (13 February 2026):</strong></p>
+<ul>
 <ul>
 <li><strong>First-run scheduler:</strong> On first run the app will create a weekly Task Scheduler job named <em>WinProgramUpdaterWeekly</em> that runs <code>WinProgramUpdaterGUI.exe --hidden</code> for automated weekly updates.</li>
 <li><strong>Configuration marker:</strong> A small INI is written to <code>%APPDATA%\WinProgramManager\WinProgramManager.ini</code> to mark first-run completion. The INI stores <code>Settings/Language</code> (default <code>en_GB</code>) and <code>Settings/UpdaterTaskCreated</code> (1 on success, 0 on failure).</li>
 <li><strong>One-time flow:</strong> If the INI is present the app will not try to re-create the scheduled task. Delete the INI to force the first-run logic again.</li>
 </ul>
-
 <li><strong>Installation Status Bug Fix:</strong> Fixed critical bug where installed apps showed "Install" instead of "Reinstall/Uninstall" in details dialog - now checks i.package_id column from LEFT JOIN instead of installed_version (which can be empty string)</li>
-<li><strong>Confirmation Dialog Improvements:</strong> Added white background, blue question mark icon (IDI_QUESTION), wider buttons (75 DLU ≈110px), proper button icons</li>
+<li><strong>Confirmation Dialog Improvements:</strong> Added white background, blue question mark icon (IDI_QUESTION), wider buttons (75 DLU &asymp;110px), proper button icons</li>
 <li><strong>Simplified Unicode Icons:</strong> Changed from emoji to standard Unicode - ▼ Install (down triangle), ⟲ Reinstall (circular arrow), ⨳ Uninstall (bold X), ✖ Cancel</li>
 <li><strong>Missing Locale Strings:</strong> Added confirm_install_title and confirm_install_msg to all language files (was causing blank confirmation dialogs for install action)</li>
-<li><strong>Button Width Adjustments:</strong> Main window buttons widened - Installed: 100→120px, Refresh: 180→220px to accommodate icons without text truncation</li>
+<li><strong>Button Width Adjustments:</strong> Main window buttons widened - Installed: 100&rarr;120px, Refresh: 180&rarr;220px to accommodate icons without text truncation</li>
 <li><strong>Complete Button Styling:</strong> All confirmation and app details dialog buttons now use RGB(10,57,129) base, RGB(25,95,210) hover, RGB(6,34,80) pressed colors with 19pt bold font</li>
 <li><strong>Code Consistency:</strong> WM_DRAWITEM handlers, button subclassing, and hover tracking now identical across main window, search dialog, confirmation dialog, and app details dialog</li>
 </ul>
-
 <h3 style="text-align: center;">&nbsp;</h3>
-<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Version 2026.02.08.02 — Update 17</span></h3>
-<p><strong>Design/Layout/Look & Feel Complete (8 February 2026):</strong></p>
+<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Version 2026.02.08.02 &mdash; Update 17</span></h3>
+<p><strong>Design/Layout/Look &amp; Feel Complete (8 February 2026):</strong></p>
 <ul>
 <li><strong>Custom Quit Dialog:</strong> Professional quit confirmation with custom-drawn question mark icon (IDI_QUESTION) replacing standard MessageBox</li>
 <li><strong>Blue Button Theme:</strong> Quit dialog Yes/No buttons match About button color (RGB 10,57,129) for consistent visual identity</li>
@@ -74,9 +67,8 @@ For automatic update features, see <strong>WinUpdate</strong> documentation.
 <li><strong>Professional Polish:</strong> System icon integration, proper mouse tracking (TME_LEAVE), and bold font usage across all dialogs</li>
 <li><strong>Design Milestone:</strong> Complete visual identity established - all dialogs share consistent white backgrounds, owner-drawn buttons, and professional styling</li>
 </ul>
-
 <h3 style="text-align: center;">&nbsp;</h3>
-<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Version 2026.02.08.01 — Update 16</span></h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Version 2026.02.08.01 &mdash; Update 16</span></h3>
 <p><strong>Professional App Details Dialog (8 February 2026):</strong></p>
 <ul>
 <li><strong>Modern Owner-Drawn Buttons:</strong> Custom-styled buttons with color themes - Install (green), Uninstall (red), Reinstall/Close (blue)</li>
@@ -84,15 +76,14 @@ For automatic update features, see <strong>WinUpdate</strong> documentation.
 <li><strong>Pure White Background:</strong> Consistent RGB(255,255,255) background matching spinner and main window styling</li>
 <li><strong>Complete Internationalization:</strong> All labels fully localized - Publisher, Version, Package ID, Source, Status, Description, Technical Information, Homepage, License, Installer Type, Architecture, Tags in 3 languages</li>
 <li><strong>Value String Localization:</strong> Status values (Installed/Not Installed), placeholder texts (Unknown, Not available, No tags, No description) translated</li>
-<li><strong>Fixed Close Button:</strong> Blue-themed Close button with proper localized text ("Close"/"Lukk"/"Stäng")</li>
+<li><strong>Fixed Close Button:</strong> Blue-themed Close button with proper localized text ("Close"/"Lukk"/"St&auml;ng")</li>
 <li><strong>Improved User Experience:</strong> Description field no longer auto-selected on dialog open</li>
 <li><strong>Consistent Text Styling:</strong> Black text (RGB 0,0,0) on white backgrounds across all controls via WM_CTLCOLORSTATIC, WM_CTLCOLOREDIT, WM_CTLCOLORDLG</li>
 <li><strong>Locale System Extension:</strong> Added 19 new locale keys (app_details_title, publisher_label, version_label, etc.) with LoadLocale parsing</li>
 </ul>
-
 <h3 style="text-align: center;">&nbsp;</h3>
-<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Version 2026.02.07.08 — Update 15</span></h3>
-<p><strong>Complete Internationalization & Quit System (7 February 2026):</strong></p>
+<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Version 2026.02.07.08 &mdash; Update 15</span></h3>
+<p><strong>Complete Internationalization &amp; Quit System (7 February 2026):</strong></p>
 <ul>
 <li><strong>Complete i18n Implementation:</strong> 90+ locale strings covering all UI elements, error messages, and dialogs in 3 languages</li>
 <li><strong>Professional Quit System:</strong> Quit confirmation with "Yes/No" buttons for all exit methods (X button, quit button, Ctrl+W)</li>
@@ -104,12 +95,11 @@ For automatic update features, see <strong>WinUpdate</strong> documentation.
 <li><strong>Button Internationalization:</strong> Search, End Search, and Installed buttons now fully translated (removed hardcoded strings)</li>
 <li><strong>Localized Error Messages:</strong> 15+ error/warning messages now available in all 3 languages</li>
 <li><strong>quit_handler Module:</strong> Centralized quit logic in quit_handler.cpp/.h for better code organization</li>
-<li><strong>Title Fix:</strong> Removed space from "WinProgram Manager" → "WinProgramManager" in spinner and dialogs</li>
-<li><strong>Norwegian Language Fix:</strong> Corrected "Behandler database" → "Behandler databasen" (definite form)</li>
+<li><strong>Title Fix:</strong> Removed space from "WinProgram Manager" &rarr; "WinProgramManager" in spinner and dialogs</li>
+<li><strong>Norwegian Language Fix:</strong> Corrected "Behandler database" &rarr; "Behandler databasen" (definite form)</li>
 </ul>
-
 <h3 style="text-align: center;">&nbsp;</h3>
-<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Version 2026.02.07.08 — Update 14</span></h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Version 2026.02.07.08 &mdash; Update 14</span></h3>
 <p><strong>Suite Version Alignment (7 February 2026):</strong></p>
 <ul>
 <li><strong>Unified Versioning:</strong> WinProgramManager and WinUpdate now share version 2026.02.07.08 for suite consistency</li>
@@ -117,7 +107,6 @@ For automatic update features, see <strong>WinUpdate</strong> documentation.
 <li><strong>Improved User Experience:</strong> No need to minimize other apps to see scan progress - popup automatically appears on top</li>
 <li><strong>Suite Identity:</strong> All components display the same version number and publish date (07.02.2026)</li>
 </ul>
-
 <h3 style="text-align: center;">&nbsp;</h3>
 <h3 style="text-align: center;"><span style="color: #ff0000;">Version 2026.01.19.10</span></h3>
 <p><strong>New in this version (19 January 2026, 10:00 GMT+1):</strong></p>
@@ -126,7 +115,6 @@ For automatic update features, see <strong>WinUpdate</strong> documentation.
 <li><strong>Non-Interactive winget Execution:</strong> Eliminated interactive prompts during automatic update checks by accepting source agreements in advance</li>
 <li><strong>Improved Reliability:</strong> All winget commands now execute without requiring user interaction for source agreements</li>
 </ul>
-
 <h3 style="text-align: center;">&nbsp;</h3>
 <h3 style="text-align: center;"><span style="color: #ff0000;">WinUpdate Version 2026.01.11.18</span></h3>
 <p><strong>New in this version (11 January 2026, 18:00 GMT+1):</strong></p>
@@ -136,14 +124,12 @@ For automatic update features, see <strong>WinUpdate</strong> documentation.
 <li><strong>Error Message Formatting:</strong> Fixed text formatting in error summaries to ensure Norwegian and English text appear on separate lines</li>
 <li><strong>Main Window Restoration:</strong> Improved main window bring-to-front behavior after installation dialog closes</li>
 </ul>
-
 <h3 style="text-align: center;">&nbsp;</h3>
 <h3 style="text-align: center;"><span style="color: #ff0000;">Version 2026.01.09</span></h3>
 <p><strong>New in this version (09 January 2026, 18:00 GMT+1):</strong></p>
 <ul>
 <li><strong>UI Alignment Refinement:</strong> Adjusted Log button vertical positioning for improved visual alignment with other buttons</li>
 </ul>
-
 <h3 style="text-align: center;">&nbsp;</h3>
 <h3 style="text-align: center;"><span style="color: #ff0000;">Version 2026.01.08</span></h3>
 <p><strong>New in this version (08 January 2026, 20:00 GMT+1):</strong></p>
@@ -157,28 +143,26 @@ For automatic update features, see <strong>WinUpdate</strong> documentation.
 <li><strong>Installation Dialog Repair:</strong> Created winget_helper.exe that captures all winget output including progress bars, download percentages, and status information in real-time</li>
 <li><strong>Single UAC Elevation:</strong> One UAC prompt installs all selected packages via helper architecture (restored from previous working implementation)</li>
 <li><strong>Installation Progress Tracking:</strong> Progress bar updates from 0% to 100% as packages are processed, status text shows current package name</li>
-<li><strong>Installation Status Workflow:</strong> Clear status transitions: "Preparing..." → package names → "Installation complete!" with progress percentage</li>
+<li><strong>Installation Status Workflow:</strong> Clear status transitions: "Preparing..." &rarr; package names &rarr; "Installation complete!" with progress percentage</li>
 <li><strong>"System Updated" Dialog Fix:</strong> Now correctly shows when all available updates are skipped (counts non-skipped packages instead of total)</li>
 <li><strong>System Tray Visibility Fix:</strong> "Your system is updated" dialog now appears when window is visible, regardless of system tray mode</li>
 <li><strong>Version Update:</strong> Application version updated to 2026.01.08.08</li>
 </ul>
-
 <h3 style="text-align: center;">&nbsp;</h3>
 <h3 style="text-align: center;"><span style="color: #ff0000;">Version 2026.01.07</span></h3>
 <p><strong>New in this version (07 January 2026, 12:00 GMT+1):</strong></p>
 <ul>
 <li><strong>Swedish Language Support:</strong> Complete Swedish (sv_SE) localization with 106 translation keys added to locale/sv_SE.txt</li>
-<li><strong>Three-Language Support:</strong> Application now supports English (GB), Norwegian (Bokmål), and Swedish with proper language selection in Config dialog</li>
+<li><strong>Three-Language Support:</strong> Application now supports English (GB), Norwegian (Bokm&aring;l), and Swedish with proper language selection in Config dialog</li>
 <li><strong>Natural Swedish Terminology:</strong> User-preferred Swedish terms: "Skippa/Oskippa" for Skip/Unskip, "Ladda om" for Refresh, "Avboka" for Cancel</li>
 <li><strong>UI Clarity Improvements:</strong> Changed Refresh button from "Uppdatera" to "Ladda om" in Swedish to differentiate from "Uppdatera nu" (Update Now) button</li>
-<li><strong>Descriptive Config Text:</strong> Expanded Swedish polling interval text from "Var 2e timme" to "Sök efter uppdateringar varje 2e timme" for better clarity</li>
+<li><strong>Descriptive Config Text:</strong> Expanded Swedish polling interval text from "Var 2e timme" to "S&ouml;k efter uppdateringar varje 2e timme" for better clarity</li>
 <li><strong>Unified Settings Architecture:</strong> Consolidated to single settings file (%APPDATA%\WinUpdate\wup_settings.ini) with proper [language] section handling</li>
 <li><strong>Full Locale Code Support:</strong> All components now handle full ISO locale codes (sv_SE, nb_NO, en_GB) instead of short codes</li>
 <li><strong>Centralized Translation Loading:</strong> Unified all translation loading to locale/ folder (was split between i18n/ and locale/)</li>
 <li><strong>Complete Translation Coverage:</strong> All dialogs, tooltips, buttons, and status messages now properly translated in all three languages</li>
 <li><strong>Settings File Cleanup:</strong> Removed obsolete wup_settings.txt from project root, all settings now in APPDATA location</li>
 </ul>
-
 <h3 style="text-align: center;">&nbsp;</h3>
 <h3 style="text-align: center;"><span style="color: #ff0000;">Version 2026.01.04.A</span></h3>
 <p><strong>New in this version (04 January 2026, 22:00 GMT+1):</strong></p>
@@ -196,7 +180,6 @@ For automatic update features, see <strong>WinUpdate</strong> documentation.
 <li><strong>Done Button Sizing:</strong> Install dialog Done button now 150px wide positioned at H-70 for proper visibility</li>
 <li><strong>Apply/OK Button Consistency:</strong> Both buttons now use VerifyStartupShortcut() function for reliable shortcut management</li>
 </ul>
-
 <h3 style="text-align: center;">&nbsp;</h3>
 <h3 style="text-align: center;"><span style="color: #ff0000;">Version 2026.01.04</span></h3>
 <p><strong>New in this version (04 January 2026, 18:30 GMT+1):</strong></p>
@@ -214,7 +197,6 @@ For automatic update features, see <strong>WinUpdate</strong> documentation.
 <li><strong>NIF_SHOWTIP Flag:</strong> Required for NOTIFYICON_VERSION_4 to properly display tooltips on Windows</li>
 <li><strong>closetray.exe Utility:</strong> Standalone CLI tool to cleanly close system tray instance</li>
 </ul>
-
 <h3 style="text-align: center;">&nbsp;</h3>
 <h3 style="text-align: center;"><span style="color: #ff0000;">Version 2026.01.03</span></h3>
 <p><strong>New in this version (03 January 2026, 12:00 GMT+1):</strong></p>
@@ -227,7 +209,6 @@ For automatic update features, see <strong>WinUpdate</strong> documentation.
 <li><strong>Button Spacing:</strong> Precise 2-pixel gap between Config and About buttons (Config at x=468, About at x=590)</li>
 <li><strong>Config Dialog UX:</strong> Checkbox enables/disables dropdown; status updates only after Apply/OK; Cancel properly discards changes</li>
 </ul>
-
 <h3 style="text-align: center;">&nbsp;</h3>
 <h3 style="text-align: center;"><span style="color: #ff0000;">Version 2026.01.02</span></h3>
 <p><strong>New in this version (02 January 2026, 10:30 GMT+1):</strong></p>
@@ -238,9 +219,8 @@ For automatic update features, see <strong>WinUpdate</strong> documentation.
 <li><strong>Fixed INI Key Matching:</strong> Added whitespace trimming for INI keys to correctly match parsed package IDs that had trailing spaces</li>
 <li><strong>In-Memory Display Name Cache:</strong> Introduced g_id_to_displayname map with mutex protection to store full package names in memory</li>
 <li><strong>Optimized Unskip Dialog Performance:</strong> Now opens instantly by parsing in-memory data instead of spawning external processes</li>
-<li><strong>Enhanced Display Name Resolution:</strong> Cascading lookup strategy: memory cache → in-memory winget output → g_packages → prettified fallback</li>
+<li><strong>Enhanced Display Name Resolution:</strong> Cascading lookup strategy: memory cache &rarr; in-memory winget output &rarr; g_packages &rarr; prettified fallback</li>
 </ul>
-
 <h3 style="text-align: center;">&nbsp;</h3>
 <h3 style="text-align: center;"><span style="color: #ff0000;">Version 2025.12.20</span></h3>
 <p><strong>New in this version (20 December 2025, 15:00 GMT+1):</strong></p>
@@ -257,9 +237,7 @@ For automatic update features, see <strong>WinUpdate</strong> documentation.
 <li><strong>Modular Code Structure:</strong> Separate files for parsing, logging, hyperlinks, dialogs</li>
 <li><strong>Thread Safety:</strong> Mutex-protected global state for thread-safe operations</li>
 </ul>
-
-<hr>
-<p style="text-align:center; color:#007a00;"><strong>Release status:</strong> Ready for publish — release will be performed tomorrow.</p>
-<p style="text-align:center; font-size:12px; color:#666;">Committed 11 February 2026 — codebase prepared for publishing.</p>
-<br>
-<br>
+<hr />
+<p style="text-align: center; color: #007a00;"><strong>Release status:</strong> Ready for publish &mdash; release will be performed tomorrow.</p>
+<p style="text-align: center; font-size: 12px; color: #666;">Committed 11 February 2026 &mdash; codebase prepared for publishing.</p>
+<p><br /><br /></p>
