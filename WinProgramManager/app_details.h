@@ -122,6 +122,13 @@ struct Locale {
     std::wstring reinstalling_status;
     std::wstring uninstalling_status;
     std::wstring querying_winget_status;
+    // App running / force-close prompts
+    std::wstring app_running_title;
+    std::wstring app_running_prompt;
+    std::wstring app_force_close_title;
+    std::wstring app_force_close_prompt;
+    std::wstring app_user_declined_close;
+    std::wstring installation_cancelled;
     // Search Dialog
     std::wstring search_dialog_title;
     std::wstring search_in_categories;

@@ -1953,8 +1953,7 @@ void ResizeControls(HWND hwnd) {
     const int endSearchBtnWidth = 110;
     const int searchBtnSpacing = 9;  // Extra space between buttons and dropdown
     
-    // Quit button (far left)
-    MoveWindow(g_hQuitBtn, margin, margin, quitBtnWidth, btnHeight, TRUE);
+    // NOTE: Quit button is positioned below the main app list (reserved area at bottom)
     
     // Language selector and About button (top right) - About is at far right
     MoveWindow(g_hLangCombo, rc.right - margin - langComboWidth - spacing - aboutBtnWidth, margin, langComboWidth, 200, TRUE);
@@ -2021,11 +2020,14 @@ void ResizeControls(HWND hwnd) {
         }
     }
     
+    // Reserve bottom area for the Quit button (steal from the list height)
+    const int bottomReserved = btnHeight + spacing;
+
     // Left panel
     int leftWidth = g_splitterPos - margin;
     MoveWindow(g_hTagCountLabel, margin, margin + btnHeight + spacing, leftWidth, labelHeight, TRUE);
-    MoveWindow(g_hTagTree, margin, margin + btnHeight + spacing + labelHeight + spacing, 
-               leftWidth, rc.bottom - margin * 2 - btnHeight - labelHeight - spacing * 2, TRUE);
+    MoveWindow(g_hTagTree, margin, margin + btnHeight + spacing + labelHeight + spacing,
+               leftWidth, rc.bottom - margin * 2 - btnHeight - labelHeight - spacing * 2 - bottomReserved, TRUE);
     
     // Right panel
     int rightX = g_splitterPos + 4;
@@ -2041,9 +2043,17 @@ void ResizeControls(HWND hwnd) {
     
     // App list starts right after labels
     int appListY = margin + btnHeight + spacing + labelHeight + spacing;
-    
+
     MoveWindow(g_hAppList, rightX, appListY,
-               rc.right - rightX - margin, rc.bottom - appListY - margin, TRUE);
+               rc.right - rightX - margin, rc.bottom - appListY - margin - bottomReserved, TRUE);
+
+    // Position Quit button centered under the app list area (uses reserved bottom space)
+    if (g_hQuitBtn && IsWindow(g_hQuitBtn)) {
+        // Center Quit button in the full client area
+        int quitX = (rc.right - quitBtnWidth) / 2;
+        int quitY = rc.bottom - margin - btnHeight;
+        MoveWindow(g_hQuitBtn, quitX, quitY, quitBtnWidth, btnHeight, TRUE);
+    }
 }
 
 bool OpenDatabase() {

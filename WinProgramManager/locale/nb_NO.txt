@@ -142,7 +142,6 @@ search_button=🔍 Søk
 cancel_button=✖ Avbryt
 
 # Settings Dialog
-settings_btn=Innstillinger
 settings_title=Innstillinger
 settings_run_updater_btn=Kjør oppdaterer
 settings_scheduler_status=Oppgaveplanleggerstatus:

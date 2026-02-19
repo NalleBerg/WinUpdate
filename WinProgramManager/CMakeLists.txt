@@ -15,6 +15,7 @@ add_executable(WinProgramManager WIN32
     app_details.cpp
     spinner_dialog.cpp
     install_dialog.cpp
+    process_utils.cpp
     about.cpp
     quit_handler.cpp
     task_scheduler.cpp

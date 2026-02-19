@@ -140,7 +140,6 @@ search_button=🔍 Sök
 cancel_button=✖ Avbryt
 
 # Settings Dialog
-settings_btn=Inställningar
 settings_title=Inställningar
 settings_run_updater_btn=Kör uppdaterare
 settings_scheduler_status=Schemaläggare status:
