@@ -23,6 +23,21 @@
 3. Run `WinProgramUpdaterGUI.exe` to update the database to current packages
 4. Launch `WinProgramManager.exe` - your installed apps will be automatically detected
 
+Important for builders:
+- If you compiled the application yourself, run `WinProgramUpdaterGUI.exe` (found in the built package directory) once after compiling to ensure the distributed database file is up to date with the expected schema and any local migrations. The database file is available here: https://prog.nalle.no/user/data/apps/WinProgramManager.db
+- The easiest way to build on Windows is to open a command prompt in the `WinProgramManager` folder and run `makeit.bat` which runs CMake and builds the project with the configured MinGW toolchain.
+
+Build requirements (Windows):
+- MinGW-w64 (GCC 15.2.0 recommended) or another Windows C++ toolchain compatible with the CMake setup
+- CMake (3.20+)
+- Git (to checkout the repository and submodules if any)
+- 7-Zip (optional, used by the packaging script)
+- ImageMagick (optional, for generating PNG/ICO from SVG when preparing assets)
+- PowerShell (bundled on modern Windows, used by various scripts)
+
+Recommended editor:
+- Visual Studio Code — lightweight, cross-platform, and works well with CMake, MinGW, and the project's scripts.
+
 **Note:** The GitHub repository includes the complete WinProgramManager package directory (executables, DLLs, locale files) but excludes the database due to size constraints. The application is currently in testing phase - use at your own discretion.
 
 ## 🏗️ Suite Components
