@@ -73,8 +73,10 @@ about_github=GitHub Repository:
 about_view_license=View License
 about_close=✖ Close
 reinstall_btn=Re-install
-uninstall_btn=Uninstallconfirm_install_title=Confirm Installation
-confirm_install_msg=Are you sure you want to install this application?\n\n%sconfirm_reinstall_title=Confirm Re-install
+uninstall_btn=Uninstall
+confirm_install_title=Confirm Installation
+confirm_install_msg=Are you sure you want to install this application?\n\n%s
+confirm_reinstall_title=Confirm Re-install
 confirm_reinstall_msg=Are you sure you want to re-install this application?\n\n%s
 confirm_uninstall_title=Confirm Uninstall
 confirm_uninstall_msg=Are you sure you want to uninstall this application?\n\n%s\n\nThis will remove the application from your system.
@@ -132,7 +134,6 @@ search_button=🔍 Search
 cancel_button=✖ Cancel
 
 # Settings Dialog
-settings_btn=Settings
 settings_title=Settings
 settings_run_updater_btn=Run Updater GUI
 settings_scheduler_status=Task Scheduler status:
