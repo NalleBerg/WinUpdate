@@ -1,6 +1,16 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">📦 WinProgramSuite &mdash; Komplett Windows Pakkeh&aring;ndteringssystem</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Siste oppdatering:</strong> 18. februar 2026 | <strong>Komplett i18n &amp; Innstillinger-planlegger</strong><br />Denne endringsloggen dekker <strong>WinProgramManager</strong>, databaseh&aring;ndteringskomponenten i WinProgramSuite.<br />For automatiske oppdateringsfunksjoner, se <strong>WinUpdate</strong>-dokumentasjon.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Siste oppdatering:</strong> 21. februar 2026 | <strong>Delt Databaseplassering</strong><br />Denne endringsloggen dekker <strong>WinProgramManager</strong>, databaseh&aring;ndteringskomponenten i WinProgramSuite.<br />For automatiske oppdateringsfunksjoner, se <strong>WinUpdate</strong>-dokumentasjon.</p>
+<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Versjon 2026.02.21.07 — Oppdatering 21</span></h3>
+<p><strong>Delt Databaseplassering (21. februar 2026):</strong></p>
+<ul>
+<li><strong>Sentralisert Databaselagring:</strong> Databasen lagres n&aring; i <code>C:\ProgramData\WinProgramManager\WinProgramManager.db</code> i stedet for i per-bruker installasjonskatalog</li>
+<li><strong>Flerbukkerst&oslash;tte:</strong> Alle brukere p&aring; systemet deler n&aring; samme pakkedatabase og metadata, noe som sikrer konsistens p&aring; tvers av brukerkontoer</li>
+<li><strong>Redusert Diskbruk:</strong> Eliminerer dupliserte databasekopier for hver bruker, noe som sparer diskplass p&aring; flerbukersystemer</li>
+<li><strong>Automatisk Migrering:</strong> Applikasjonen oppretter automatisk ProgramData-katalogen og migrerer til den nye plasseringen ved f&oslash;rste kj&oslash;ring</li>
+<li><strong>Systemomfattende Installasjon:</strong> Bedre samsvar med Windows beste praksis for applikasjonsdata delt p&aring; tvers av alle brukere</li>
+</ul>
+<h3 style="text-align: center;">&nbsp;</h3>
 <h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Versjon 2026.02.19.10 — Oppdatering 1</span></h3>
 <p><strong>Komplett i18n &amp; Innstillinger-planlegger (18. februar 2026):</strong></p>
 <ul>

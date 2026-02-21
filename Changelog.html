@@ -1,6 +1,16 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">📦 WinProgramSuite &mdash; Complete Windows Package Management System</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 19 February 2026 | <strong>Complete i18n &amp; Settings Scheduler</strong><br />This changelog covers <strong>WinProgramManager</strong>, the database management component of the WinProgramSuite.<br />For automatic update features, see <strong>WinUpdate</strong> documentation.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 21 February 2026 | <strong>Shared Database Location</strong><br />This changelog covers <strong>WinProgramManager</strong>, the database management component of the WinProgramSuite.<br />For automatic update features, see <strong>WinUpdate</strong> documentation.</p>
+<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Version 2026.02.21.07 — Update 21</span></h3>
+<p><strong>Shared Database Location (21 February 2026):</strong></p>
+<ul>
+<li><strong>Centralized Database Storage:</strong> Database now stored in <code>C:\ProgramData\WinProgramManager\WinProgramManager.db</code> instead of per-user installation directory</li>
+<li><strong>Multi-User Support:</strong> All users on the system now share the same package database and metadata, ensuring consistency across user accounts</li>
+<li><strong>Reduced Disk Usage:</strong> Eliminates duplicate database copies for each user, saving disk space on multi-user systems</li>
+<li><strong>Automatic Migration:</strong> Application automatically creates the ProgramData directory and migrates to the new location on first run</li>
+<li><strong>System-Wide Installation:</strong> Better alignment with Windows best practices for application data shared across all users</li>
+</ul>
+<h3 style="text-align: center;">&nbsp;</h3>
 <h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Version 2026.02.19.10 — Update 1</span></h3>
 <p><strong>Complete i18n &amp; Settings Scheduler (19 February 2026):</strong></p>
 <ul>

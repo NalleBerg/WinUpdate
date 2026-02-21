@@ -1,5 +1,15 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">📦 WinProgramSuite &mdash; Komplett Windows Pakethanteringssystem</span></h2>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Senaste uppdateringen:</strong> 18 februari 2026 | <strong>Komplett i18n &amp; Inst&auml;llningar-schemal&auml;ggare</strong><br />Denna &auml;ndringslogg t&auml;cker <strong>WinProgramManager</strong>, databashanteringskomponenten i WinProgramSuite.<br />F&ouml;r automatiska uppdateringsfunktioner, se <strong>WinUpdate</strong>-dokumentation.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Senaste uppdateringen:</strong> 21 februari 2026 | <strong>Delad Databasplats</strong><br />Denna &auml;ndringslogg t&auml;cker <strong>WinProgramManager</strong>, databashanteringskomponenten i WinProgramSuite.<br />F&ouml;r automatiska uppdateringsfunktioner, se <strong>WinUpdate</strong>-dokumentation.</p>
+<h3 style="text-align: center;">&nbsp;</h3>
+<h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Version 2026.02.21.07 — Uppdatering 21</span></h3>
+<p><strong>Delad Databasplats (21 februari 2026):</strong></p>
+<ul>
+<li><strong>Centraliserad Databaslagring:</strong> Databasen lagras nu i <code>C:\ProgramData\WinProgramManager\WinProgramManager.db</code> ist&auml;llet f&ouml;r i per-anv&auml;ndare installationskatalog</li>
+<li><strong>Flerstst&ouml;d:</strong> Alla anv&auml;ndare p&aring; systemet delar nu samma paketdatabas och metadata, vilket s&auml;kerst&auml;ller konsistens &ouml;ver anv&auml;ndarkonton</li>
+<li><strong>Reducerad Diskanv&auml;ndning:</strong> Eliminerar duplicerade databaskopior f&ouml;r varje anv&auml;ndare, vilket sparar diskutrymme p&aring; fleranv&auml;ndarsystem</li>
+<li><strong>Automatisk Migrering:</strong> Applikationen skapar automatiskt ProgramData-katalogen och migrerar till den nya platsen vid f&ouml;rsta k&ouml;rningen</li>
+<li><strong>Systemomfattande Installation:</strong> B&auml;ttre anpassning till Windows b&auml;sta praxis f&ouml;r applikationsdata delad &ouml;ver alla anv&auml;ndare</li>
+</ul>
 <h3 style="text-align: center;">&nbsp;</h3>
 <h3 style="text-align: center;"><span style="color: #ff0000;">WinProgramManager Version 2026.02.19.10 — Uppdatering 1</span></h3>
 <ul>

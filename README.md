@@ -1,6 +1,8 @@
 # WinProgramSuite — Complete Windows Package Management System
 
-**Latest Update:** 19 February 2026 | **Complete i18n & Settings Scheduler**
+**Latest Update:** 21 February 2026 | **Shared Database Location**
+
+**Note (21 February 2026):** The application database is now stored in `C:\ProgramData\WinProgramManager\WinProgramManager.db`, allowing all users on the system to share the same package database and metadata. This improves consistency and reduces disk usage when multiple users use the application.
 
 **Note (13 February 2026):** A first-run scheduler is now created by `WinProgramManager` on initial startup. The app writes a small marker INI at `%APPDATA%\WinProgramManager\WinProgramManager.ini` and creates a Task Scheduler job `WinProgramUpdaterWeekly` to run `WinProgramUpdaterGUI.exe --hidden` weekly. The INI contains `Settings/Language` (default `en_GB`) and `Settings/UpdaterTaskCreated` (1 on success, 0 on failure). Delete the INI to force the first-run logic again.
 
@@ -19,9 +21,11 @@
 
 **Installation Steps:**
 1. Download `WinProgramManager.db` from the link above
-2. Place it in your WinProgramManager installation directory
+2. Place it in `C:\ProgramData\WinProgramManager\` (create the directory if it doesn't exist)
 3. Run `WinProgramUpdaterGUI.exe` to update the database to current packages
 4. Launch `WinProgramManager.exe` - your installed apps will be automatically detected
+
+**Note:** The database is now stored in `C:\ProgramData\WinProgramManager\WinProgramManager.db` to allow all users on the system to share the same package database.
 
 Important for builders:
 - If you compiled the application yourself, run `WinProgramUpdaterGUI.exe` (found in the built package directory) once after compiling to ensure the distributed database file is up to date with the expected schema and any local migrations. The database file is available here: https://prog.nalle.no/user/data/apps/WinProgramManager.db
